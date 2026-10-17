@@ -243,7 +243,9 @@ describe("authenticated server API", () => {
       }),
     });
 
-    await expect(fetchViewer("expired")).rejects.toThrow("登录状态已失效，请重新登录。");
+    await expect(fetchViewer("expired")).rejects.toThrow(
+      "登录状态已失效，请重新登录。",
+    );
   });
 
   it("fetchProjects throws ApiAuthError on 401", async () => {
@@ -255,6 +257,8 @@ describe("authenticated server API", () => {
       }),
     });
 
-    await expect(fetchProjects("expired")).rejects.toThrow("登录状态已失效，请重新登录。");
+    await expect(fetchProjects("expired")).rejects.toThrow(
+      "登录状态已失效，请重新登录。",
+    );
   });
 });

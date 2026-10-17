@@ -6,11 +6,11 @@ import type {
 } from "@loomic/shared";
 
 import type { PgmqClient } from "../../queue/pgmq-client.js";
+import type { AdminSupabaseClient } from "../../supabase/admin.js";
 import type {
   AuthenticatedUser,
   UserSupabaseClient,
 } from "../../supabase/user.js";
-import type { AdminSupabaseClient } from "../../supabase/admin.js";
 
 // Queue name mapping
 const QUEUE_MAP: Record<BackgroundJobType, string> = {
@@ -49,7 +49,10 @@ export type CreateJobInput = {
 };
 
 export type JobService = {
-  createJob(user: AuthenticatedUser, input: CreateJobInput): Promise<BackgroundJob>;
+  createJob(
+    user: AuthenticatedUser,
+    input: CreateJobInput,
+  ): Promise<BackgroundJob>;
   getJob(user: AuthenticatedUser, jobId: string): Promise<BackgroundJob>;
   listJobs(
     user: AuthenticatedUser,
@@ -59,12 +62,26 @@ export type JobService = {
   getJobAdmin(jobId: string): Promise<BackgroundJob>;
 
   // Admin-only methods (use admin client, no user auth)
-  setCreditsInfo(jobId: string, creditsCost: number, transactionId: string): Promise<void>;
+  setCreditsInfo(
+    jobId: string,
+    creditsCost: number,
+    transactionId: string,
+  ): Promise<void>;
   markRunning(jobId: string): Promise<void>;
   markSucceeded(jobId: string, result: Record<string, unknown>): Promise<void>;
-  markFailed(jobId: string, errorCode: string, errorMessage: string): Promise<void>;
-  markDeadLetter(jobId: string, errorCode: string, errorMessage: string): Promise<void>;
-  incrementAttempt(jobId: string): Promise<{ attempt_count: number; max_attempts: number }>;
+  markFailed(
+    jobId: string,
+    errorCode: string,
+    errorMessage: string,
+  ): Promise<void>;
+  markDeadLetter(
+    jobId: string,
+    errorCode: string,
+    errorMessage: string,
+  ): Promise<void>;
+  incrementAttempt(
+    jobId: string,
+  ): Promise<{ attempt_count: number; max_attempts: number }>;
 };
 
 export function createJobService(options: {
@@ -104,9 +121,19 @@ export function createJobService(options: {
     "id, workspace_id, project_id, canvas_id, session_id, thread_id, queue_name, job_type, status, payload, result, error_code, error_message, attempt_count, max_attempts, created_by, created_at, updated_at, started_at, completed_at, failed_at, canceled_at";
 
   return {
-    async createJob(user, input) {
-      if (options.validateModel && (input.jobType === "image_generation" || input.jobType === "video_generation")) {
-        const model = await options.validateModel(input.jobType === "image_generation" ? "image" : "video", typeof input.payload.model === "string" ? input.payload.model : undefined);
+    async createJob(user, requestInput) {
+      let input = requestInput;
+      if (
+        options.validateModel &&
+        (input.jobType === "image_generation" ||
+          input.jobType === "video_generation")
+      ) {
+        const model = await options.validateModel(
+          input.jobType === "image_generation" ? "image" : "video",
+          typeof input.payload.model === "string"
+            ? input.payload.model
+            : undefined,
+        );
         input = { ...input, payload: { ...input.payload, model } };
       }
       const client = options.createUserClient(user.accessToken);
@@ -122,7 +149,7 @@ export function createJobService(options: {
           thread_id: input.threadId ?? null,
           queue_name: queueName,
           job_type: input.jobType,
-          payload: input.payload as Json,
+          payload: input.payload as NonNullable<Json>,
           created_by: user.id,
         })
         .select(SELECT_COLS)
@@ -167,7 +194,11 @@ export function createJobService(options: {
         .maybeSingle();
 
       if (error) {
-        throw new JobServiceError("job_query_failed", "Failed to query job.", 500);
+        throw new JobServiceError(
+          "job_query_failed",
+          "Failed to query job.",
+          500,
+        );
       }
       if (!job) {
         throw new JobServiceError("job_not_found", "Job not found.", 404);
@@ -189,7 +220,11 @@ export function createJobService(options: {
 
       const { data: jobs, error } = await query;
       if (error) {
-        throw new JobServiceError("job_query_failed", "Failed to list jobs.", 500);
+        throw new JobServiceError(
+          "job_query_failed",
+          "Failed to list jobs.",
+          500,
+        );
       }
       return (jobs ?? []).map((row) =>
         mapJobRow(row as unknown as Record<string, unknown>),
@@ -207,7 +242,11 @@ export function createJobService(options: {
         .maybeSingle();
 
       if (error) {
-        throw new JobServiceError("job_cancel_failed", "Failed to cancel job.", 500);
+        throw new JobServiceError(
+          "job_cancel_failed",
+          "Failed to cancel job.",
+          500,
+        );
       }
       if (!job) {
         throw new JobServiceError(
@@ -228,7 +267,11 @@ export function createJobService(options: {
         .maybeSingle();
 
       if (error) {
-        throw new JobServiceError("job_query_failed", "Failed to query job.", 500);
+        throw new JobServiceError(
+          "job_query_failed",
+          "Failed to query job.",
+          500,
+        );
       }
       if (!job) {
         throw new JobServiceError("job_not_found", "Job not found.", 404);
@@ -264,7 +307,7 @@ export function createJobService(options: {
         .from("background_jobs")
         .update({
           status: "succeeded",
-          result: result as Json,
+          result: result as NonNullable<Json>,
           completed_at: new Date().toISOString(),
         })
         .eq("id", jobId);
@@ -298,21 +341,23 @@ export function createJobService(options: {
 
     async incrementAttempt(jobId) {
       const admin = options.getAdminClient();
-      // NOTE: increment_job_attempt may not be in generated Supabase types yet
-      const { data, error } = await (admin as any).rpc("increment_job_attempt", {
+      const { data, error } = await admin.rpc("increment_job_attempt", {
         p_job_id: jobId,
       });
 
       if (error) {
-        console.error("[job-service] increment_job_attempt RPC failed:", error.message);
+        console.error(
+          "[job-service] increment_job_attempt RPC failed:",
+          error.message,
+        );
         return { attempt_count: 1, max_attempts: 3 };
       }
 
       const row = Array.isArray(data) ? data[0] : data;
       if (row && typeof row === "object") {
         return {
-          attempt_count: (row as any).attempt_count as number,
-          max_attempts: ((row as any).max_attempts as number) ?? 3,
+          attempt_count: row.attempt_count,
+          max_attempts: row.max_attempts ?? 3,
         };
       }
       // Job not found — return safe defaults

@@ -151,23 +151,29 @@ export function useChatSessions({
     [],
   );
 
+  const initialSessionIdRef = useRef(initialSessionId);
+  initialSessionIdRef.current = initialSessionId;
+
   // ── Load sessions on mount ──
   useEffect(() => {
     let cancelled = false;
 
     async function init() {
+      const requestedSessionId = initialSessionIdRef.current;
       const token = accessTokenRef.current;
       setSessionsLoading(true);
       try {
         const res = await fetchSessions(token, canvasId);
         if (cancelled) return;
 
-        if (res.sessions.length > 0) {
+        const firstSession = res.sessions[0];
+        if (firstSession) {
           setSessions(res.sessions);
-          const target = initialSessionId
-            ? (res.sessions.find((s: ChatSessionSummary) => s.id === initialSessionId) ??
-              res.sessions[0]!)
-            : res.sessions[0]!;
+          const target = requestedSessionId
+            ? (res.sessions.find(
+                (s: ChatSessionSummary) => s.id === requestedSessionId,
+              ) ?? firstSession)
+            : firstSession;
           setActiveSessionId(target.id);
           onSessionChangeRef.current?.(target.id);
           const msgRes = await fetchMessages(token, target.id);
@@ -195,7 +201,7 @@ export function useChatSessions({
       cancelled = true;
     };
     // Intentionally depends only on canvasId — accessTokenRef, onSessionChangeRef,
-    // initialSessionId, and msgCacheRef are stable refs that never trigger re-runs.
+    // initialSessionIdRef and msgCacheRef never trigger re-runs.
     // This effect is a one-time init per canvas, not a token-refresh handler.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvasId]);
@@ -263,7 +269,8 @@ export function useChatSessions({
       } else {
         setSessions(remaining);
         if (sessionId === activeSessionIdRef.current) {
-          const next = remaining[0]!;
+          const next = remaining[0];
+          if (!next) return;
           setActiveSessionId(next.id);
           onSessionChangeRef.current?.(next.id);
           setMessagesLoading(true);
@@ -308,7 +315,9 @@ export function useChatSessions({
   // ── Reload messages (for reconnection) ──
   const reloadMessages = useCallback(async (sessionId: string) => {
     if (!sessionId) {
-      console.warn("[chat] reloadMessages called with empty sessionId, skipping");
+      console.warn(
+        "[chat] reloadMessages called with empty sessionId, skipping",
+      );
       return;
     }
     try {

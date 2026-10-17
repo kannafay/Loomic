@@ -1,3 +1,4 @@
+import type { TablesUpdate } from "@loomic/shared";
 // @credits-system — Payment lifecycle: checkout creation, subscription sync, cancellation, plan changes
 import type { BillingPeriod, SubscriptionPlan } from "@loomic/shared";
 import { PLAN_CONFIGS } from "@loomic/shared";
@@ -50,10 +51,7 @@ export type PaymentService = {
     billingPeriod: BillingPeriod,
   ): Promise<{ checkoutUrl: string }>;
 
-  handleWebhookEvent(
-    eventName: string,
-    payload: WebhookPayload,
-  ): Promise<void>;
+  handleWebhookEvent(eventName: string, payload: WebhookPayload): Promise<void>;
 
   getSubscriptionStatus(workspaceId: string): Promise<SubscriptionStatus>;
 
@@ -103,14 +101,20 @@ export function createPaymentService(options: {
   const { lemonSqueezy, getAdminClient, variantMap, webOrigin } = options;
 
   // Build reverse lookup: variantId -> "plan_period"
-  const reverseVariantMap = new Map<string, { plan: SubscriptionPlan; period: BillingPeriod }>();
+  const reverseVariantMap = new Map<
+    string,
+    { plan: SubscriptionPlan; period: BillingPeriod }
+  >();
   for (const [key, variantId] of Object.entries(variantMap)) {
     if (!variantId) continue;
     const [plan, period] = key.split("_") as [SubscriptionPlan, BillingPeriod];
     reverseVariantMap.set(variantId, { plan, period });
   }
 
-  function lookupVariant(planId: SubscriptionPlan, billingPeriod: BillingPeriod): string {
+  function lookupVariant(
+    planId: SubscriptionPlan,
+    billingPeriod: BillingPeriod,
+  ): string {
     const key = `${planId}_${billingPeriod}`;
     const variantId = variantMap[key];
     if (!variantId) {
@@ -123,7 +127,9 @@ export function createPaymentService(options: {
     return variantId;
   }
 
-  function resolvePlanFromVariant(variantId: number): { plan: SubscriptionPlan; period: BillingPeriod } | null {
+  function resolvePlanFromVariant(
+    variantId: number,
+  ): { plan: SubscriptionPlan; period: BillingPeriod } | null {
     return reverseVariantMap.get(String(variantId)) ?? null;
   }
 
@@ -149,7 +155,9 @@ export function createPaymentService(options: {
       switch (eventName) {
         case "subscription_created": {
           if (!workspaceId) {
-            console.warn("[PaymentService] subscription_created missing workspace_id in custom_data");
+            console.warn(
+              "[PaymentService] subscription_created missing workspace_id in custom_data",
+            );
             return;
           }
 
@@ -157,10 +165,8 @@ export function createPaymentService(options: {
           const plan: SubscriptionPlan = resolved?.plan ?? "starter";
           const billingPeriod: BillingPeriod = resolved?.period ?? "monthly";
 
-          // NOTE: lemon_squeezy_* columns added via migration but not yet in
-          // generated Database type — cast to `any` for update calls.
           const admin = getAdminClient();
-          await (admin as any)
+          await admin
             .from("subscriptions")
             .update({
               plan,
@@ -183,14 +189,18 @@ export function createPaymentService(options: {
         case "subscription_updated": {
           // Find workspace by LS subscription ID
           const admin = getAdminClient();
-          const wsId = workspaceId ?? await findWorkspaceByLsSubscription(admin, subscriptionId);
+          const wsId =
+            workspaceId ??
+            (await findWorkspaceByLsSubscription(admin, subscriptionId));
           if (!wsId) {
-            console.warn("[PaymentService] subscription_updated: cannot resolve workspace");
+            console.warn(
+              "[PaymentService] subscription_updated: cannot resolve workspace",
+            );
             return;
           }
 
           const resolved = resolvePlanFromVariant(attrs.variant_id);
-          const updateData: Record<string, unknown> = {
+          const updateData: TablesUpdate<"subscriptions"> = {
             lemon_squeezy_variant_id: String(attrs.variant_id),
             current_period_end: attrs.renews_at ?? null,
             updated_at: new Date().toISOString(),
@@ -208,7 +218,7 @@ export function createPaymentService(options: {
             updateData.canceled_at = null;
           }
 
-          await (admin as any)
+          await admin
             .from("subscriptions")
             .update(updateData)
             .eq("workspace_id", wsId);
@@ -222,9 +232,13 @@ export function createPaymentService(options: {
 
         case "subscription_cancelled": {
           const admin = getAdminClient();
-          const wsId = workspaceId ?? await findWorkspaceByLsSubscription(admin, subscriptionId);
+          const wsId =
+            workspaceId ??
+            (await findWorkspaceByLsSubscription(admin, subscriptionId));
           if (!wsId) {
-            console.warn("[PaymentService] subscription_cancelled: cannot resolve workspace");
+            console.warn(
+              "[PaymentService] subscription_cancelled: cannot resolve workspace",
+            );
             return;
           }
 
@@ -241,9 +255,13 @@ export function createPaymentService(options: {
 
         case "subscription_payment_success": {
           const admin = getAdminClient();
-          const wsId = workspaceId ?? await findWorkspaceByLsSubscription(admin, subscriptionId);
+          const wsId =
+            workspaceId ??
+            (await findWorkspaceByLsSubscription(admin, subscriptionId));
           if (!wsId) {
-            console.warn("[PaymentService] subscription_payment_success: cannot resolve workspace");
+            console.warn(
+              "[PaymentService] subscription_payment_success: cannot resolve workspace",
+            );
             return;
           }
 
@@ -274,7 +292,9 @@ export function createPaymentService(options: {
 
         case "subscription_payment_failed": {
           const admin = getAdminClient();
-          const wsId = workspaceId ?? await findWorkspaceByLsSubscription(admin, subscriptionId);
+          const wsId =
+            workspaceId ??
+            (await findWorkspaceByLsSubscription(admin, subscriptionId));
           console.warn(
             `[PaymentService] Payment failed for workspace=${wsId ?? "unknown"} subscription=${subscriptionId}`,
           );
@@ -283,14 +303,18 @@ export function createPaymentService(options: {
 
         case "subscription_expired": {
           const admin = getAdminClient();
-          const wsId = workspaceId ?? await findWorkspaceByLsSubscription(admin, subscriptionId);
+          const wsId =
+            workspaceId ??
+            (await findWorkspaceByLsSubscription(admin, subscriptionId));
           if (!wsId) {
-            console.warn("[PaymentService] subscription_expired: cannot resolve workspace");
+            console.warn(
+              "[PaymentService] subscription_expired: cannot resolve workspace",
+            );
             return;
           }
 
           // Downgrade to free plan
-          await (admin as any)
+          await admin
             .from("subscriptions")
             .update({
               plan: "free",
@@ -315,9 +339,7 @@ export function createPaymentService(options: {
     async getSubscriptionStatus(workspaceId) {
       const admin = getAdminClient();
 
-      // NOTE: lemon_squeezy_* columns exist via migration but are not yet in
-      // the generated Database type — cast to `any` for those selects.
-      const { data, error } = await (admin as any)
+      const { data, error } = await admin
         .from("subscriptions")
         .select(
           "plan, billing_period, lemon_squeezy_subscription_id, current_period_end, canceled_at",
@@ -335,7 +357,7 @@ export function createPaymentService(options: {
 
       // If there is a LS subscription, fetch portal URL from the API
       let customerPortalUrl: string | null = null;
-      const lsSubId = (data as any)?.lemon_squeezy_subscription_id as string | null;
+      const lsSubId = data?.lemon_squeezy_subscription_id as string | null;
       if (lsSubId) {
         try {
           const lsSub = await lemonSqueezy.getSubscription(lsSubId);
@@ -346,12 +368,12 @@ export function createPaymentService(options: {
       }
 
       return {
-        plan: ((data as any)?.plan as SubscriptionPlan) ?? "free",
-        billingPeriod: ((data as any)?.billing_period as BillingPeriod) ?? null,
+        plan: (data?.plan as SubscriptionPlan) ?? "free",
+        billingPeriod: (data?.billing_period as BillingPeriod) ?? null,
         status: lsSubId ? "active" : null,
         lemonSqueezySubscriptionId: lsSubId ?? null,
-        currentPeriodEnd: (data as any)?.current_period_end ?? null,
-        canceledAt: (data as any)?.canceled_at ?? null,
+        currentPeriodEnd: data?.current_period_end ?? null,
+        canceledAt: data?.canceled_at ?? null,
         customerPortalUrl,
       };
     },
@@ -359,13 +381,13 @@ export function createPaymentService(options: {
     async cancelSubscription(workspaceId) {
       const admin = getAdminClient();
 
-      const { data } = await (admin as any)
+      const { data } = await admin
         .from("subscriptions")
         .select("lemon_squeezy_subscription_id")
         .eq("workspace_id", workspaceId)
         .maybeSingle();
 
-      const lsSubId = (data as any)?.lemon_squeezy_subscription_id as string | null;
+      const lsSubId = data?.lemon_squeezy_subscription_id as string | null;
       if (!lsSubId) {
         throw new PaymentServiceError(
           "subscription_not_found",
@@ -384,13 +406,13 @@ export function createPaymentService(options: {
     async changePlan(workspaceId, newPlanId, billingPeriod) {
       const admin = getAdminClient();
 
-      const { data } = await (admin as any)
+      const { data } = await admin
         .from("subscriptions")
         .select("lemon_squeezy_subscription_id")
         .eq("workspace_id", workspaceId)
         .maybeSingle();
 
-      const lsSubId = (data as any)?.lemon_squeezy_subscription_id as string | null;
+      const lsSubId = data?.lemon_squeezy_subscription_id as string | null;
       if (!lsSubId) {
         throw new PaymentServiceError(
           "subscription_not_found",
@@ -402,7 +424,7 @@ export function createPaymentService(options: {
       const newVariantId = lookupVariant(newPlanId, billingPeriod);
 
       await lemonSqueezy.updateSubscription(lsSubId, {
-        variant_id: parseInt(newVariantId, 10),
+        variant_id: Number.parseInt(newVariantId, 10),
         invoice_immediately: true,
       });
 
@@ -417,13 +439,13 @@ async function findWorkspaceByLsSubscription(
   admin: AdminSupabaseClient,
   subscriptionId: string,
 ): Promise<string | null> {
-  const { data } = await (admin as any)
+  const { data } = await admin
     .from("subscriptions")
     .select("workspace_id")
     .eq("lemon_squeezy_subscription_id", subscriptionId)
     .maybeSingle();
 
-  return (data as any)?.workspace_id ?? null;
+  return data?.workspace_id ?? null;
 }
 
 async function grantMonthlyCredits(
@@ -493,13 +515,21 @@ export function buildVariantMap(env: {
   lemonSqueezyVariantBusinessYearly?: string;
 }): VariantMap {
   const map: VariantMap = {};
-  if (env.lemonSqueezyVariantStarterMonthly) map.starter_monthly = env.lemonSqueezyVariantStarterMonthly;
-  if (env.lemonSqueezyVariantStarterYearly) map.starter_yearly = env.lemonSqueezyVariantStarterYearly;
-  if (env.lemonSqueezyVariantProMonthly) map.pro_monthly = env.lemonSqueezyVariantProMonthly;
-  if (env.lemonSqueezyVariantProYearly) map.pro_yearly = env.lemonSqueezyVariantProYearly;
-  if (env.lemonSqueezyVariantUltraMonthly) map.ultra_monthly = env.lemonSqueezyVariantUltraMonthly;
-  if (env.lemonSqueezyVariantUltraYearly) map.ultra_yearly = env.lemonSqueezyVariantUltraYearly;
-  if (env.lemonSqueezyVariantBusinessMonthly) map.business_monthly = env.lemonSqueezyVariantBusinessMonthly;
-  if (env.lemonSqueezyVariantBusinessYearly) map.business_yearly = env.lemonSqueezyVariantBusinessYearly;
+  if (env.lemonSqueezyVariantStarterMonthly)
+    map.starter_monthly = env.lemonSqueezyVariantStarterMonthly;
+  if (env.lemonSqueezyVariantStarterYearly)
+    map.starter_yearly = env.lemonSqueezyVariantStarterYearly;
+  if (env.lemonSqueezyVariantProMonthly)
+    map.pro_monthly = env.lemonSqueezyVariantProMonthly;
+  if (env.lemonSqueezyVariantProYearly)
+    map.pro_yearly = env.lemonSqueezyVariantProYearly;
+  if (env.lemonSqueezyVariantUltraMonthly)
+    map.ultra_monthly = env.lemonSqueezyVariantUltraMonthly;
+  if (env.lemonSqueezyVariantUltraYearly)
+    map.ultra_yearly = env.lemonSqueezyVariantUltraYearly;
+  if (env.lemonSqueezyVariantBusinessMonthly)
+    map.business_monthly = env.lemonSqueezyVariantBusinessMonthly;
+  if (env.lemonSqueezyVariantBusinessYearly)
+    map.business_yearly = env.lemonSqueezyVariantBusinessYearly;
   return map;
 }

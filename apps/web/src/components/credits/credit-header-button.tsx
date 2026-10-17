@@ -1,16 +1,17 @@
-// @credits-system — Header button showing credit balance + upgrade CTA (Lovart style)
 "use client";
+
+// @credits-system — Header button showing credit balance + upgrade CTA (Lovart style)
 
 import { getPlanLabel } from "@/lib/locale";
 
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronRight, Gift, Zap } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import { Zap, ChevronRight, Gift } from "lucide-react";
-import Link from "next/link";
 
-import { useAuth } from "@/lib/auth-context";
 import { useCredits } from "@/hooks/use-credits";
+import { useAuth } from "@/lib/auth-context";
 
 // ── Plan badge color map ─────────────────────────────────────
 
@@ -188,7 +189,7 @@ export function CreditHeaderButton() {
                         animate={{ rotate: 360 }}
                         transition={{
                           duration: 0.6,
-                          repeat: Infinity,
+                          repeat: Number.POSITIVE_INFINITY,
                           ease: "linear",
                         }}
                       />

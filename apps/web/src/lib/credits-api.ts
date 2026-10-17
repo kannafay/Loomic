@@ -2,14 +2,14 @@
 import { getUserFacingError } from "./locale";
 
 import type {
+  ClaimDailyResponse,
   CreditBalanceResponse,
   CreditTransactionsResponse,
-  ClaimDailyResponse,
   SubscriptionPlan,
 } from "@loomic/shared";
 
 import { getServerBaseUrl } from "./env";
-import { ApiAuthError, ApiApplicationError } from "./server-api";
+import { ApiApplicationError, ApiAuthError } from "./server-api";
 
 // ── Helpers ──────────────────────────────────────────────────
 
@@ -30,7 +30,10 @@ async function handleErrorResponse(response: Response): Promise<never> {
   }
   const body = await response.json().catch(() => null);
   const code = body?.error?.code ?? "application_error";
-  const message = getUserFacingError({ code, message: body?.error?.message ?? body?.message }, "请求失败，请重试。");
+  const message = getUserFacingError(
+    { code, message: body?.error?.message ?? body?.message },
+    "请求失败，请重试。",
+  );
   throw new ApiApplicationError(code, message);
 }
 

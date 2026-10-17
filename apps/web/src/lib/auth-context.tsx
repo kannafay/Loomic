@@ -2,16 +2,16 @@
 
 import type { Session, User } from "@supabase/supabase-js";
 import {
+  type ReactNode,
   createContext,
   useCallback,
   useContext,
   useEffect,
   useState,
-  type ReactNode,
 } from "react";
 
-import { getSupabaseBrowserClient } from "./supabase-browser";
 import { getServerBaseUrl } from "./env";
+import { getSupabaseBrowserClient } from "./supabase-browser";
 
 interface AuthContextValue {
   role: "admin" | "user";
@@ -33,16 +33,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roleLoading, setRoleLoading] = useState(true);
   const accessToken = session?.access_token;
   const refreshRole = useCallback(async () => {
-    if (!accessToken) { setRole("user"); setRoleLoading(false); return; }
+    if (!accessToken) {
+      setRole("user");
+      setRoleLoading(false);
+      return;
+    }
     setRoleLoading(true);
     try {
-      const response = await fetch(`${getServerBaseUrl()}/api/access`, { headers: { Authorization: `Bearer ${accessToken}` } });
+      const response = await fetch(`${getServerBaseUrl()}/api/access`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
       const data = response.ok ? await response.json() : null;
       setRole(data?.role === "admin" ? "admin" : "user");
-    } catch { setRole("user"); }
-    finally { setRoleLoading(false); }
+    } catch {
+      setRole("user");
+    } finally {
+      setRoleLoading(false);
+    }
   }, [accessToken]);
-  useEffect(() => { void refreshRole(); }, [refreshRole]);
+  useEffect(() => {
+    void refreshRole();
+  }, [refreshRole]);
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient();
@@ -73,7 +84,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signOut, role, roleLoading, refreshRole }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        session,
+        loading,
+        signOut,
+        role,
+        roleLoading,
+        refreshRole,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,8 +1,8 @@
-import type { Metadata } from "next";
-import type { ReactNode } from "react";
-import Script from "next/script";
-import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
+import type { Metadata } from "next";
+import { Geist } from "next/font/google";
+import Script from "next/script";
+import type { ReactNode } from "react";
 
 import { Providers } from "../components/providers";
 

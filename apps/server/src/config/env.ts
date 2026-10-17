@@ -212,9 +212,15 @@ export function loadServerEnv(
       openAIApiKey,
     });
 
+  const modelConfigSecret = (
+    overrides.modelConfigSecret ?? source.LOOMIC_CONFIG_SECRET
+  )?.trim();
   return {
-    ...((overrides.modelConfigSecret ?? source.LOOMIC_CONFIG_SECRET)?.trim()
-      ? { modelConfigSecret: (overrides.modelConfigSecret ?? source.LOOMIC_CONFIG_SECRET)!.trim() } : {}),
+    ...(modelConfigSecret
+      ? {
+          modelConfigSecret,
+        }
+      : {}),
     ...(agnesApiKey ? { agnesApiKey } : {}),
     ...(agnesApiBase ? { agnesApiBase } : {}),
     agentBackendMode:

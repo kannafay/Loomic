@@ -14,8 +14,8 @@ import {
 } from "../../generation/providers/registry.js";
 import type {
   ImageProvider,
-  VideoProvider,
   VideoModelInfo,
+  VideoProvider,
 } from "../../generation/types.js";
 import {
   ModelConfigError,
@@ -101,7 +101,8 @@ export async function refreshConfiguredProviders(
   const images: ImageProvider[] = [];
   const videos: VideoProvider[] = [];
   for (const model of catalog.models) {
-    const provider = catalog.providers.find((p) => p.id === model.providerId)!;
+    const provider = catalog.providers.find((p) => p.id === model.providerId);
+    if (!provider) throw new Error(`Provider not found for model ${model.key}`);
     const apiKey = provider.apiKey || "not-required";
     const catalogProvider =
       model.adapter === "agnes"

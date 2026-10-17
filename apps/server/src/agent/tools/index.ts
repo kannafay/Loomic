@@ -1,23 +1,27 @@
 import type { StructuredTool } from "@langchain/core/tools";
 import type { BackendFactory, BackendProtocol } from "deepagents";
+import type { UserSupabaseClient } from "../../supabase/user.js";
 
+import type {
+  AvailableModel,
+  AvailableVideoModel,
+} from "../../generation/providers/registry.js";
 import type { ConnectionManager } from "../../ws/connection-manager.js";
 import { createBrandKitTool } from "./brand-kit.js";
-import { createInspectCanvasTool } from "./inspect-canvas.js";
-import { createManipulateCanvasTool } from "./manipulate-canvas.js";
 import {
-  createImageGenerateTool,
   type PersistImageFn,
   type SubmitImageJobFn,
+  createImageGenerateTool,
 } from "./image-generate.js";
+import { createInspectCanvasTool } from "./inspect-canvas.js";
+import { createManipulateCanvasTool } from "./manipulate-canvas.js";
+import { createPersistSandboxFileTool } from "./persist-sandbox-file.js";
 import { createProjectSearchTool } from "./project-search.js";
 import { createScreenshotCanvasTool } from "./screenshot-canvas.js";
 import {
-  createVideoGenerateTool,
   type SubmitVideoJobFn,
+  createVideoGenerateTool,
 } from "./video-generate.js";
-import { createPersistSandboxFileTool } from "./persist-sandbox-file.js";
-import type { AvailableModel, AvailableVideoModel } from "../../generation/providers/registry.js";
 
 export { createImageGenerateTool } from "./image-generate.js";
 export { createVideoGenerateTool } from "./video-generate.js";
@@ -57,7 +61,7 @@ export function createMainAgentTools(
   deps: {
     availableImageModels?: AvailableModel[];
     availableVideoModels?: AvailableVideoModel[];
-    createUserClient: (accessToken: string) => any;
+    createUserClient: (accessToken: string) => UserSupabaseClient;
     brandKitId?: string | null;
     connectionManager?: ConnectionManager;
     persistImage?: PersistImageFn;
@@ -70,15 +74,31 @@ export function createMainAgentTools(
     createProjectSearchTool(backend),
     createInspectCanvasTool(deps),
     createManipulateCanvasTool(deps),
-    ...(deps.availableImageModels?.length === 0 ? [] : [createImageGenerateTool({
-      ...(deps.availableImageModels ? { availableModels: deps.availableImageModels } : {}),
-      ...(deps.persistImage ? { persistImage: deps.persistImage } : {}),
-      ...(deps.submitImageJob ? { submitImageJob: deps.submitImageJob } : {}),
-    })]),
-    ...(deps.availableVideoModels?.length === 0 ? [] : [createVideoGenerateTool({
-      ...(deps.availableVideoModels ? { availableModels: deps.availableVideoModels } : {}),
-      ...(deps.submitVideoJob ? { submitVideoJob: deps.submitVideoJob } : {}),
-    })]),
+    ...(deps.availableImageModels?.length === 0
+      ? []
+      : [
+          createImageGenerateTool({
+            ...(deps.availableImageModels
+              ? { availableModels: deps.availableImageModels }
+              : {}),
+            ...(deps.persistImage ? { persistImage: deps.persistImage } : {}),
+            ...(deps.submitImageJob
+              ? { submitImageJob: deps.submitImageJob }
+              : {}),
+          }),
+        ]),
+    ...(deps.availableVideoModels?.length === 0
+      ? []
+      : [
+          createVideoGenerateTool({
+            ...(deps.availableVideoModels
+              ? { availableModels: deps.availableVideoModels }
+              : {}),
+            ...(deps.submitVideoJob
+              ? { submitVideoJob: deps.submitVideoJob }
+              : {}),
+          }),
+        ]),
     createPersistSandboxFileTool({
       createUserClient: deps.createUserClient,
       ...(deps.sandboxDir ? { sandboxDir: deps.sandboxDir } : {}),
@@ -91,10 +111,12 @@ export function createMainAgentTools(
     tools.push(createBrandKitTool(deps, deps.brandKitId));
   }
   if (deps.connectionManager) {
-    tools.push(createScreenshotCanvasTool({
-      connectionManager: deps.connectionManager,
-      ...(deps.persistImage ? { persistImage: deps.persistImage } : {}),
-    }));
+    tools.push(
+      createScreenshotCanvasTool({
+        connectionManager: deps.connectionManager,
+        ...(deps.persistImage ? { persistImage: deps.persistImage } : {}),
+      }),
+    );
   }
   return tools;
 }

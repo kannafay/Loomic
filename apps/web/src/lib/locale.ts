@@ -17,14 +17,23 @@ export function getBillingPeriodLabel(period: string): string {
   return period === "yearly" ? "按年付费" : "按月付费";
 }
 
-export function getCreditDescription(description: string | null): string | null {
+export function getCreditDescription(
+  description: string | null,
+): string | null {
   if (!description) return null;
-  if (description === "Seed: initial free-tier credits") return "免费版初始积分";
-  if (description === "Auto-refund: job failed") return "任务失败，积分已自动退还";
-  const upgrade = /^Plan upgraded to (\w+) — monthly credits granted$/.exec(description);
+  if (description === "Seed: initial free-tier credits")
+    return "免费版初始积分";
+  if (description === "Auto-refund: job failed")
+    return "任务失败，积分已自动退还";
+  const upgrade = /^Plan upgraded to (\w+) — monthly credits granted$/.exec(
+    description,
+  );
   if (upgrade) return `升级至${getPlanLabel(upgrade[1])}，已发放每月积分`;
-  const grant = /^(\w+) plan — (initial )?monthly credits granted$/.exec(description);
-  if (grant) return `${getPlanLabel(grant[1])}：已发放${grant[2] ? "首月" : "每月"}积分`;
+  const grant = /^(\w+) plan — (initial )?monthly credits granted$/.exec(
+    description,
+  );
+  if (grant)
+    return `${getPlanLabel(grant[1])}：已发放${grant[2] ? "首月" : "每月"}积分`;
   return description
     .replace(/^(?:Direct )?[Ii]mage generation: /, "图片生成：")
     .replace(/^(?:Direct )?[Vv]ideo generation: /, "视频生成：");
@@ -48,18 +57,24 @@ export function getCanvasElementLabel(type: string): string {
   return ELEMENT_LABELS[type] ?? "图形";
 }
 
-export function localizeSystemSkill<T extends { source: string; slug: string; name: string; description: string }>(skill: T): T {
+export function localizeSystemSkill<
+  T extends { source: string; slug: string; name: string; description: string },
+>(skill: T): T {
   if (skill.source !== "system") return skill;
-  if (skill.slug === "canvas-design") return {
-    ...skill,
-    name: "画布设计",
-    description: "运用设计理念，通过代码生成海报、视觉作品及其他静态设计，输出 PNG 图片或 PDF 文件。",
-  };
-  if (skill.slug === "json-image-prompt") return {
-    ...skill,
-    name: "结构化图片提示词",
-    description: "使用结构化 JSON 提示词生成图片，提升图像、插画、照片和海报的生成一致性、可控性与质量。",
-  };
+  if (skill.slug === "canvas-design")
+    return {
+      ...skill,
+      name: "画布设计",
+      description:
+        "运用设计理念，通过代码生成海报、视觉作品及其他静态设计，输出 PNG 图片或 PDF 文件。",
+    };
+  if (skill.slug === "json-image-prompt")
+    return {
+      ...skill,
+      name: "结构化图片提示词",
+      description:
+        "使用结构化 JSON 提示词生成图片，提升图像、插画、照片和海报的生成一致性、可控性与质量。",
+    };
   return skill;
 }
 
@@ -113,24 +128,37 @@ export function getUserFacingError(
   error: unknown,
   fallback = "操作失败，请稍后重试。",
 ): string {
-  const detail: { code?: string; message?: string } = error && typeof error === "object"
-    ? error as { code?: string; message?: string }
-    : { message: typeof error === "string" ? error : "" };
+  const detail: { code?: string; message?: string } =
+    error && typeof error === "object"
+      ? (error as { code?: string; message?: string })
+      : { message: typeof error === "string" ? error : "" };
   const message = detail.message ?? "";
   if (/[\u3400-\u9fff]/.test(message)) return message;
   const translated = detail.code ? ERROR_MESSAGES[detail.code] : undefined;
   if (translated) return translated;
-  if (/invalid login credentials/i.test(message)) return ERROR_MESSAGES.invalid_credentials ?? fallback;
-  if (/already registered|already exists/i.test(message)) return ERROR_MESSAGES.user_already_exists ?? fallback;
-  if (/email not confirmed/i.test(message)) return ERROR_MESSAGES.email_not_confirmed ?? fallback;
-  if (/password.*(?:least|short|weak)/i.test(message)) return ERROR_MESSAGES.weak_password ?? fallback;
-  if (/invalid.*(?:api.?key|credential)|api.?key.*(?:invalid|missing|not found)|GOOGLE_API_KEY|OPENAI_API_KEY/i.test(message)) {
+  if (/invalid login credentials/i.test(message))
+    return ERROR_MESSAGES.invalid_credentials ?? fallback;
+  if (/already registered|already exists/i.test(message))
+    return ERROR_MESSAGES.user_already_exists ?? fallback;
+  if (/email not confirmed/i.test(message))
+    return ERROR_MESSAGES.email_not_confirmed ?? fallback;
+  if (/password.*(?:least|short|weak)/i.test(message))
+    return ERROR_MESSAGES.weak_password ?? fallback;
+  if (
+    /invalid.*(?:api.?key|credential)|api.?key.*(?:invalid|missing|not found)|GOOGLE_API_KEY|OPENAI_API_KEY/i.test(
+      message,
+    )
+  ) {
     return "模型服务的 API Key 未配置或无效，请检查配置后重试。";
   }
-  if (/quota|rate.?limit|too many requests|resource.?exhausted/i.test(message)) {
+  if (
+    /quota|rate.?limit|too many requests|resource.?exhausted/i.test(message)
+  ) {
     return "模型服务的额度不足或请求过于频繁，请检查额度或稍后重试。";
   }
-  if (/fetch|network|failed to connect|load failed/i.test(message)) return "网络连接失败，请检查服务状态后重试。";
-  if (/timed? ?out|timeout|abort/i.test(message)) return "请求超时，请稍后重试。";
+  if (/fetch|network|failed to connect|load failed/i.test(message))
+    return "网络连接失败，请检查服务状态后重试。";
+  if (/timed? ?out|timeout|abort/i.test(message))
+    return "请求超时，请稍后重试。";
   return fallback;
 }

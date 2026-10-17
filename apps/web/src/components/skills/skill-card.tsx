@@ -1,4 +1,5 @@
 "use client";
+
 import { Switch } from "@/components/ui/switch";
 
 import { Button } from "@/components/ui/button";
@@ -49,10 +50,7 @@ const CATEGORY_LABELS: Record<SkillCategory, string> = {
 // Source badge
 // ---------------------------------------------------------------------------
 
-const SOURCE_CONFIG: Record<
-  SkillSource,
-  { label: string; icon: typeof ShieldCheck }
-> = {
+const SOURCE_CONFIG = {
   system: { label: "官方", icon: ShieldCheck },
   community: { label: "社区", icon: Users },
   user: { label: "自定义", icon: UserPen },
@@ -80,12 +78,9 @@ export function SkillCard({
   onClick,
   onUninstall,
 }: SkillCardProps) {
-  // SOURCE_CONFIG exhaustively covers all SkillSource values ("system" | "community" | "user")
-  // Non-null assertion is safe: every possible SkillSource key is present in SOURCE_CONFIG.
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const sourceEntry = (SOURCE_CONFIG[
-    skill.source as keyof typeof SOURCE_CONFIG
-  ] ?? SOURCE_CONFIG.system)!;
+  const sourceEntry =
+    SOURCE_CONFIG[skill.source as keyof typeof SOURCE_CONFIG] ??
+    SOURCE_CONFIG.system;
   const { label: sourceLabel, icon: SourceIcon } = sourceEntry;
 
   const handleToggle = useCallback(

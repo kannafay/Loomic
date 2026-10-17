@@ -22,15 +22,17 @@ export function BrandKitSkeleton() {
 
         {/* Kit list items -- horizontal on mobile, vertical on desktop */}
         <div className="flex gap-1 overflow-x-auto px-2 pb-3 md:flex-col md:flex-1 md:overflow-y-auto md:overflow-x-hidden md:pb-4 md:space-y-1">
-          {Array.from({ length: 3 }, (_, i) => (
-            <div
-              key={i}
-              className="flex w-auto shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 md:w-full"
-            >
-              <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
-              <Skeleton className="hidden h-4 flex-1 md:block" />
-            </div>
-          ))}
+          {["placeholder-1", "placeholder-2", "placeholder-3"].map(
+            (placeholderId) => (
+              <div
+                key={placeholderId}
+                className="flex w-auto shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 md:w-full"
+              >
+                <Skeleton className="h-8 w-8 shrink-0 rounded-md" />
+                <Skeleton className="hidden h-4 flex-1 md:block" />
+              </div>
+            ),
+          )}
         </div>
       </aside>
 
@@ -63,12 +65,14 @@ export function BrandKitSkeleton() {
             <div className="space-y-3">
               <Skeleton className="h-5 w-10" />
               <div className="flex flex-wrap gap-4">
-                {Array.from({ length: 3 }, (_, i) => (
-                  <Skeleton
-                    key={i}
-                    className="h-20 w-24 rounded-lg sm:h-24 sm:w-32"
-                  />
-                ))}
+                {["placeholder-1", "placeholder-2", "placeholder-3"].map(
+                  (placeholderId) => (
+                    <Skeleton
+                      key={placeholderId}
+                      className="h-20 w-24 rounded-lg sm:h-24 sm:w-32"
+                    />
+                  ),
+                )}
                 <div className="flex h-20 w-24 items-center justify-center rounded-lg border-2 border-dashed border-border sm:h-24 sm:w-32">
                   <Skeleton className="h-5 w-5 rounded bg-transparent" />
                 </div>
@@ -79,8 +83,13 @@ export function BrandKitSkeleton() {
             <div className="space-y-3">
               <Skeleton className="h-5 w-10" />
               <div className="flex flex-wrap gap-3">
-                {Array.from({ length: 4 }, (_, i) => (
-                  <div key={i} className="space-y-1.5">
+                {[
+                  "placeholder-1",
+                  "placeholder-2",
+                  "placeholder-3",
+                  "placeholder-4",
+                ].map((placeholderId) => (
+                  <div key={placeholderId} className="space-y-1.5">
                     <Skeleton className="h-12 w-12 rounded-lg sm:h-16 sm:w-16" />
                     <Skeleton className="h-3 w-10 sm:w-12" />
                   </div>
@@ -92,12 +101,14 @@ export function BrandKitSkeleton() {
             <div className="space-y-3">
               <Skeleton className="h-5 w-10" />
               <div className="flex flex-wrap gap-4">
-                {Array.from({ length: 3 }, (_, i) => (
-                  <Skeleton
-                    key={i}
-                    className="h-16 w-24 rounded-lg sm:h-20 sm:w-32"
-                  />
-                ))}
+                {["placeholder-1", "placeholder-2", "placeholder-3"].map(
+                  (placeholderId) => (
+                    <Skeleton
+                      key={placeholderId}
+                      className="h-16 w-24 rounded-lg sm:h-20 sm:w-32"
+                    />
+                  ),
+                )}
               </div>
             </div>
 
@@ -105,9 +116,9 @@ export function BrandKitSkeleton() {
             <div className="space-y-3">
               <Skeleton className="h-5 w-10" />
               <div className="flex flex-wrap gap-4">
-                {Array.from({ length: 2 }, (_, i) => (
+                {["placeholder-1", "placeholder-2"].map((placeholderId) => (
                   <Skeleton
-                    key={i}
+                    key={placeholderId}
                     className="h-20 w-24 rounded-lg sm:h-24 sm:w-32"
                   />
                 ))}

@@ -9,18 +9,21 @@ import {
 } from "@loomic/shared";
 
 import type { AgentRunService } from "../agent/runtime.js";
+import {
+  type AgentRunMetadataService,
+  AgentRunPersistenceError,
+} from "../features/agent-runs/agent-run-service.js";
 import type { ViewerService } from "../features/bootstrap/ensure-user-foundation.js";
 import {
-  AgentRunPersistenceError,
-  type AgentRunMetadataService,
-} from "../features/agent-runs/agent-run-service.js";
-import {
-  ThreadServiceError,
   type ThreadService,
+  ThreadServiceError,
 } from "../features/chat/thread-service.js";
+import {
+  ModelConfigError,
+  type ModelConfigService,
+} from "../features/model-config/model-config-service.js";
 import type { SettingsService } from "../features/settings/settings-service.js";
 import type { RequestAuthenticator } from "../supabase/user.js";
-import { ModelConfigError, type ModelConfigService } from "../features/model-config/model-config-service.js";
 
 export async function registerRunRoutes(
   app: FastifyInstance,
@@ -48,7 +51,8 @@ export async function registerRunRoutes(
       if (hasAuthorization && !authenticatedUser) {
         return sendUnauthorized(reply);
       }
-      if (options.modelConfigService && !authenticatedUser) return sendUnauthorized(reply);
+      if (options.modelConfigService && !authenticatedUser)
+        return sendUnauthorized(reply);
 
       const sessionThread =
         authenticatedUser && options?.threadService
@@ -80,13 +84,23 @@ export async function registerRunRoutes(
 
       if (options.modelConfigService) {
         const catalog = await options.modelConfigService.catalog();
-        const preferred = payload.model ?? (catalog.models.some(m => m.kind === "text" && m.key === model) ? model : undefined);
-        model = (await options.modelConfigService.resolve("text", preferred)).model.key;
+        const preferred =
+          payload.model ??
+          (catalog.models.some((m) => m.kind === "text" && m.key === model)
+            ? model
+            : undefined);
+        model = (await options.modelConfigService.resolve("text", preferred))
+          .model.key;
       } else if (payload.model) model = payload.model;
 
       const response = runCreateResponseSchema.parse(
         agentRuns.createRun(payload, {
-          ...(authenticatedUser ? { accessToken: authenticatedUser.accessToken, userId: authenticatedUser.id } : {}),
+          ...(authenticatedUser
+            ? {
+                accessToken: authenticatedUser.accessToken,
+                userId: authenticatedUser.id,
+              }
+            : {}),
           ...(model ? { model } : {}),
           ...(sessionThread ? { threadId: sessionThread.threadId } : {}),
         }),
@@ -103,7 +117,10 @@ export async function registerRunRoutes(
 
       return reply.code(202).send(response);
     } catch (error) {
-      if (error instanceof ModelConfigError) return reply.code(error.statusCode).send({ error: { code: error.code, message: error.message } });
+      if (error instanceof ModelConfigError)
+        return reply
+          .code(error.statusCode)
+          .send({ error: { code: error.code, message: error.message } });
       if (error instanceof ThreadServiceError) {
         return reply.code(error.statusCode).send(
           applicationErrorResponseSchema.parse({

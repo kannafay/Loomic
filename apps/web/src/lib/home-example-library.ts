@@ -1,8 +1,11 @@
 import type { Database } from "@loomic/shared";
 
+import {
+  localizeHomeExample,
+  localizeHomeInputMentions,
+} from "./home-content-locale";
 import type { HomeExampleCategory, InputMention } from "./home-example-seeds";
 import { homeExampleSeedCategories } from "./home-example-seeds";
-import { localizeHomeExample, localizeHomeInputMentions } from "./home-content-locale";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
 type HomeExampleCategoryRow =
@@ -26,34 +29,44 @@ export function mapHomeExampleRows(
     .sort((left, right) => left.sort_order - right.sort_order)
     .map((category) => ({
       key: category.key,
-      label: homeExampleSeedCategories.find((item) => item.key === category.key)?.label ?? category.label,
+      label:
+        homeExampleSeedCategories.find((item) => item.key === category.key)
+          ?.label ?? category.label,
       dataType: category.data_type,
-      ...(category.accent === "special"
-        ? { accent: "special" as const }
-        : {}),
+      ...(category.accent === "special" ? { accent: "special" as const } : {}),
       examples: [...(examplesByCategory.get(category.key) ?? [])]
         .sort((left, right) => left.sort_order - right.sort_order)
         .map((example) => ({
           ...localizeHomeExample(example.title, example.prompt),
           previewImages: example.image_urls,
-          inputMentions: localizeHomeInputMentions(example.title,
-            (Array.isArray(example.input_mentions) ? example.input_mentions : []) as InputMention[]),
+          inputMentions: localizeHomeInputMentions(
+            example.title,
+            (Array.isArray(example.input_mentions)
+              ? example.input_mentions
+              : []) as InputMention[],
+          ),
         })),
     }));
 }
 
-export async function loadHomeExampleCategories(): Promise<HomeExampleCategory[]> {
+export async function loadHomeExampleCategories(): Promise<
+  HomeExampleCategory[]
+> {
   const supabase = getSupabaseBrowserClient();
 
   const [categoriesResult, examplesResult] = await Promise.all([
     supabase
       .from("home_example_categories")
-      .select("key, label, data_type, accent, sort_order, is_active, created_at, updated_at")
+      .select(
+        "key, label, data_type, accent, sort_order, is_active, created_at, updated_at",
+      )
       .eq("is_active", true)
       .order("sort_order", { ascending: true }),
     supabase
       .from("home_example_examples")
-      .select("id, category_key, title, prompt, image_urls, input_mentions, sort_order, is_active, created_at, updated_at")
+      .select(
+        "id, category_key, title, prompt, image_urls, input_mentions, sort_order, is_active, created_at, updated_at",
+      )
       .eq("is_active", true)
       .order("sort_order", { ascending: true }),
   ]);

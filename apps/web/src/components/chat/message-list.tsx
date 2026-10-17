@@ -47,7 +47,7 @@ export const MessageList = React.memo(function MessageList({
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) scrollToBottom();
   }, [messages, scrollToBottom]);
 
   return (

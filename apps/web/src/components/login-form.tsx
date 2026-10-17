@@ -1,28 +1,30 @@
 "use client";
 
+import type { Variants } from "framer-motion";
+
 import { getUserFacingError } from "@/lib/locale";
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 
+import { fetchViewer } from "../lib/server-api";
+import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-import { fetchViewer } from "../lib/server-api";
-import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
-} as any;
+} satisfies Variants;
 
 const fadeIn = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
-} as any;
+} satisfies Variants;
 
 interface LoginFormProps {
   initialErrorMessage?: string | null;
@@ -132,10 +134,22 @@ export function LoginForm({ initialErrorMessage = null }: LoginFormProps) {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
+              transition={{
+                delay: 0.2,
+                type: "spring",
+                stiffness: 200,
+                damping: 15,
+              }}
               className="flex h-14 w-14 items-center justify-center rounded-full bg-foreground"
             >
-              <svg viewBox="0 0 24 24" className="h-6 w-6 text-background" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-6 w-6 text-background"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
                 <motion.path
                   d="M5 13l4 4L19 7"
                   initial={{ pathLength: 0 }}
@@ -161,10 +175,10 @@ export function LoginForm({ initialErrorMessage = null }: LoginFormProps) {
             className="space-y-6"
           >
             <motion.div variants={fadeIn} className="space-y-2 text-center">
-              <h2 className="text-2xl font-semibold tracking-tight">欢迎回来</h2>
-              <p className="text-sm text-muted-foreground">
-                登录你的工作空间
-              </p>
+              <h2 className="text-2xl font-semibold tracking-tight">
+                欢迎回来
+              </h2>
+              <p className="text-sm text-muted-foreground">登录你的工作空间</p>
             </motion.div>
 
             <AnimatePresence>
@@ -213,8 +227,12 @@ export function LoginForm({ initialErrorMessage = null }: LoginFormProps) {
               )}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading
-                  ? mode === "password" ? "正在登录…" : "正在发送…"
-                  : mode === "password" ? "登录" : "发送登录链接"}
+                  ? mode === "password"
+                    ? "正在登录…"
+                    : "正在发送…"
+                  : mode === "password"
+                    ? "登录"
+                    : "发送登录链接"}
               </Button>
               <button
                 type="button"
@@ -230,7 +248,9 @@ export function LoginForm({ initialErrorMessage = null }: LoginFormProps) {
 
             <motion.div variants={fadeIn} className="flex items-center gap-4">
               <Separator className="flex-1" />
-              <span className="text-xs text-muted-foreground uppercase">或</span>
+              <span className="text-xs text-muted-foreground uppercase">
+                或
+              </span>
               <Separator className="flex-1" />
             </motion.div>
 
@@ -245,9 +265,15 @@ export function LoginForm({ initialErrorMessage = null }: LoginFormProps) {
               </Button>
             </motion.div>
 
-            <motion.p variants={fadeIn} className="text-center text-sm text-muted-foreground">
+            <motion.p
+              variants={fadeIn}
+              className="text-center text-sm text-muted-foreground"
+            >
               还没有账号？{" "}
-              <Link href="/register" className="font-medium text-foreground underline underline-offset-4">
+              <Link
+                href="/register"
+                className="font-medium text-foreground underline underline-offset-4"
+              >
                 立即注册
               </Link>
             </motion.p>

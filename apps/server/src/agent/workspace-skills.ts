@@ -43,9 +43,7 @@ export async function loadWorkspaceSkills(
   if (!workspaceId) return [];
 
   // Step 2: Query enabled workspace skills with full skill data
-  // NOTE: workspace_skills / skills tables may not yet be in the generated
-  // Supabase types — use `as any` to bypass PostgREST type checking.
-  const { data: rows, error } = await (userClient as any)
+  const { data: rows, error } = await userClient
     .from("workspace_skills")
     .select(
       "skill:skills(id, slug, name, description, skill_content, metadata)",
@@ -56,19 +54,23 @@ export async function loadWorkspaceSkills(
   if (error || !rows?.length) return [];
 
   // Step 3: Batch-load associated files for all enabled skills
-  const skillIds = (rows as any[])
-    .map((r: any) => r.skill?.id)
+  const skillIds = rows
+    .map((r) => r.skill?.id)
     .filter((id: unknown): id is string => typeof id === "string");
 
   const filesBySkillId = new Map<string, SkillFileEntry[]>();
   if (skillIds.length > 0) {
-    const { data: fileRows } = await (userClient as any)
+    const { data: fileRows } = await userClient
       .from("skill_files")
       .select("skill_id, file_path, content")
       .in("skill_id", skillIds);
 
     if (fileRows?.length) {
-      for (const fr of fileRows as Array<{ skill_id: string; file_path: string; content: string }>) {
+      for (const fr of fileRows as Array<{
+        skill_id: string;
+        file_path: string;
+        content: string;
+      }>) {
         const existing = filesBySkillId.get(fr.skill_id) ?? [];
         existing.push({ path: fr.file_path, content: fr.content });
         filesBySkillId.set(fr.skill_id, existing);

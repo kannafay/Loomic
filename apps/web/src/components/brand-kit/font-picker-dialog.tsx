@@ -1,4 +1,5 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GoogleFontItem } from "../../lib/font-api";
 import { fetchGoogleFonts } from "../../lib/font-api";
 
@@ -82,9 +83,10 @@ export function FontPickerDialog({
   }, [open, search, category]);
 
   // Load Google Fonts CSS for visible items (side-effect in useEffect, not during render)
-  const visibleFamilies = open
-    ? fonts.slice(0, visibleCount).map((f) => f.family)
-    : [];
+  const visibleFamilies = useMemo(
+    () => (open ? fonts.slice(0, visibleCount).map((f) => f.family) : []),
+    [open, fonts, visibleCount],
+  );
   useEffect(() => {
     for (const family of visibleFamilies) {
       if (loadedRef.current.has(family)) continue;
@@ -94,7 +96,7 @@ export function FontPickerDialog({
       link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}&display=swap`;
       document.head.appendChild(link);
     }
-  }, [visibleFamilies.join(",")]);
+  }, [visibleFamilies]);
 
   // Scroll handler for loading more
   const handleScroll = useCallback(() => {

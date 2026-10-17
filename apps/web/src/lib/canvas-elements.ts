@@ -1,3 +1,14 @@
+import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/data/transform";
+import type {
+  ExcalidrawElement,
+  FileId,
+} from "@excalidraw/excalidraw/element/types";
+import type { ExcalidrawImageElement } from "@excalidraw/excalidraw/element/types";
+import type { BinaryFileData } from "@excalidraw/excalidraw/types";
+import type {
+  DataURL,
+  ExcalidrawImperativeAPI,
+} from "@excalidraw/excalidraw/types";
 import type { ImageArtifact, VideoArtifact } from "@loomic/shared";
 
 import { getServerBaseUrl } from "./env";
@@ -69,7 +80,7 @@ export function createExcalidrawImageElement(opts: {
   title?: string;
   source?: "generated" | "uploaded";
   storageUrl?: string;
-}): Record<string, unknown> {
+}): ExcalidrawImageElement {
   const element: Record<string, unknown> = {
     type: "image",
     id: generateId(),
@@ -109,7 +120,7 @@ export function createExcalidrawImageElement(opts: {
       ...(opts.storageUrl ? { storageUrl: opts.storageUrl } : {}),
     };
   }
-  return element;
+  return element as ExcalidrawImageElement;
 }
 
 /**
@@ -127,8 +138,7 @@ export async function fetchAsDataURL(url: string): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () =>
-      reject(new Error("图片数据转换失败。"));
+    reader.onerror = () => reject(new Error("图片数据转换失败。"));
     reader.readAsDataURL(blob);
   });
 }
@@ -137,17 +147,10 @@ export async function fetchAsDataURL(url: string): Promise<string> {
  * Insert an image artifact onto the Excalidraw canvas.
  */
 export async function insertImageOnCanvas(
-  api: {
-    addFiles: (
-      files: { id: any; dataURL: any; mimeType: string; created: number }[],
-    ) => void;
-    getSceneElements: () => readonly any[];
-    getAppState: () => any;
-    updateScene: (scene: {
-      elements: any[];
-      captureUpdate?: string;
-    }) => void;
-  },
+  api: Pick<
+    ExcalidrawImperativeAPI,
+    "addFiles" | "getSceneElements" | "getAppState" | "updateScene"
+  >,
   artifact: ImageArtifact,
 ): Promise<void> {
   const dataURL = await fetchAsDataURL(artifact.url);
@@ -155,9 +158,9 @@ export async function insertImageOnCanvas(
 
   api.addFiles([
     {
-      id: fileId as any,
-      dataURL: dataURL as any,
-      mimeType: artifact.mimeType,
+      id: fileId as FileId,
+      dataURL: dataURL as DataURL,
+      mimeType: artifact.mimeType as BinaryFileData["mimeType"],
       created: Date.now(),
     },
   ]);
@@ -179,7 +182,7 @@ export async function insertImageOnCanvas(
     width = scaled.width;
     height = scaled.height;
 
-    const elements = api.getSceneElements().filter((el: any) => !el.isDeleted);
+    const elements = api.getSceneElements().filter((el) => !el.isDeleted);
 
     if (elements.length === 0) {
       // Empty canvas → viewport center
@@ -189,7 +192,7 @@ export async function insertImageOnCanvas(
     } else {
       // Has elements → place to the right of the rightmost element with gap
       const GAP = 40;
-      let maxRight = -Infinity;
+      let maxRight = Number.NEGATIVE_INFINITY;
       let rightEdgeY = 0;
 
       for (const el of elements) {
@@ -229,18 +232,16 @@ export async function insertImageOnCanvas(
  * No poster frame extraction needed -- the video plays directly on canvas.
  */
 export async function insertVideoOnCanvas(
-  api: {
-    getSceneElements: () => readonly any[];
-    getAppState: () => any;
-    updateScene: (scene: {
-      elements: any[];
-      captureUpdate?: string;
-    }) => void;
-  },
+  api: Pick<
+    ExcalidrawImperativeAPI,
+    "getSceneElements" | "getAppState" | "updateScene"
+  >,
   artifact: VideoArtifact,
 ): Promise<void> {
   // Dynamic import — excalidraw is client-only and cannot be imported at module level
-  const { convertToExcalidrawElements } = await import("@excalidraw/excalidraw");
+  const { convertToExcalidrawElements } = await import(
+    "@excalidraw/excalidraw"
+  );
 
   let x: number;
   let y: number;
@@ -258,7 +259,7 @@ export async function insertVideoOnCanvas(
     width = scaled.width;
     height = scaled.height;
 
-    const elements = api.getSceneElements().filter((el: any) => !el.isDeleted);
+    const elements = api.getSceneElements().filter((el) => !el.isDeleted);
 
     if (elements.length === 0) {
       // Empty canvas -- place at viewport center
@@ -268,7 +269,7 @@ export async function insertVideoOnCanvas(
     } else {
       // Has elements -- place to the right of the rightmost element with gap
       const GAP = 40;
-      let maxRight = -Infinity;
+      let maxRight = Number.NEGATIVE_INFINITY;
       let rightEdgeY = 0;
       for (const el of elements) {
         const elRight = (el.x ?? 0) + (el.width ?? 0);
@@ -292,12 +293,12 @@ export async function insertVideoOnCanvas(
       height,
       customData: {
         isVideo: true,
-        mimeType: artifact.mimeType,
+        mimeType: artifact.mimeType as BinaryFileData["mimeType"],
         durationSeconds: artifact.durationSeconds,
         title: artifact.title?.slice(0, 60),
         prompt: artifact.title,
       },
-    } as any, // ExcalidrawElementSkeleton includes IframeLikeElement but TS needs a nudge
+    } as unknown as ExcalidrawElementSkeleton,
   ]);
 
   const existing = api.getSceneElements();
@@ -309,7 +310,6 @@ export async function insertVideoOnCanvas(
 
 function generateId(): string {
   return (
-    Math.random().toString(36).slice(2) +
-    Math.random().toString(36).slice(2)
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
   ).slice(0, 20);
 }

@@ -1,4 +1,9 @@
 "use client";
+
+import type { BinaryFileData } from "@excalidraw/excalidraw/types";
+
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
 import {
   Select,
   SelectContent,
@@ -32,7 +37,7 @@ type ImageGeneratorPanelProps = {
   elementId: string;
   elementBounds: { x: number; y: number; width: number; height: number };
   data: ImageGeneratorData;
-  excalidrawApi: any;
+  excalidrawApi: ExcalidrawImperativeAPI;
   accessToken: string;
   canvasScrollZoom: { scrollX: number; scrollY: number; zoom: number };
   onClose: () => void;
@@ -107,7 +112,7 @@ export function ImageGeneratorPanel({
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`;
+    ta.style.height = prompt ? `${Math.min(ta.scrollHeight, 140)}px` : "auto";
   }, [prompt]);
 
   // Calculate panel screen position from canvas coordinates
@@ -179,9 +184,9 @@ export function ImageGeneratorPanel({
       const fileId = generateId();
       excalidrawApi.addFiles([
         {
-          id: fileId,
-          dataURL,
-          mimeType: result.mimeType,
+          id: fileId as BinaryFileData["id"],
+          dataURL: dataURL as BinaryFileData["dataURL"],
+          mimeType: result.mimeType as BinaryFileData["mimeType"],
           created: Date.now(),
         },
       ]);
@@ -196,7 +201,7 @@ export function ImageGeneratorPanel({
       });
 
       // Replace: delete placeholder, add image
-      const elements = excalidrawApi.getSceneElements().map((el: any) => {
+      const elements = excalidrawApi.getSceneElements().map((el) => {
         if (el.id === elementId) return { ...el, isDeleted: true };
         return el;
       });
@@ -327,7 +332,7 @@ export function ImageGeneratorPanel({
             onChange={(e) => {
               const files = e.target.files;
               if (!files) return;
-              Array.from(files).forEach((file) => {
+              for (const file of files) {
                 const reader = new FileReader();
                 reader.onload = () => {
                   setRefImages((prev) => [
@@ -340,7 +345,7 @@ export function ImageGeneratorPanel({
                   ]);
                 };
                 reader.readAsDataURL(file);
-              });
+              }
               e.target.value = "";
             }}
           />
@@ -456,6 +461,7 @@ export function ImageGeneratorPanel({
               <div className="h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-white/30 border-t-white" />
             ) : (
               <svg
+                aria-hidden="true"
                 className="h-3.5 w-[9.3px] shrink-0"
                 viewBox="0 0 8 10"
                 fill="currentColor"

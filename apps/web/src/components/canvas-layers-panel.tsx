@@ -1,26 +1,33 @@
 "use client";
 
+import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
+import type {
+  BinaryFiles,
+  ExcalidrawImperativeAPI,
+} from "@excalidraw/excalidraw/types";
+
 import { getCanvasElementLabel } from "@/lib/locale";
 
-import { useCallback, useEffect, useRef, useState, memo } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 /* -- Types -- */
-// biome-ignore lint/suspicious/noExplicitAny: Excalidraw element has no public type
-type ExcalidrawEl = any;
+type ExcalidrawEl = ExcalidrawElement;
 
 export type CanvasLayersPanelProps = {
-  // biome-ignore lint/suspicious/noExplicitAny: Excalidraw API has no public type definition
-  excalidrawApi: any;
+  excalidrawApi: ExcalidrawImperativeAPI | null;
   open: boolean;
   onClose: () => void;
 };
 
 /* -- Throttle utility -- */
 /** Simple trailing-edge throttle. Ensures fn fires at most once per `ms`. */
-function throttle<T extends (...args: any[]) => void>(fn: T, ms: number): T & { cancel: () => void } {
+function throttle<Args extends unknown[]>(
+  fn: (...args: Args) => void,
+  ms: number,
+): ((...args: Args) => void) & { cancel: () => void } {
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let lastArgs: Parameters<T> | null = null;
-  const throttled = ((...args: Parameters<T>) => {
+  let lastArgs: Args | null = null;
+  const throttled = ((...args: Args) => {
     lastArgs = args;
     if (timer) return;
     timer = setTimeout(() => {
@@ -28,9 +35,12 @@ function throttle<T extends (...args: any[]) => void>(fn: T, ms: number): T & { 
       if (lastArgs) fn(...lastArgs);
       lastArgs = null;
     }, ms);
-  }) as T & { cancel: () => void };
+  }) as ((...args: Args) => void) & { cancel: () => void };
   throttled.cancel = () => {
-    if (timer) { clearTimeout(timer); timer = null; }
+    if (timer) {
+      clearTimeout(timer);
+      timer = null;
+    }
     lastArgs = null;
   };
   return throttled;
@@ -38,22 +48,45 @@ function throttle<T extends (...args: any[]) => void>(fn: T, ms: number): T & { 
 
 /* -- Icon helpers -- */
 const LockIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 16 16" fill="none" className={className}>
-    <rect x="3.5" y="7" width="9" height="6.5" rx="1.5" stroke="currentColor" strokeWidth="1.3" />
-    <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className={className}>
+    <rect
+      x="3.5"
+      y="7"
+      width="9"
+      height="6.5"
+      rx="1.5"
+      stroke="currentColor"
+      strokeWidth="1.3"
+    />
+    <path
+      d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
   </svg>
 );
 
 const EyeIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 16 16" fill="none" className={className}>
-    <path d="M1.5 8s2.5-4 6.5-4 6.5 4 6.5 4-2.5 4-6.5 4S1.5 8 1.5 8Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
+  <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className={className}>
+    <path
+      d="M1.5 8s2.5-4 6.5-4 6.5 4 6.5 4-2.5 4-6.5 4S1.5 8 1.5 8Z"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
     <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.3" />
   </svg>
 );
 
 const CloseIcon = ({ className }: { className?: string }) => (
-  <svg viewBox="0 0 16 16" fill="none" className={className}>
-    <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+  <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" className={className}>
+    <path
+      d="M4.5 4.5l7 7M11.5 4.5l-7 7"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+    />
   </svg>
 );
 
@@ -87,7 +120,7 @@ function LayerThumbnail({
   files,
 }: {
   el: ExcalidrawEl;
-  files: Record<string, any>;
+  files: BinaryFiles;
 }) {
   const icon = elThumbnailIcon(el);
 
@@ -123,20 +156,20 @@ const LayerRow = memo(function LayerRow({
   onSelect,
 }: {
   el: ExcalidrawEl;
-  files: Record<string, any>;
+  files: BinaryFiles;
   selected: boolean;
   onSelect: (id: string) => void;
 }) {
   const handleClick = useCallback(() => onSelect(el.id), [onSelect, el.id]);
 
   return (
-    <div style={{ contentVisibility: "auto", containIntrinsicSize: "auto 44px" }}>
+    <div
+      style={{ contentVisibility: "auto", containIntrinsicSize: "auto 44px" }}
+    >
       <button
         type="button"
         className={`group/layer flex h-11 w-full items-center gap-2.5 rounded-lg px-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
-          selected
-            ? "bg-muted"
-            : "hover:bg-muted"
+          selected ? "bg-muted" : "hover:bg-muted"
         }`}
         onClick={handleClick}
       >
@@ -177,7 +210,7 @@ export function CanvasLayersPanel({
 }: CanvasLayersPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [elements, setElements] = useState<ExcalidrawEl[]>([]);
-  const [files, setFiles] = useState<Record<string, any>>({});
+  const [files, setFiles] = useState<BinaryFiles>({});
   const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
 
   /* -- Refresh elements on open + subscribe to changes -- */
@@ -256,7 +289,10 @@ export function CanvasLayersPanel({
       <div className="h-px bg-border" />
 
       {/* Layer list -- uses content-visibility for large canvas performance */}
-      <div className="flex-1 overflow-y-auto px-1 py-1" style={{ contain: "layout style" }}>
+      <div
+        className="flex-1 overflow-y-auto px-1 py-1"
+        style={{ contain: "layout style" }}
+      >
         {elements.length === 0 ? (
           <p className="px-2 py-8 text-center text-xs text-muted-foreground">
             画布为空

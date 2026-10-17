@@ -1,3 +1,4 @@
+import type { GenerateVideosOperation } from "@google/genai";
 import { GoogleGenAI } from "@google/genai";
 
 import type {
@@ -7,7 +8,10 @@ import type {
   VideoProvider,
 } from "../types.js";
 import { GenerationError } from "../utils.js";
-import { buildGoogleVideoInput, googleVideoCapabilities } from "./google-video-input.js";
+import {
+  buildGoogleVideoInput,
+  googleVideoCapabilities,
+} from "./google-video-input.js";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -23,8 +27,10 @@ const ICON_GOOGLE =
  */
 const MODEL_MAP: Record<string, string> = {
   "google-official/veo-3.1-generate-preview": "veo-3.1-generate-preview",
-  "google-official/veo-3.1-fast-generate-preview": "veo-3.1-fast-generate-preview",
-  "google-official/veo-3.1-lite-generate-preview": "veo-3.1-lite-generate-preview",
+  "google-official/veo-3.1-fast-generate-preview":
+    "veo-3.1-fast-generate-preview",
+  "google-official/veo-3.1-lite-generate-preview":
+    "veo-3.1-lite-generate-preview",
   "google-official/veo-3.0-generate-001": "veo-3.0-generate-001",
   "google-official/veo-3.0-fast-generate-001": "veo-3.0-fast-generate-001",
   "google-official/veo-2.0-generate-001": "veo-2.0-generate-001",
@@ -90,7 +96,9 @@ const MODEL_CAPABILITIES: Record<string, ModelCapabilities> = {
 /**
  * Helper to derive max resolution label from MODEL_CAPABILITIES.
  */
-function deriveMaxResolution(resolutions: string[]): "480p" | "720p" | "1080p" | "2160p" {
+function deriveMaxResolution(
+  resolutions: string[],
+): "480p" | "720p" | "1080p" | "2160p" {
   if (resolutions.includes("4k")) return "2160p";
   if (resolutions.includes("1080p")) return "1080p";
   if (resolutions.includes("720p")) return "720p";
@@ -103,7 +111,8 @@ function buildVideoModelInfo(
   description: string,
   apiModelName: string,
 ): VideoModelInfo {
-  const caps = MODEL_CAPABILITIES[apiModelName]!;
+  const caps = MODEL_CAPABILITIES[apiModelName];
+  if (!caps) throw new Error(`Unknown video model: ${apiModelName}`);
   return {
     id,
     displayName,
@@ -120,39 +129,47 @@ function buildVideoModelInfo(
       maxDuration: Math.max(...caps.allowedDurations),
       allowedDurations: caps.allowedDurations,
       maxResolution: deriveMaxResolution(caps.allowedResolutions),
-      maxInputImages: googleVideoCapabilities(apiModelName).referenceImages ? 3 : 1,
+      maxInputImages: googleVideoCapabilities(apiModelName).referenceImages
+        ? 3
+        : 1,
     },
   };
 }
 
 const GOOGLE_VIDEO_MODELS: readonly VideoModelInfo[] = [
   buildVideoModelInfo(
-    "google-official/veo-3.1-generate-preview", "Veo 3.1",
+    "google-official/veo-3.1-generate-preview",
+    "Veo 3.1",
     "Google flagship. T2V + I2V, native audio, reference images, 4–8s, up to 4K. Best quality.",
     "veo-3.1-generate-preview",
   ),
   buildVideoModelInfo(
-    "google-official/veo-3.1-fast-generate-preview", "Veo 3.1 Fast",
+    "google-official/veo-3.1-fast-generate-preview",
+    "Veo 3.1 Fast",
     "Speed-optimized Veo 3.1. T2V + I2V, native audio, 4–8s, up to 4K. Faster generation.",
     "veo-3.1-fast-generate-preview",
   ),
   buildVideoModelInfo(
-    "google-official/veo-3.1-lite-generate-preview", "Veo 3.1 Lite",
+    "google-official/veo-3.1-lite-generate-preview",
+    "Veo 3.1 Lite",
     "Lightweight Veo 3.1. T2V + I2V, native audio, 4–8s, up to 1080p. Fastest, lowest cost.",
     "veo-3.1-lite-generate-preview",
   ),
   buildVideoModelInfo(
-    "google-official/veo-3.0-generate-001", "Veo 3",
+    "google-official/veo-3.0-generate-001",
+    "Veo 3",
     "Stable Veo 3. T2V + I2V, native audio, reference images, up to 4K. Production-ready.",
     "veo-3.0-generate-001",
   ),
   buildVideoModelInfo(
-    "google-official/veo-3.0-fast-generate-001", "Veo 3 Fast",
+    "google-official/veo-3.0-fast-generate-001",
+    "Veo 3 Fast",
     "Speed-optimized Veo 3. T2V + I2V, native audio, up to 4K. Faster than Veo 3.",
     "veo-3.0-fast-generate-001",
   ),
   buildVideoModelInfo(
-    "google-official/veo-2.0-generate-001", "Veo 2",
+    "google-official/veo-2.0-generate-001",
+    "Veo 2",
     "Stable Veo 2. T2V + I2V, 720p only, silent (no audio), 5–8s. Most cost-effective.",
     "veo-2.0-generate-001",
   ),
@@ -215,15 +232,25 @@ export class GoogleVideoProvider implements VideoProvider {
   private client: GoogleGenAI;
   private apiKey: string;
 
-  constructor(apiKey: string, options?: {
-    baseUrl?: string; models?: readonly VideoModelInfo[]; modelMap?: Record<string, string>;
-    capabilities?: Record<string, ModelCapabilities>;
-  }) {
+  constructor(
+    apiKey: string,
+    options?: {
+      baseUrl?: string;
+      models?: readonly VideoModelInfo[];
+      modelMap?: Record<string, string>;
+      capabilities?: Record<string, ModelCapabilities>;
+    },
+  ) {
     this.apiKey = apiKey;
     this.models = options?.models ?? GOOGLE_VIDEO_MODELS;
     this.modelMap = options?.modelMap ?? MODEL_MAP;
     this.capabilities = options?.capabilities ?? MODEL_CAPABILITIES;
-    this.client = new GoogleGenAI({ apiKey, ...(options?.baseUrl ? { httpOptions: { baseUrl: options.baseUrl } } : {}) });
+    this.client = new GoogleGenAI({
+      apiKey,
+      ...(options?.baseUrl
+        ? { httpOptions: { baseUrl: options.baseUrl } }
+        : {}),
+    });
   }
 
   async generate(params: VideoGenerateParams): Promise<GeneratedVideo> {
@@ -257,15 +284,28 @@ export class GoogleVideoProvider implements VideoProvider {
 
     const resolution = params.resolution ?? "720p";
     if (!caps.allowedResolutions.includes(resolution)) {
-      throw new GenerationError(PROVIDER_NAME, "invalid_input", "当前模型不支持所选分辨率。");
+      throw new GenerationError(
+        PROVIDER_NAME,
+        "invalid_input",
+        "当前模型不支持所选分辨率。",
+      );
     }
 
     const durationSeconds = params.duration ?? caps.defaultDuration;
 
-    const inputs = await buildGoogleVideoInput({ ...params, duration: durationSeconds, resolution: resolution as NonNullable<VideoGenerateParams["resolution"]> }, apiModel);
+    const inputs = await buildGoogleVideoInput(
+      {
+        ...params,
+        duration: durationSeconds,
+        resolution: resolution as NonNullable<
+          VideoGenerateParams["resolution"]
+        >,
+      },
+      apiModel,
+    );
 
     // Start the asynchronous generation operation.
-    let operation;
+    let operation: GenerateVideosOperation;
     try {
       operation = await this.client.models.generateVideos({
         model: apiModel,
@@ -282,8 +322,12 @@ export class GoogleVideoProvider implements VideoProvider {
       });
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      console.error(`[google-video] generateVideos API error:`, detail);
-      if (detail.includes("PERMISSION_DENIED") || detail.includes("403") || detail.includes("SERVICE_DISABLED")) {
+      console.error("[google-video] generateVideos API error:", detail);
+      if (
+        detail.includes("PERMISSION_DENIED") ||
+        detail.includes("403") ||
+        detail.includes("SERVICE_DISABLED")
+      ) {
         throw new GenerationError(
           PROVIDER_NAME,
           "api_error",
@@ -314,7 +358,7 @@ export class GoogleVideoProvider implements VideoProvider {
         });
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
-        console.error(`[google-video] polling error:`, detail);
+        console.error("[google-video] polling error:", detail);
         throw new GenerationError(
           PROVIDER_NAME,
           "api_error",
@@ -325,7 +369,10 @@ export class GoogleVideoProvider implements VideoProvider {
 
     // Check for operation-level errors.
     if (operation.error) {
-      console.error(`[google-video] operation error:`, JSON.stringify(operation.error));
+      console.error(
+        "[google-video] operation error:",
+        JSON.stringify(operation.error),
+      );
       throw new GenerationError(
         PROVIDER_NAME,
         "api_error",
@@ -358,8 +405,7 @@ export class GoogleVideoProvider implements VideoProvider {
       );
     }
 
-    const generatedVideo = response.generatedVideos[0]!;
-    const video = generatedVideo.video;
+    const video = response.generatedVideos[0]?.video;
     if (!video?.uri) {
       throw new GenerationError(
         PROVIDER_NAME,
@@ -382,7 +428,9 @@ export class GoogleVideoProvider implements VideoProvider {
       mimeType: video.mimeType ?? "video/mp4",
       width,
       height,
-      durationSeconds: params.inputVideo ? params.inputVideoDuration! + 7 : durationSeconds,
+      durationSeconds: params.inputVideo
+        ? (params.inputVideoDuration ?? 0) + 7
+        : durationSeconds,
     };
   }
 }

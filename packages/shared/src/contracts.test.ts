@@ -71,7 +71,7 @@ describe("@loomic/shared contracts", () => {
       ],
     });
     expect(result.attachments).toHaveLength(1);
-    expect(result.attachments![0].assetId).toBe("asset-123");
+    expect(result.attachments?.[0].assetId).toBe("asset-123");
   });
 
   it("accepts optional image generation preference in run creation", () => {
@@ -81,10 +81,7 @@ describe("@loomic/shared contracts", () => {
       prompt: "Generate a campaign key visual",
       imageGenerationPreference: {
         mode: "manual",
-        models: [
-          "google/nano-banana-2",
-          "black-forest-labs/flux-kontext-pro",
-        ],
+        models: ["google/nano-banana-2", "black-forest-labs/flux-kontext-pro"],
       },
     });
 
@@ -523,7 +520,9 @@ describe("@loomic/shared contracts", () => {
 
   it("keeps server-only LangGraph persistence in its own schema", () => {
     expect(databaseTypeSource).not.toMatch(/langgraph:\s*{/);
-    expect(persistenceMigration).toMatch(/CREATE SCHEMA IF NOT EXISTS langgraph;/);
+    expect(persistenceMigration).toMatch(
+      /CREATE SCHEMA IF NOT EXISTS langgraph;/,
+    );
     for (const table of [
       "checkpoint_migrations",
       "checkpoints",
@@ -532,7 +531,9 @@ describe("@loomic/shared contracts", () => {
       "store_migrations",
       "store",
     ]) {
-      expect(persistenceMigration).toContain(`CREATE TABLE langgraph.${table} (`);
+      expect(persistenceMigration).toContain(
+        `CREATE TABLE langgraph.${table} (`,
+      );
       expect(persistenceMigration).toContain(
         `ALTER TABLE langgraph.${table} ENABLE ROW LEVEL SECURITY;`,
       );

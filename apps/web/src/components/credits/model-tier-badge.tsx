@@ -1,10 +1,11 @@
-// @credits-system — Model tier badge: displays credit cost, plan tier, and lock for inaccessible models
 "use client";
+
+// @credits-system — Model tier badge: displays credit cost, plan tier, and lock for inaccessible models
 
 import { getPlanLabel } from "@/lib/locale";
 
-import { Lock } from "lucide-react";
 import type { SubscriptionPlan } from "@loomic/shared";
+import { Lock } from "lucide-react";
 
 interface ModelTierBadgeProps {
   creditCost: number;
@@ -44,9 +45,7 @@ export function ModelTierBadge({
       )}
 
       {/* Lock icon if inaccessible */}
-      {!accessible && (
-        <Lock className="h-3 w-3 text-muted-foreground" />
-      )}
+      {!accessible && <Lock className="h-3 w-3 text-muted-foreground" />}
     </span>
   );
 }

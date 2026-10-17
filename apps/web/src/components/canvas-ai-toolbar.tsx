@@ -1,13 +1,15 @@
 "use client";
 
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
 import { useCallback, useState } from "react";
 
-import { CanvasImageGenPanel } from "./canvas-image-gen-panel";
 import { createVideoGeneratorElement } from "../lib/canvas-video-generator";
+import { CanvasImageGenPanel } from "./canvas-image-gen-panel";
 
 type CanvasAIToolbarProps = {
   accessToken: string;
-  excalidrawApi: any;
+  excalidrawApi: ExcalidrawImperativeAPI | null;
 };
 
 export function CanvasAIToolbar({
@@ -30,10 +32,9 @@ export function CanvasAIToolbar({
   return (
     <>
       {/* AI toolbar buttons — top-right, below the nav bar */}
-      <div
-        className="absolute top-3 right-3 z-20 flex gap-0.5 rounded-xl p-1 bg-card/75 backdrop-blur-lg border border-border shadow-card"
-      >
+      <div className="absolute top-3 right-3 z-20 flex gap-0.5 rounded-xl p-1 bg-card/75 backdrop-blur-lg border border-border shadow-card">
         <button
+          type="button"
           onClick={() =>
             setActivePanel(activePanel === "image" ? null : "image")
           }
@@ -45,6 +46,7 @@ export function CanvasAIToolbar({
           title="AI 图片"
         >
           <svg
+            aria-hidden="true"
             className="h-4 w-4"
             viewBox="0 0 24 24"
             fill="none"
@@ -57,11 +59,13 @@ export function CanvasAIToolbar({
           </svg>
         </button>
         <button
+          type="button"
           onClick={handleCreateVideoGenerator}
           className="flex items-center justify-center h-8 w-8 rounded-lg text-sm transition-colors cursor-pointer text-foreground/60 hover:bg-muted hover:text-foreground"
           title="AI 视频"
         >
           <svg
+            aria-hidden="true"
             className="h-4 w-4"
             viewBox="0 0 24 24"
             fill="none"

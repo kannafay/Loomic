@@ -1,21 +1,38 @@
-import type { BaseCheckpointSaver, BaseStore } from "@langchain/langgraph-checkpoint";
 import type { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { ChatVertexAI } from "@langchain/google-vertexai";
+import type {
+  BaseCheckpointSaver,
+  BaseStore,
+} from "@langchain/langgraph-checkpoint";
 import { ChatOpenAI } from "@langchain/openai";
 import { createDeepAgent } from "deepagents";
+import type { UserSupabaseClient } from "../supabase/user.js";
 
-import { DEFAULT_AGENT_MODEL, DEFAULT_GOOGLE_AGENT_MODEL, type ServerEnv } from "../config/env.js";
 import { normalizeAgnesApiBase } from "../config/agnes.js";
+import {
+  DEFAULT_AGENT_MODEL,
+  DEFAULT_GOOGLE_AGENT_MODEL,
+  type ServerEnv,
+} from "../config/env.js";
+import type {
+  AvailableModel,
+  AvailableVideoModel,
+} from "../generation/providers/registry.js";
 import type { ConnectionManager } from "../ws/connection-manager.js";
-import { createAgentBackend, type AgentBackendResult } from "./backends/index.js";
+import {
+  type AgentBackendResult,
+  createAgentBackend,
+} from "./backends/index.js";
+import { LoomicGoogleChatModel } from "./google-chat-model.js";
 import { LOOMIC_SYSTEM_PROMPT } from "./prompts/loomic-main.js";
 import { createVideoSubAgent } from "./sub-agents.js";
-import { LoomicGoogleChatModel } from "./google-chat-model.js";
+import type {
+  PersistImageFn,
+  SubmitImageJobFn,
+} from "./tools/image-generate.js";
 import { createMainAgentTools } from "./tools/index.js";
-import type { PersistImageFn, SubmitImageJobFn } from "./tools/image-generate.js";
 import type { SubmitVideoJobFn } from "./tools/video-generate.js";
 import type { WorkspaceSkillEntry } from "./workspace-skills.js";
-import type { AvailableModel, AvailableVideoModel } from "../generation/providers/registry.js";
 
 export type LoomicAgent = Pick<
   ReturnType<typeof createDeepAgent>,
@@ -30,7 +47,7 @@ export type LoomicAgentFactory = (options: {
   canvasId?: string;
   checkpointer?: BaseCheckpointSaver;
   connectionManager?: ConnectionManager;
-  createUserClient?: (accessToken: string) => any;
+  createUserClient?: (accessToken: string) => UserSupabaseClient;
   env: ServerEnv;
   model?: BaseLanguageModel | string;
   persistImage?: PersistImageFn;
@@ -49,7 +66,7 @@ export function createLoomicDeepAgent(options: {
   canvasId?: string;
   checkpointer?: BaseCheckpointSaver;
   connectionManager?: ConnectionManager;
-  createUserClient?: (accessToken: string) => any;
+  createUserClient?: (accessToken: string) => UserSupabaseClient;
   env: ServerEnv;
   model?: BaseLanguageModel | string;
   persistImage?: PersistImageFn;
@@ -79,8 +96,7 @@ export function createLoomicDeepAgent(options: {
     });
 
   let systemPrompt = options.brandKitId
-    ? LOOMIC_SYSTEM_PROMPT +
-      "\n\n当前项目已绑定品牌套件。在进行设计相关工作时，请先使用 get_brand_kit 工具查询品牌信息，确保设计符合品牌规范。"
+    ? `${LOOMIC_SYSTEM_PROMPT}\n\n当前项目已绑定品牌套件。在进行设计相关工作时，请先使用 get_brand_kit 工具查询品牌信息，确保设计符合品牌规范。`
     : LOOMIC_SYSTEM_PROMPT;
 
   // Inject enabled skills (both system and user-created) into the system prompt.
@@ -113,22 +129,43 @@ export function createLoomicDeepAgent(options: {
     model: resolvedModel,
     name: "loomic",
     ...(options.store ? { store: options.store } : {}),
-    subagents: options.availableVideoModels?.length === 0 ? [] : [createVideoSubAgent({
-      ...(options.availableVideoModels ? { availableModels: options.availableVideoModels } : {}),
-      ...(options.submitVideoJob ? { submitVideoJob: options.submitVideoJob } : {}),
-    })],
+    subagents:
+      options.availableVideoModels?.length === 0
+        ? []
+        : [
+            createVideoSubAgent({
+              ...(options.availableVideoModels
+                ? { availableModels: options.availableVideoModels }
+                : {}),
+              ...(options.submitVideoJob
+                ? { submitVideoJob: options.submitVideoJob }
+                : {}),
+            }),
+          ],
     systemPrompt,
     tools: createMainAgentTools(backendResult.factory, {
-      ...(options.availableImageModels ? { availableImageModels: options.availableImageModels } : {}),
-      ...(options.availableVideoModels ? { availableVideoModels: options.availableVideoModels } : {}),
+      ...(options.availableImageModels
+        ? { availableImageModels: options.availableImageModels }
+        : {}),
+      ...(options.availableVideoModels
+        ? { availableVideoModels: options.availableVideoModels }
+        : {}),
       createUserClient,
       ...(options.brandKitId != null ? { brandKitId: options.brandKitId } : {}),
-      ...(options.connectionManager ? { connectionManager: options.connectionManager } : {}),
+      ...(options.connectionManager
+        ? { connectionManager: options.connectionManager }
+        : {}),
       ...(options.persistImage ? { persistImage: options.persistImage } : {}),
-      ...(backendResult.sandboxDir ? { sandboxDir: backendResult.sandboxDir } : {}),
+      ...(backendResult.sandboxDir
+        ? { sandboxDir: backendResult.sandboxDir }
+        : {}),
 
-      ...(options.submitImageJob ? { submitImageJob: options.submitImageJob } : {}),
-      ...(options.submitVideoJob ? { submitVideoJob: options.submitVideoJob } : {}),
+      ...(options.submitImageJob
+        ? { submitImageJob: options.submitImageJob }
+        : {}),
+      ...(options.submitVideoJob
+        ? { submitVideoJob: options.submitVideoJob }
+        : {}),
     }),
   });
 }
@@ -150,25 +187,33 @@ export function createStreamingChatModel(
   let provider = colonIdx > 0 ? specifier.slice(0, colonIdx) : "openai";
   let modelName = colonIdx > 0 ? specifier.slice(colonIdx + 1) : specifier;
 
-  const hasGoogleApiKey = !!process.env.GOOGLE_API_KEY;
-  const hasVertexAI = !!(process.env.GOOGLE_VERTEX_PROJECT && process.env.GOOGLE_VERTEX_LOCATION);
+  const googleApiKey = process.env.GOOGLE_API_KEY;
+  const vertexProject = process.env.GOOGLE_VERTEX_PROJECT;
+  const vertexLocation = process.env.GOOGLE_VERTEX_LOCATION;
+  const hasGoogleApiKey = !!googleApiKey;
+  const hasVertexAI = !!(vertexProject && vertexLocation);
   const hasGoogle = hasGoogleApiKey || hasVertexAI;
 
   // Provider availability fallback
   if (provider === "google" && !hasGoogle) {
-    console.warn(`[model] Google unavailable (no GOOGLE_API_KEY or Vertex AI config), falling back to OpenAI for: ${specifier}`);
+    console.warn(
+      `[model] Google unavailable (no GOOGLE_API_KEY or Vertex AI config), falling back to OpenAI for: ${specifier}`,
+    );
     provider = "openai";
     modelName = DEFAULT_AGENT_MODEL;
   }
   if (provider === "openai" && !process.env.OPENAI_API_KEY && hasGoogle) {
-    console.warn(`[model] OpenAI unavailable (no OPENAI_API_KEY), falling back to Google for: ${specifier}`);
+    console.warn(
+      `[model] OpenAI unavailable (no OPENAI_API_KEY), falling back to Google for: ${specifier}`,
+    );
     provider = "google";
     modelName = DEFAULT_GOOGLE_AGENT_MODEL;
   }
 
   switch (provider) {
     case "agnes":
-      if (!env.agnesApiKey) throw new Error("请在服务端配置 AGNES_API_KEY 后使用 Agnes 模型。");
+      if (!env.agnesApiKey)
+        throw new Error("请在服务端配置 AGNES_API_KEY 后使用 Agnes 模型。");
       return new ChatOpenAI({
         model: modelName,
         apiKey: env.agnesApiKey,
@@ -179,10 +224,10 @@ export function createStreamingChatModel(
       });
     case "google":
       // Prefer Vertex AI (service account) when configured; fall back to Developer API key
-      if (hasVertexAI) {
-        const vertexProject = process.env.GOOGLE_VERTEX_PROJECT!;
-        const vertexLocation = process.env.GOOGLE_VERTEX_LOCATION!;
-        console.log(`[model] Using Vertex AI for: ${modelName} (project=${vertexProject}, location=${vertexLocation})`);
+      if (vertexProject && vertexLocation) {
+        console.log(
+          `[model] Using Vertex AI for: ${modelName} (project=${vertexProject}, location=${vertexLocation})`,
+        );
         return new ChatVertexAI({
           model: modelName,
           location: vertexLocation,
@@ -192,16 +237,17 @@ export function createStreamingChatModel(
       }
       return new LoomicGoogleChatModel({
         model: modelName,
-        apiKey: process.env.GOOGLE_API_KEY!,
+        apiKey: googleApiKey ?? "",
         streaming: true,
         thinkingConfig: {
           includeThoughts: true,
           // Gemini 3 uses the service's default thinking level; token budgets
           // are only configured for the Gemini 2.5 family.
-          ...(modelName.startsWith("gemini-2.5-") ? { thinkingBudget: -1 } : {}),
+          ...(modelName.startsWith("gemini-2.5-")
+            ? { thinkingBudget: -1 }
+            : {}),
         },
       });
-    case "openai":
     default:
       return new ChatOpenAI({
         model: modelName,

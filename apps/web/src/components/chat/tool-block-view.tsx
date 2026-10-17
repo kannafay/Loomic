@@ -31,6 +31,7 @@ function ToolIcon({
     case "eye":
       return (
         <svg
+          aria-hidden="true"
           className={cls}
           viewBox="0 0 24 24"
           fill="none"
@@ -44,6 +45,7 @@ function ToolIcon({
     case "image":
       return (
         <svg
+          aria-hidden="true"
           className={cls}
           viewBox="0 0 24 24"
           fill="none"
@@ -56,6 +58,7 @@ function ToolIcon({
     case "video":
       return (
         <svg
+          aria-hidden="true"
           className={cls}
           viewBox="0 0 24 24"
           fill="none"
@@ -68,6 +71,7 @@ function ToolIcon({
     case "palette":
       return (
         <svg
+          aria-hidden="true"
           className={cls}
           viewBox="0 0 24 24"
           fill="none"
@@ -80,6 +84,7 @@ function ToolIcon({
     case "search":
       return (
         <svg
+          aria-hidden="true"
           className={cls}
           viewBox="0 0 24 24"
           fill="none"
@@ -92,6 +97,7 @@ function ToolIcon({
     case "brush":
       return (
         <svg
+          aria-hidden="true"
           className={cls}
           viewBox="0 0 24 24"
           fill="none"
@@ -104,6 +110,7 @@ function ToolIcon({
     default:
       return (
         <svg
+          aria-hidden="true"
           className={cls}
           viewBox="0 0 24 24"
           fill="none"
@@ -155,13 +162,9 @@ export const ToolBlockView = React.memo(function ToolBlockView({
       ? block.outputSummary
       : config.label;
 
-  const previewLines = hasOutput
-    ? formatOutputPreview(block.output!)
-    : [];
+  const previewLines = hasOutput ? formatOutputPreview(block.output ?? {}) : [];
   const showCard =
-    config.showCard &&
-    isCompleted &&
-    (block.outputSummary || hasOutput);
+    config.showCard && isCompleted && (block.outputSummary || hasOutput);
 
   // Extract artifacts for generate_image / generate_video inline preview
   const imageArtifact = block.artifacts?.find(
@@ -172,11 +175,14 @@ export const ToolBlockView = React.memo(function ToolBlockView({
   const isMediaTool = isImageTool || isVideoTool;
   const mediaError =
     isMediaTool && isCompleted && !imageArtifact
-      ? ((block.output as Record<string, unknown> | undefined)
-          ?.error as string | undefined)
+      ? ((block.output as Record<string, unknown> | undefined)?.error as
+          | string
+          | undefined)
       : undefined;
   const inputData = block.input as Record<string, unknown> | undefined;
-  const modelName = (inputData?.modelDisplayName ?? inputData?.model) as string | undefined;
+  const modelName = (inputData?.modelDisplayName ?? inputData?.model) as
+    | string
+    | undefined;
   const aspectRatio =
     (inputData?.aspectRatio as string) ?? (isVideoTool ? "16:9" : "1:1");
 
@@ -198,6 +204,7 @@ export const ToolBlockView = React.memo(function ToolBlockView({
           <div className="h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-muted-foreground/30 border-t-muted-foreground" />
         ) : (
           <svg
+            aria-hidden="true"
             className="h-3.5 w-3.5 text-muted-foreground"
             viewBox="0 0 16 16"
             fill="currentColor"
@@ -223,10 +230,7 @@ export const ToolBlockView = React.memo(function ToolBlockView({
 
       {/* Layer 2b-err: Media generation failed */}
       {isMediaTool && isCompleted && !imageArtifact && mediaError && (
-        <MediaErrorCard
-          isVideoTool={isVideoTool}
-          error={mediaError}
-        />
+        <MediaErrorCard isVideoTool={isVideoTool} error={mediaError} />
       )}
 
       {/* Layer 2b: Image generation card with inline preview */}
@@ -251,9 +255,9 @@ export const ToolBlockView = React.memo(function ToolBlockView({
               </div>
               {previewLines.length > 0 && (
                 <div className="mt-0.5 space-y-px">
-                  {previewLines.map((line, i) => (
+                  {previewLines.map((line) => (
                     <div
-                      key={i}
+                      key={line}
                       className="text-[11px] text-muted-foreground truncate"
                     >
                       {line}
@@ -271,6 +275,7 @@ export const ToolBlockView = React.memo(function ToolBlockView({
               className="mt-2 flex items-center gap-0.5 text-[12px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             >
               <svg
+                aria-hidden="true"
                 className="h-3 w-3"
                 viewBox="0 0 16 16"
                 fill="currentColor"
@@ -320,6 +325,7 @@ const MediaShimmer = React.memo(function MediaShimmer({
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
           {isVideoTool ? (
             <svg
+              aria-hidden="true"
               className="h-10 w-10 text-muted-foreground/50"
               viewBox="0 0 24 24"
               fill="none"
@@ -330,6 +336,7 @@ const MediaShimmer = React.memo(function MediaShimmer({
             </svg>
           ) : (
             <svg
+              aria-hidden="true"
               className="h-10 w-10 text-muted-foreground/50"
               viewBox="0 0 24 24"
               fill="currentColor"
@@ -351,7 +358,9 @@ const MediaShimmer = React.memo(function MediaShimmer({
       </div>
       <div className="px-3 py-2">
         <div className="text-[12px] font-medium text-muted-foreground/70">
-          {isVideoTool ? "\u89c6\u9891\u751f\u6210\u4e2d..." : "\u56fe\u7247\u751f\u6210\u4e2d..."}
+          {isVideoTool
+            ? "\u89c6\u9891\u751f\u6210\u4e2d..."
+            : "\u56fe\u7247\u751f\u6210\u4e2d..."}
         </div>
         {modelName && (
           <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
@@ -379,6 +388,7 @@ const MediaErrorCard = React.memo(function MediaErrorCard({
       <div className="flex items-start gap-2.5">
         <div className="mt-0.5 shrink-0 rounded-lg bg-destructive/10 p-1.5 text-destructive">
           <svg
+            aria-hidden="true"
             className="h-4 w-4"
             viewBox="0 0 24 24"
             fill="none"
@@ -390,7 +400,9 @@ const MediaErrorCard = React.memo(function MediaErrorCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-foreground">
-            {isVideoTool ? "\u89c6\u9891\u751f\u6210\u5931\u8d25" : "\u56fe\u7247\u751f\u6210\u5931\u8d25"}
+            {isVideoTool
+              ? "\u89c6\u9891\u751f\u6210\u5931\u8d25"
+              : "\u56fe\u7247\u751f\u6210\u5931\u8d25"}
           </div>
           <div className="mt-0.5 text-[12px] text-muted-foreground line-clamp-2">
             {error}
@@ -436,10 +448,13 @@ const ImageArtifactCard = React.memo(function ImageArtifactCard({
   );
 
   return (
-    <div
-      className="group cursor-pointer rounded-xl border-[0.5px] border-border overflow-hidden transition-shadow hover:shadow-md"
-      onClick={onOpenPanel}
-    >
+    <div className="group relative cursor-pointer rounded-xl border-[0.5px] border-border overflow-hidden transition-shadow hover:shadow-md">
+      <button
+        type="button"
+        onClick={onOpenPanel}
+        aria-label={`查看${artifact.title ?? cardTitle}`}
+        className="absolute inset-0 z-10 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+      />
       {/* Image preview */}
       <div className="relative aspect-square max-h-[280px] w-full overflow-hidden bg-muted">
         <img
@@ -453,10 +468,11 @@ const ImageArtifactCard = React.memo(function ImageArtifactCard({
           <button
             type="button"
             onClick={handleDownload}
-            className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
+            className="absolute bottom-2 right-2 z-20 flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
             title="下载图片"
           >
             <svg
+              aria-hidden="true"
               className="h-3.5 w-3.5"
               viewBox="0 0 16 16"
               fill="currentColor"
@@ -553,6 +569,7 @@ function ToolDetailPanel({
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
           >
             <svg
+              aria-hidden="true"
               className="h-4 w-4"
               viewBox="0 0 24 24"
               fill="none"
@@ -576,6 +593,7 @@ function ToolDetailPanel({
                 aria-expanded={inputExpanded}
               >
                 <svg
+                  aria-hidden="true"
                   className={`h-3 w-3 transition-transform duration-200 ${inputExpanded ? "rotate-90" : ""}`}
                   viewBox="0 0 16 16"
                   fill="currentColor"
@@ -586,7 +604,7 @@ function ToolDetailPanel({
               </button>
               {inputExpanded && (
                 <div className="mt-2 space-y-1.5">
-                  {Object.entries(block.input!).map(([key, value]) => (
+                  {Object.entries(block.input ?? {}).map(([key, value]) => (
                     <div key={key} className="rounded-lg bg-muted px-3 py-2">
                       <div className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                         {formatParamName(key)}
@@ -693,9 +711,7 @@ function ToolOutputRenderer({
   // Complex objects / arrays -- formatted JSON
   return (
     <div>
-      <div className="text-xs font-medium text-muted-foreground mb-2">
-        输出
-      </div>
+      <div className="text-xs font-medium text-muted-foreground mb-2">输出</div>
       <div className="rounded-xl bg-muted px-4 py-3 overflow-x-auto max-h-[360px] overflow-y-auto">
         <pre className="text-[12px] leading-5 text-muted-foreground whitespace-pre-wrap break-all font-mono">
           {JSON.stringify(output, null, 2)}
@@ -712,15 +728,16 @@ function ToolOutputRenderer({
 type BrandKitData = {
   kit_name?: string;
   design_guidance?: string;
-  colors?: { name?: string; hex?: string; role?: string | null }[];
+  colors?: { id?: string; name?: string; hex?: string; role?: string | null }[];
   fonts?: {
+    id?: string;
     name?: string;
     family?: string;
     weight?: string;
     role?: string | null;
   }[];
-  logos?: { name?: string; url?: string; role?: string | null }[];
-  images?: { name?: string; url?: string; role?: string | null }[];
+  logos?: { id?: string; name?: string; url?: string; role?: string | null }[];
+  images?: { id?: string; name?: string; url?: string; role?: string | null }[];
 };
 
 function isBrandKitOutput(
@@ -762,8 +779,11 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
             颜色
           </div>
           <div className="flex flex-wrap gap-3">
-            {colors.map((color, i) => (
-              <div key={i} className="flex flex-col items-center gap-1.5">
+            {colors.map((color) => (
+              <div
+                key={color.id ?? `${color.name}:${color.hex}:${color.role}`}
+                className="flex flex-col items-center gap-1.5"
+              >
                 <div
                   className="h-16 w-16 rounded-xl border border-border shadow-sm"
                   style={{ backgroundColor: color.hex }}
@@ -784,8 +804,11 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
             字体
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {fonts.map((font, i) => (
-              <div key={i} className="rounded-xl bg-muted px-3 py-3">
+            {fonts.map((font) => (
+              <div
+                key={font.id ?? `${font.name}:${font.family}:${font.role}`}
+                className="rounded-xl bg-muted px-3 py-3"
+              >
                 <div className="text-[10px] text-muted-foreground mb-1">
                   {font.name}
                 </div>
@@ -814,9 +837,9 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
             摄影素材
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {logos.map((logo, i) => (
+            {logos.map((logo) => (
               <div
-                key={`logo-${i}`}
+                key={logo.id ?? `${logo.name}:${logo.url}`}
                 className="overflow-hidden rounded-xl border border-border"
               >
                 <img
@@ -832,9 +855,9 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
                 )}
               </div>
             ))}
-            {images.map((img, i) => (
+            {images.map((img) => (
               <div
-                key={`img-${i}`}
+                key={img.id ?? `${img.name}:${img.url}`}
                 className="overflow-hidden rounded-xl border border-border"
               >
                 <img

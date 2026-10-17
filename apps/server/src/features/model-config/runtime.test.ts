@@ -1,16 +1,16 @@
-import { afterEach, expect, it, vi } from "vitest";
 import type { ConfiguredModel } from "@loomic/shared";
-import { refreshConfiguredProviders } from "./runtime.js";
-import type {
-  ModelConfigService,
-  PrivateProvider,
-} from "./model-config-service.js";
+import { afterEach, expect, it, vi } from "vitest";
 import { generateImage } from "../../generation/image-generation.js";
 import {
   clearProviders,
   getAvailableImageModels,
   resolveImageProviderName,
 } from "../../generation/providers/registry.js";
+import type {
+  ModelConfigService,
+  PrivateProvider,
+} from "./model-config-service.js";
+import { refreshConfiguredProviders } from "./runtime.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -59,13 +59,20 @@ it("routes a configured Agnes image model by its saved API ID and advertises its
   });
   vi.stubGlobal("fetch", fetch);
   const syncNetworkSettings = vi.fn(async () => {});
-  const catalog = vi.fn(async () => ({ providers: [provider], models: [model] }));
+  const catalog = vi.fn(async () => ({
+    providers: [provider],
+    models: [model],
+  }));
   await refreshConfiguredProviders({
     syncNetworkSettings,
     catalog,
   } as unknown as ModelConfigService);
   expect(syncNetworkSettings).toHaveBeenCalledOnce();
-  expect(syncNetworkSettings.mock.invocationCallOrder[0]).toBeLessThan(catalog.mock.invocationCallOrder[0]!);
+  const networkCall = syncNetworkSettings.mock.invocationCallOrder[0];
+  const catalogCall = catalog.mock.invocationCallOrder[0];
+  if (networkCall === undefined || catalogCall === undefined)
+    throw new Error("Expected network and catalog calls");
+  expect(networkCall).toBeLessThan(catalogCall);
   expect(getAvailableImageModels()).toEqual([
     expect.objectContaining({
       id: model.key,

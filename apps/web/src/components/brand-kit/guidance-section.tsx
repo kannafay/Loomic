@@ -1,4 +1,5 @@
 "use client";
+
 import { Textarea } from "@/components/ui/textarea";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -29,7 +30,7 @@ export function GuidanceSection({ value, onSave }: GuidanceSectionProps) {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${el.scrollHeight}px`;
+    el.style.height = draft ? `${el.scrollHeight}px` : "auto";
   }, [draft]);
 
   const flush = useCallback(

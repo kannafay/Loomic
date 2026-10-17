@@ -56,7 +56,9 @@ const SETTINGS_ITEM: NavItem = {
 };
 
 const ADMIN_ITEM: NavItem = {
-  href: "/admin", label: "管理后台", viewBox: 24,
+  href: "/admin",
+  label: "管理后台",
+  viewBox: 24,
   icon: "M12 2 3 6v6c0 5.3 6 9.4 9 10 3-.6 9-4.7 9-10V6zm0 2.2 7 3.1V12c0 3.8-4.6 7.1-7 7.9C9.6 19.1 5 15.8 5 12V7.3zM11 8v3H8v2h3v3h2v-3h3v-2h-3V8z",
 };
 
@@ -90,6 +92,7 @@ function NavButton({
         />
       )}
       <motion.svg
+        aria-hidden="true"
         viewBox={vb}
         fill="currentColor"
         xmlns="http://www.w3.org/2000/svg"
@@ -122,36 +125,38 @@ function MobileBottomBar() {
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-around border-t border-border bg-card/95 backdrop-blur-sm pb-[env(safe-area-inset-bottom)] md:hidden"
-      role="navigation"
       aria-label="主导航"
     >
-      {[...TOP_NAV_ITEMS, ...(role === "admin" ? [ADMIN_ITEM] : [])].map((item) => {
-        const active = isActive(item.href);
-        const vb = `0 0 ${item.viewBox} ${item.viewBox}`;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            aria-label={item.label}
-            className={cn(
-              "flex min-h-[48px] min-w-[48px] flex-col items-center justify-center gap-0.5 px-2 py-1.5 transition-colors",
-              active ? "text-foreground" : "text-muted-foreground",
-            )}
-          >
-            <svg
-              viewBox={vb}
-              fill="currentColor"
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
+      {[...TOP_NAV_ITEMS, ...(role === "admin" ? [ADMIN_ITEM] : [])].map(
+        (item) => {
+          const active = isActive(item.href);
+          const vb = `0 0 ${item.viewBox} ${item.viewBox}`;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-label={item.label}
+              className={cn(
+                "flex min-h-[48px] min-w-[48px] flex-col items-center justify-center gap-0.5 px-2 py-1.5 transition-colors",
+                active ? "text-foreground" : "text-muted-foreground",
+              )}
             >
-              <path d={item.icon} />
-            </svg>
-            <span className="text-[10px] font-medium leading-none">
-              {item.label}
-            </span>
-          </Link>
-        );
-      })}
+              <svg
+                aria-hidden="true"
+                viewBox={vb}
+                fill="currentColor"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+              >
+                <path d={item.icon} />
+              </svg>
+              <span className="text-[10px] font-medium leading-none">
+                {item.label}
+              </span>
+            </Link>
+          );
+        },
+      )}
 
       {/* Settings in bottom bar */}
       <Link
@@ -165,6 +170,7 @@ function MobileBottomBar() {
         )}
       >
         <svg
+          aria-hidden="true"
           viewBox={`0 0 ${SETTINGS_ITEM.viewBox} ${SETTINGS_ITEM.viewBox}`}
           fill="currentColor"
           xmlns="http://www.w3.org/2000/svg"
@@ -218,23 +224,18 @@ export function AppSidebar() {
 
         {/* Top nav items */}
         {TOP_NAV_ITEMS.map((item) => (
-          <NavButton
-            key={item.href}
-            item={item}
-            active={isActive(item.href)}
-          />
+          <NavButton key={item.href} item={item} active={isActive(item.href)} />
         ))}
 
         {/* Spacer pushes bottom section down */}
         <div className="flex-1" />
 
         {/* Settings / Profile */}
-        <NavButton
-          item={SETTINGS_ITEM}
-          active={isActive(SETTINGS_ITEM.href)}
-        />
+        <NavButton item={SETTINGS_ITEM} active={isActive(SETTINGS_ITEM.href)} />
 
-        {role === "admin" && <NavButton item={ADMIN_ITEM} active={isActive(ADMIN_ITEM.href)} />}
+        {role === "admin" && (
+          <NavButton item={ADMIN_ITEM} active={isActive(ADMIN_ITEM.href)} />
+        )}
 
         {/* Sign out */}
         <button
@@ -245,6 +246,7 @@ export function AppSidebar() {
           className="flex h-11 w-11 items-center justify-center rounded-full md:h-9 md:w-9"
         >
           <motion.svg
+            aria-hidden="true"
             viewBox="0 0 20 20"
             fill="currentColor"
             xmlns="http://www.w3.org/2000/svg"
@@ -253,7 +255,10 @@ export function AppSidebar() {
             whileTap={{ scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
           >
-            <path d="M3 4.5A2.5 2.5 0 0 1 5.5 2h5A2.5 2.5 0 0 1 13 4.5v1a.5.5 0 0 1-1 0v-1A1.5 1.5 0 0 0 10.5 3h-5A1.5 1.5 0 0 0 4 4.5v11A1.5 1.5 0 0 0 5.5 17h5a1.5 1.5 0 0 0 1.5-1.5v-1a.5.5 0 0 1 1 0v1A2.5 2.5 0 0 1 10.5 18h-5A2.5 2.5 0 0 1 3 15.5zm12.354-1.354a.5.5 0 0 0-.708.708L16.793 6H7.5a.5.5 0 0 0 0 1h9.293l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708z" transform="translate(0, 4)" />
+            <path
+              d="M3 4.5A2.5 2.5 0 0 1 5.5 2h5A2.5 2.5 0 0 1 13 4.5v1a.5.5 0 0 1-1 0v-1A1.5 1.5 0 0 0 10.5 3h-5A1.5 1.5 0 0 0 4 4.5v11A1.5 1.5 0 0 0 5.5 17h5a1.5 1.5 0 0 0 1.5-1.5v-1a.5.5 0 0 1 1 0v1A2.5 2.5 0 0 1 10.5 18h-5A2.5 2.5 0 0 1 3 15.5zm12.354-1.354a.5.5 0 0 0-.708.708L16.793 6H7.5a.5.5 0 0 0 0 1h9.293l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708z"
+              transform="translate(0, 4)"
+            />
           </motion.svg>
         </button>
       </aside>

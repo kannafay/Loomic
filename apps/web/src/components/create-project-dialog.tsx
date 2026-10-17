@@ -3,16 +3,11 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "./ui/dialog";
+import { useToast } from "./toast";
 import { Button } from "./ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { useToast } from "./toast";
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -40,7 +35,9 @@ export function CreateProjectDialog({
     setError(null);
 
     try {
-      const payload: { name: string; description?: string } = { name: trimmedName };
+      const payload: { name: string; description?: string } = {
+        name: trimmedName,
+      };
       const trimmedDesc = description.trim();
       if (trimmedDesc) {
         payload.description = trimmedDesc;

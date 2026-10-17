@@ -1,18 +1,18 @@
 import { getUserFacingError } from "./locale";
 
 import type {
-  BrandKitListResponse,
-  BrandKitDetailResponse,
-  BrandKitCreateRequest,
-  BrandKitUpdateRequest,
   BrandKitAssetCreateRequest,
-  BrandKitAssetUpdateRequest,
   BrandKitAssetResponse,
+  BrandKitAssetUpdateRequest,
+  BrandKitCreateRequest,
+  BrandKitDetailResponse,
+  BrandKitListResponse,
+  BrandKitUpdateRequest,
 } from "@loomic/shared";
 
-import { getServerBaseUrl } from "./env";
-import { ApiAuthError, ApiApplicationError } from "./server-api";
 import { dedupeRequest } from "./dedupe-request";
+import { getServerBaseUrl } from "./env";
+import { ApiApplicationError, ApiAuthError } from "./server-api";
 
 // --- Internal helpers (mirrored from server-api.ts, not exported there) ---
 
@@ -33,7 +33,10 @@ async function handleErrorResponse(response: Response): Promise<never> {
   }
   const body = await response.json().catch(() => null);
   const code = body?.error?.code ?? "application_error";
-  const message = getUserFacingError({ code, message: body?.error?.message ?? body?.message }, "请求失败，请重试。");
+  const message = getUserFacingError(
+    { code, message: body?.error?.message ?? body?.message },
+    "请求失败，请重试。",
+  );
   throw new ApiApplicationError(code, message);
 }
 

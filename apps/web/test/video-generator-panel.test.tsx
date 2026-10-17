@@ -1,3 +1,4 @@
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -56,10 +57,12 @@ function panel(modelId = model.id) {
         resolution: "720p",
         aspectRatio: "16:9",
       }}
-      excalidrawApi={{
-        getSceneElements: () => [{ id: "generator", customData: {} }],
-        updateScene: vi.fn(),
-      }}
+      excalidrawApi={
+        {
+          getSceneElements: () => [{ id: "generator", customData: {} }],
+          updateScene: vi.fn(),
+        } as unknown as ExcalidrawImperativeAPI
+      }
       accessToken="token"
       canvasScrollZoom={{ scrollX: 0, scrollY: 0, zoom: 1 }}
       onClose={vi.fn()}
@@ -99,7 +102,7 @@ beforeEach(() => {
   });
 });
 
-const agnes: VideoModelInfo = {
+const agnes = {
   ...model,
   id: "agnes/agnes-video-2.5",
   displayName: "Agnes Video 2.5",
@@ -112,7 +115,7 @@ const agnes: VideoModelInfo = {
   limits: {
     maxDuration: 12,
     allowedDurations: [4, 5, 6, 7, 8, 9, 10, 11, 12],
-    maxResolution: "1080p",
+    maxResolution: "1080p" as const,
     maxInputImages: 8,
   },
 };
@@ -171,7 +174,8 @@ describe("Agnes video modes", () => {
     );
     await user.click(screen.getByRole("button", { name: "生成视频" }));
     await waitFor(() => expect(generateVideoDirect).toHaveBeenCalled());
-    const options = vi.mocked(generateVideoDirect).mock.calls[0]![2]!;
+    const options = vi.mocked(generateVideoDirect).mock.calls[0]?.[2];
+    if (!options) throw new Error("Expected video generation options");
     expect(options.lastFrame).toBe("https://media.example.com/end.png");
     expect(options).not.toHaveProperty("firstFrame");
   });
@@ -180,8 +184,8 @@ describe("Agnes video modes", () => {
     const flash: VideoModelInfo = {
       ...agnes,
       id: "agnes/agnes-video-2.5-flash",
-      capabilities: { ...agnes.capabilities!, videoToVideo: false },
-      limits: { ...agnes.limits!, maxResolution: "720p", maxInputImages: 5 },
+      capabilities: { ...agnes.capabilities, videoToVideo: false },
+      limits: { ...agnes.limits, maxResolution: "720p", maxInputImages: 5 },
     };
     vi.mocked(fetchVideoModels).mockResolvedValue({ models: [flash] });
     panel(flash.id);
@@ -210,8 +214,8 @@ describe("Agnes video modes", () => {
     const flash: VideoModelInfo = {
       ...agnes,
       id: "agnes/agnes-video-2.5-flash",
-      capabilities: { ...agnes.capabilities!, videoToVideo: false },
-      limits: { ...agnes.limits!, maxResolution: "720p", maxInputImages: 5 },
+      capabilities: { ...agnes.capabilities, videoToVideo: false },
+      limits: { ...agnes.limits, maxResolution: "720p", maxInputImages: 5 },
     };
     vi.mocked(fetchVideoModels).mockResolvedValue({ models: [flash] });
     panel(flash.id);
@@ -230,7 +234,8 @@ describe("Agnes video modes", () => {
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "生成视频" }));
     await waitFor(() => expect(generateVideoDirect).toHaveBeenCalled());
-    const options = vi.mocked(generateVideoDirect).mock.calls[0]![2]!;
+    const options = vi.mocked(generateVideoDirect).mock.calls[0]?.[2];
+    if (!options) throw new Error("Expected video generation options");
     expect(options.duration).toBe(4);
     expect(options.referenceImages).toHaveLength(5);
     expect(
@@ -292,7 +297,8 @@ describe("video generation modes", () => {
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "生成视频" }));
     await waitFor(() => expect(generateVideoDirect).toHaveBeenCalled());
-    const options = vi.mocked(generateVideoDirect).mock.calls[0]![2]!;
+    const options = vi.mocked(generateVideoDirect).mock.calls[0]?.[2];
+    if (!options) throw new Error("Expected video generation options");
     expect(options.duration).toBe(8);
     expect(options.referenceImages).toHaveLength(3);
     expect(options).not.toHaveProperty("firstFrame");

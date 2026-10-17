@@ -1,9 +1,10 @@
-// @credits-system — Usage history table showing credit transactions
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Loader2, Zap } from "lucide-react";
+// @credits-system — Usage history table showing credit transactions
+
 import type { CreditTransaction } from "@loomic/shared";
+import { Loader2, Zap } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useAuth } from "@/lib/auth-context";
 import { fetchCreditTransactions } from "@/lib/credits-api";
@@ -141,9 +142,7 @@ export function CreditUsageHistory() {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-12 text-center">
           <Zap className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            暂无积分记录。
-          </p>
+          <p className="text-sm text-muted-foreground">暂无积分记录。</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border">
@@ -167,7 +166,9 @@ export function CreditUsageHistory() {
                     }`}
                   >
                     <td className="px-4 py-2.5 text-foreground">
-                      {getCreditDescription(t.description) ?? TYPE_LABELS[t.transaction_type] ?? "其他"}
+                      {getCreditDescription(t.description) ??
+                        TYPE_LABELS[t.transaction_type] ??
+                        "其他"}
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
                       {TYPE_LABELS[t.transaction_type] ?? "其他"}

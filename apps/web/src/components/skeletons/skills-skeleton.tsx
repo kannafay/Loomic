@@ -20,23 +20,25 @@ export function SkillsSkeleton() {
 
       {/* Card grid */}
       <div className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div
-            key={i}
-            className="space-y-3 rounded-xl border border-border p-4"
-          >
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-5 w-32" />
-              <Skeleton className="h-5 w-10 rounded-full" />
+        {["skill-a", "skill-b", "skill-c", "skill-d", "skill-e", "skill-f"].map(
+          (placeholderId) => (
+            <div
+              key={placeholderId}
+              className="space-y-3 rounded-xl border border-border p-4"
+            >
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-10 rounded-full" />
+              </div>
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <div className="flex items-center justify-between border-t border-border pt-3">
+                <Skeleton className="h-5 w-14 rounded-full" />
+                <Skeleton className="h-4 w-20" />
+              </div>
             </div>
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
-            <div className="flex items-center justify-between border-t border-border pt-3">
-              <Skeleton className="h-5 w-14 rounded-full" />
-              <Skeleton className="h-4 w-20" />
-            </div>
-          </div>
-        ))}
+          ),
+        )}
       </div>
     </div>
   );

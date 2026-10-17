@@ -1,16 +1,17 @@
-// @credits-system — React hook for subscription status, cancellation, and plan changes
 "use client";
+
+// @credits-system — React hook for subscription status, cancellation, and plan changes
 
 import { getUserFacingError } from "@/lib/locale";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
-  getSubscription,
+  type SubscriptionStatus,
   cancelSubscription as apiCancelSubscription,
   changePlan as apiChangePlan,
-  type SubscriptionStatus,
+  getSubscription,
 } from "@/lib/payments-api";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface UseSubscriptionReturn {
   subscription: SubscriptionStatus | null;
@@ -40,9 +41,7 @@ export function useSubscription(): UseSubscriptionReturn {
       setSubscription(result);
       setError(null);
     } catch (err) {
-      setError(
-        getUserFacingError(err, "订阅信息加载失败。"),
-      );
+      setError(getUserFacingError(err, "订阅信息加载失败。"));
     } finally {
       setLoading(false);
     }

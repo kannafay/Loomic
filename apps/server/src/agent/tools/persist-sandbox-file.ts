@@ -2,8 +2,8 @@ import { realpathSync } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import { basename, extname } from "node:path";
 import { tool } from "@langchain/core/tools";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import type { UserSupabaseClient } from "../../supabase/user.js";
 
 const MIME_MAP: Record<string, string> = {
   ".png": "image/png",
@@ -30,19 +30,17 @@ const persistSandboxFileSchema = z.object({
 });
 
 export type PersistSandboxFileDeps = {
-  createUserClient: (accessToken: string) => SupabaseClient;
+  createUserClient: (accessToken: string) => UserSupabaseClient;
   sandboxDir?: string;
 };
 
 export function createPersistSandboxFileTool(deps: PersistSandboxFileDeps) {
   return tool(
     async (input, config) => {
-      const accessToken = (config as any)?.configurable?.access_token as
+      const accessToken = config?.configurable?.access_token as
         | string
         | undefined;
-      const canvasId = (config as any)?.configurable?.canvas_id as
-        | string
-        | undefined;
+      const canvasId = config?.configurable?.canvas_id as string | undefined;
 
       if (!accessToken) {
         return "Error: No access token available. Cannot upload file.";
@@ -71,7 +69,9 @@ export function createPersistSandboxFileTool(deps: PersistSandboxFileDeps) {
         const ext = extname(input.filePath).toLowerCase();
         const mimeType = MIME_MAP[ext] ?? "application/octet-stream";
         const safeTitle = input.title
-          ? input.title.replace(/[^a-zA-Z0-9_\u4e00-\u9fff-]/g, "_").slice(0, 100)
+          ? input.title
+              .replace(/[^a-zA-Z0-9_\u4e00-\u9fff-]/g, "_")
+              .slice(0, 100)
           : null;
         const fileName = safeTitle
           ? `${safeTitle}${ext}`
@@ -88,7 +88,7 @@ export function createPersistSandboxFileTool(deps: PersistSandboxFileDeps) {
             .select("project:projects(workspace_id)")
             .eq("id", canvasId)
             .single();
-          workspaceId = (canvas?.project as any)?.workspace_id ?? null;
+          workspaceId = canvas?.project?.workspace_id ?? null;
         }
 
         const storagePath = workspaceId
@@ -120,8 +120,8 @@ export function createPersistSandboxFileTool(deps: PersistSandboxFileDeps) {
           mimeType,
           size: fileBuffer.length,
         });
-      } catch (err: any) {
-        return `Error reading or uploading file: ${err.message}`;
+      } catch (err) {
+        return `Error reading or uploading file: ${err instanceof Error ? err.message : String(err)}`;
       }
     },
     {

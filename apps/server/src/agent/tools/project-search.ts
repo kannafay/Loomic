@@ -1,9 +1,9 @@
 import type { ToolRuntime } from "@langchain/core/tools";
 import {
-  adaptBackendProtocol,
-  resolveBackend,
   type AnyBackendProtocol,
   type BackendFactory,
+  adaptBackendProtocol,
+  resolveBackend,
 } from "deepagents";
 import { tool } from "langchain";
 import { z } from "zod";
@@ -80,7 +80,10 @@ export function createProjectSearchTool(
 ) {
   return tool(
     async (input, runtime: ToolRuntime) => {
-      return await runProjectSearch(await resolveBackend(backend, runtime), input);
+      return await runProjectSearch(
+        await resolveBackend(backend, runtime),
+        input,
+      );
     },
     {
       name: "project_search",

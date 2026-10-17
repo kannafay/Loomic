@@ -1,8 +1,8 @@
 import type { Database } from "@loomic/shared";
 
+import { localizeHomeDiscovery } from "./home-content-locale";
 import type { HomeDiscoveryCategory } from "./home-discovery-seeds";
 import { homeDiscoverySeedCategories } from "./home-discovery-seeds";
-import { localizeHomeDiscovery } from "./home-content-locale";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
 type HomeDiscoveryCategoryRow =
@@ -41,7 +41,9 @@ export function mapHomeDiscoveryRows(
     }));
 }
 
-export async function loadHomeDiscoveryCategories(): Promise<HomeDiscoveryCategory[]> {
+export async function loadHomeDiscoveryCategories(): Promise<
+  HomeDiscoveryCategory[]
+> {
   const supabase = getSupabaseBrowserClient();
 
   const [categoriesResult, casesResult] = await Promise.all([

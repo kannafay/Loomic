@@ -1,9 +1,10 @@
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@testing-library/jest-dom/vitest";
 import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { CanvasToolMenu } from "../src/components/canvas-tool-menu";
 import { CanvasBottomBar } from "../src/components/canvas-bottom-bar";
+import { CanvasToolMenu } from "../src/components/canvas-tool-menu";
 
 vi.mock("../src/lib/server-api", () => ({
   fetchVideoModels: async () => ({
@@ -83,13 +84,15 @@ describe("native canvas context menu", () => {
         return () => listeners.delete(callback);
       },
     };
-    const emitChange = () =>
-      listeners.forEach((callback) => callback([element], state));
+    const canvasApi = api as unknown as ExcalidrawImperativeAPI;
+    const emitChange = () => {
+      for (const callback of listeners) callback([element], state);
+    };
     render(
       <>
-        <CanvasToolMenu excalidrawApi={api} accessToken="token" />
+        <CanvasToolMenu excalidrawApi={canvasApi} accessToken="token" />
         <CanvasBottomBar
-          excalidrawApi={api}
+          excalidrawApi={canvasApi}
           layersOpen={false}
           filesOpen={false}
           leftPanelOpen={false}

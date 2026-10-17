@@ -5,14 +5,20 @@ configureNetworkProxy();
 
 import { randomUUID } from "node:crypto";
 import { loadServerEnv } from "./config/env.js";
-import { createPgmqClient, type PgmqMessage } from "./queue/pgmq-client.js";
+import {
+  type CreditService,
+  createCreditService,
+} from "./features/credits/credit-service.js";
+import {
+  type ExecutorContext,
+  getExecutor,
+} from "./features/jobs/job-executor.js";
 import { createJobService } from "./features/jobs/job-service.js";
-import { createCreditService, type CreditService } from "./features/credits/credit-service.js";
-import { getExecutor, type ExecutorContext } from "./features/jobs/job-executor.js";
-import { createAdminSupabaseClient } from "./supabase/admin.js";
-import { createUserSupabaseClientFactory } from "./supabase/user.js";
 import { createModelConfigService } from "./features/model-config/model-config-service.js";
 import { refreshConfiguredProviders } from "./features/model-config/runtime.js";
+import { type PgmqMessage, createPgmqClient } from "./queue/pgmq-client.js";
+import { createAdminSupabaseClient } from "./supabase/admin.js";
+import { createUserSupabaseClientFactory } from "./supabase/user.js";
 
 // Import executors to trigger registration via side effects
 import "./features/jobs/executors/image-generation.js";
@@ -56,10 +62,18 @@ async function main() {
     return adminClient;
   };
   const modelConfigService = env.modelConfigSecret
-    ? createModelConfigService({ getAdminClient, secret: env.modelConfigSecret }) : undefined;
+    ? createModelConfigService({
+        getAdminClient,
+        secret: env.modelConfigSecret,
+      })
+    : undefined;
   if (modelConfigService) await modelConfigService.syncNetworkSettings(true);
 
-  const jobService = createJobService({ createUserClient, getAdminClient, pgmq });
+  const jobService = createJobService({
+    createUserClient,
+    getAdminClient,
+    pgmq,
+  });
   const creditService = createCreditService({ getAdminClient });
 
   // Base context — per-message fields (queue, msgId, renewVt) are added in processMessage
@@ -83,7 +97,10 @@ async function main() {
   // Server-side long poll: wait up to N seconds inside Postgres for messages,
   // checking every 500ms. This replaces the old client-side sleep(2000) + read()
   // pattern that generated ~340K idle queries per monitoring period.
-  const pollTimeoutSeconds = Math.max(1, Math.floor((env.workerPollIntervalMs ?? 5000) / 1000));
+  const pollTimeoutSeconds = Math.max(
+    1,
+    Math.floor((env.workerPollIntervalMs ?? 5000) / 1000),
+  );
   const workerId = env.workerId ?? randomUUID().slice(0, 8);
   const tag = `[worker:${workerId}]`;
 
@@ -94,8 +111,13 @@ async function main() {
   const shutdown = async () => {
     if (shuttingDown) return;
     shuttingDown = true;
-    const totalInFlight = [...inFlightByQueue.values()].reduce((n, s) => n + s.size, 0);
-    console.log(`${tag} Shutting down, waiting for ${totalInFlight} in-flight jobs...`);
+    const totalInFlight = [...inFlightByQueue.values()].reduce(
+      (n, s) => n + s.size,
+      0,
+    );
+    console.log(
+      `${tag} Shutting down, waiting for ${totalInFlight} in-flight jobs...`,
+    );
     running = false;
     const allTasks = [...inFlightByQueue.values()].flatMap((s) => [...s]);
     if (allTasks.length > 0) {
@@ -108,7 +130,9 @@ async function main() {
   process.on("SIGINT", shutdown);
   process.on("SIGTERM", shutdown);
 
-  const concurrencyDesc = QUEUES.map((q) => `${q}=${CONCURRENCY_BY_QUEUE[q] ?? 1}`).join(", ");
+  const concurrencyDesc = QUEUES.map(
+    (q) => `${q}=${CONCURRENCY_BY_QUEUE[q] ?? 1}`,
+  ).join(", ");
   console.log(
     `${tag} Started. concurrency={${concurrencyDesc}}, longPollTimeout=${pollTimeoutSeconds}s`,
   );
@@ -116,26 +140,41 @@ async function main() {
   while (running) {
     for (const queue of QUEUES) {
       try {
-        const inFlight = inFlightByQueue.get(queue)!;
+        const inFlight = inFlightByQueue.get(queue);
+        if (!inFlight) throw new Error(`Queue not initialized: ${queue}`);
         const cap = CONCURRENCY_BY_QUEUE[queue] ?? 1;
         const available = cap - inFlight.size;
         if (available <= 0) continue;
 
         const vt = VT_BY_QUEUE[queue] ?? 120;
-        const messages = await pgmq.readWithPoll(queue, vt, available, pollTimeoutSeconds, 500);
+        const messages = await pgmq.readWithPoll(
+          queue,
+          vt,
+          available,
+          pollTimeoutSeconds,
+          500,
+        );
 
         for (const msg of messages) {
           const ctx: ExecutorContext = {
-              ...baseCtx,
-              queue,
-              msgId: msg.msg_id,
-              renewVt: async (vtSeconds: number) => {
-                try { await pgmq.setVt(queue, msg.msg_id, vtSeconds); }
-                catch (e) { console.warn(`[renewVt] failed for msg ${msg.msg_id}:`, e); }
-              },
-            };
-            const task = processMessage(queue, msg, ctx, creditService, tag)
-            .finally(() => inFlight.delete(task));
+            ...baseCtx,
+            queue,
+            msgId: msg.msg_id,
+            renewVt: async (vtSeconds: number) => {
+              try {
+                await pgmq.setVt(queue, msg.msg_id, vtSeconds);
+              } catch (e) {
+                console.warn(`[renewVt] failed for msg ${msg.msg_id}:`, e);
+              }
+            },
+          };
+          const task = processMessage(
+            queue,
+            msg,
+            ctx,
+            creditService,
+            tag,
+          ).finally(() => inFlight.delete(task));
           inFlight.add(task);
         }
       } catch (err) {
@@ -153,7 +192,8 @@ async function processMessage(
   tag: string,
 ) {
   const jobId = msg.message.job_id as string;
-  const jobType = (msg.message.job_type as BackgroundJobType) ?? QUEUE_TO_TYPE[queue];
+  const jobType =
+    (msg.message.job_type as BackgroundJobType) ?? QUEUE_TO_TYPE[queue];
 
   if (!jobId || !jobType) {
     console.error(`${tag} Invalid message in ${queue}:`, msg.message);
@@ -162,22 +202,30 @@ async function processMessage(
   }
 
   // Extract traceability context from PGMQ message (if present)
-  const sessionShort = typeof msg.message.session_id === "string"
-    ? msg.message.session_id.slice(0, 8)
-    : undefined;
+  const sessionShort =
+    typeof msg.message.session_id === "string"
+      ? msg.message.session_id.slice(0, 8)
+      : undefined;
   const startTime = Date.now();
-  console.log(`${tag} Processing job ${jobId} (${jobType})${sessionShort ? ` session:${sessionShort}` : ""}`);
+  console.log(
+    `${tag} Processing job ${jobId} (${jobType})${sessionShort ? ` session:${sessionShort}` : ""}`,
+  );
 
   const executor = getExecutor(jobType);
   if (!executor) {
     console.error(`${tag} No executor for job type: ${jobType}`);
-    await ctx.jobService.markFailed(jobId, "no_executor", `No executor registered for ${jobType}`);
+    await ctx.jobService.markFailed(
+      jobId,
+      "no_executor",
+      `No executor registered for ${jobType}`,
+    );
     await ctx.pgmq.archive(queue, msg.msg_id);
     return;
   }
 
   // Increment attempt count
-  const { attempt_count, max_attempts } = await ctx.jobService.incrementAttempt(jobId);
+  const { attempt_count, max_attempts } =
+    await ctx.jobService.incrementAttempt(jobId);
 
   // Mark running
   await ctx.jobService.markRunning(jobId);
@@ -186,7 +234,11 @@ async function processMessage(
     if (ctx.modelConfigService) {
       await refreshConfiguredProviders(ctx.modelConfigService, true);
     }
-    const result = await executor(jobId, msg.message as Record<string, unknown>, ctx);
+    const result = await executor(
+      jobId,
+      msg.message as Record<string, unknown>,
+      ctx,
+    );
     await ctx.jobService.markSucceeded(jobId, result);
     await ctx.pgmq.deleteMsg(queue, msg.msg_id);
     console.log(`${tag} Job ${jobId} succeeded +${Date.now() - startTime}ms`);
@@ -213,11 +265,15 @@ async function processMessage(
       // Auto-refund credits for dead-lettered jobs
       await refundDeadLetteredJob(jobId, ctx, creditService, tag);
 
-      console.error(`${tag} Job ${jobId} dead-lettered after ${attempt_count} attempts +${Date.now() - startTime}ms: ${errorMessage}`);
+      console.error(
+        `${tag} Job ${jobId} dead-lettered after ${attempt_count} attempts +${Date.now() - startTime}ms: ${errorMessage}`,
+      );
     } else {
       await ctx.jobService.markFailed(jobId, errorCode, errorMessage);
       // Message will re-appear after VT expires for retry
-      console.warn(`${tag} Job ${jobId} failed (attempt ${attempt_count}/${max_attempts}) +${Date.now() - startTime}ms: ${errorMessage}`);
+      console.warn(
+        `${tag} Job ${jobId} failed (attempt ${attempt_count}/${max_attempts}) +${Date.now() - startTime}ms: ${errorMessage}`,
+      );
     }
   }
 }
@@ -255,10 +311,15 @@ async function refundDeadLetteredJob(
       jobId,
       "Auto-refund: job failed",
     );
-    console.log(`${tag} Refunded ${creditsCost} credits for job ${jobId} (tx: ${txId})`);
+    console.log(
+      `${tag} Refunded ${creditsCost} credits for job ${jobId} (tx: ${txId})`,
+    );
   } catch (refundErr) {
     // Log but don't crash the worker — the job is already dead-lettered
-    console.error(`${tag} Failed to refund credits for job ${jobId}:`, refundErr);
+    console.error(
+      `${tag} Failed to refund credits for job ${jobId}:`,
+      refundErr,
+    );
   }
 }
 

@@ -96,7 +96,10 @@ async function handleErrorResponse(response: Response): Promise<never> {
   }
   const body = await response.json().catch(() => null);
   const code = body?.error?.code ?? "application_error";
-  const message = getUserFacingError({ code, message: body?.error?.message ?? body?.message }, "请求失败，请重试。");
+  const message = getUserFacingError(
+    { code, message: body?.error?.message ?? body?.message },
+    "请求失败，请重试。",
+  );
   throw new ApiApplicationError(code, message);
 }
 
@@ -443,9 +446,13 @@ export async function fetchImageModels(): Promise<{
     throw new Error(`图片模型加载失败：${response.status}`);
   }
   const result = (await response.json()) as { models: ImageModelInfo[] };
-  return { ...result, models: result.models.map((model) => ({
-    ...model, description: getModelDescription(model.id, model.description),
-  })) };
+  return {
+    ...result,
+    models: result.models.map((model) => ({
+      ...model,
+      description: getModelDescription(model.id, model.description),
+    })),
+  };
 }
 
 export type VideoModelInfo = {
@@ -494,9 +501,13 @@ export async function fetchVideoModels(): Promise<{
     throw new Error(`视频模型加载失败：${response.status}`);
   }
   const result = (await response.json()) as { models: VideoModelInfo[] };
-  return { ...result, models: result.models.map((model) => ({
-    ...model, description: getModelDescription(model.id, model.description),
-  })) };
+  return {
+    ...result,
+    models: result.models.map((model) => ({
+      ...model,
+      description: getModelDescription(model.id, model.description),
+    })),
+  };
 }
 
 export async function generateImageDirect(
@@ -531,10 +542,21 @@ export type GenerateVideoResponse = {
   durationSeconds: number;
 };
 
-export type VideoExtensionSource = { jobId: string; prompt: string; url: string; duration: number; aspectRatio: string };
+export type VideoExtensionSource = {
+  jobId: string;
+  prompt: string;
+  url: string;
+  duration: number;
+  aspectRatio: string;
+};
 
-export async function fetchVideoSources(accessToken: string): Promise<{ sources: VideoExtensionSource[] }> {
-  const response = await fetch(`${getServerBaseUrl()}/api/agent/video-sources`, { headers: authHeaders(accessToken) });
+export async function fetchVideoSources(
+  accessToken: string,
+): Promise<{ sources: VideoExtensionSource[] }> {
+  const response = await fetch(
+    `${getServerBaseUrl()}/api/agent/video-sources`,
+    { headers: authHeaders(accessToken) },
+  );
   if (!response.ok) return handleErrorResponse(response);
   return response.json();
 }
@@ -572,8 +594,12 @@ export async function generateVideoDirect(
           : {}),
         ...(options?.firstFrame ? { firstFrame: options.firstFrame } : {}),
         ...(options?.lastFrame ? { lastFrame: options.lastFrame } : {}),
-        ...(options?.referenceImages?.length ? { referenceImages: options.referenceImages } : {}),
-        ...(options?.sourceVideoJobId ? { sourceVideoJobId: options.sourceVideoJobId } : {}),
+        ...(options?.referenceImages?.length
+          ? { referenceImages: options.referenceImages }
+          : {}),
+        ...(options?.sourceVideoJobId
+          ? { sourceVideoJobId: options.sourceVideoJobId }
+          : {}),
       }),
     },
   );
@@ -675,7 +701,7 @@ export async function fetchSkillFiles(
     { headers: authHeaders(accessToken) },
   );
   if (!response.ok) return handleErrorResponse(response);
-  return (await response.json()) as any;
+  return await response.json();
 }
 
 // --- Workspace Skills API ---

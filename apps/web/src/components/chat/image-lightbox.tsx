@@ -25,6 +25,7 @@ function LightboxBtn({
       className="flex h-8 w-8 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white"
     >
       <svg
+        aria-hidden="true"
         className="h-[18px] w-[18px]"
         viewBox="0 0 24 24"
         fill="none"
@@ -47,10 +48,12 @@ export function ImageLightbox({
   src,
   alt,
   onClose,
+  triggerRef,
 }: {
   src: string;
   alt: string;
   onClose: () => void;
+  triggerRef?: React.RefObject<HTMLButtonElement | null>;
 }) {
   const [scale, setScale] = useState(1);
   const [rotate, setRotate] = useState(0);
@@ -107,7 +110,21 @@ export function ImageLightbox({
     }
   }, [src, alt]);
 
-  const overlayRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = overlayRef.current;
+    const previousFocus =
+      triggerRef?.current ??
+      (document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null);
+    dialog?.showModal();
+    return () => {
+      dialog?.close();
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [triggerRef]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -165,27 +182,29 @@ export function ImageLightbox({
   }, []);
 
   return createPortal(
-    <motion.div
+    <motion.dialog
       ref={overlayRef}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.15 }}
-      className="fixed inset-0 z-[2000] flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm"
-      onClick={onClose}
-      role="dialog"
+      className="fixed inset-0 m-0 h-screen w-screen max-h-none max-w-none border-0 p-0 z-[2000] flex flex-col items-center justify-center bg-black/70 backdrop-blur-sm [&::backdrop]:bg-transparent"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
       aria-modal="true"
       aria-label="图片预览"
     >
       {/* Image */}
-      <div
-        className="flex flex-1 w-full items-center justify-center overflow-hidden"
-        onClick={onClose}
-      >
+      <div className="pointer-events-none flex flex-1 w-full items-center justify-center overflow-hidden">
         <img
           draggable
           src={src}
           alt={alt}
-          className="max-h-[85vh] max-w-[90vw] object-contain select-none"
+          className="pointer-events-auto max-h-[85vh] max-w-[90vw] object-contain select-none"
           style={{
             transform: `translate3d(${translate.x}px, ${translate.y}px, 0) scale3d(${scale * flipX}, ${scale * flipY}, 1) rotate(${rotate}deg)`,
             transition: dragRef.current.dragging
@@ -193,7 +212,6 @@ export function ImageLightbox({
               : "transform 0.2s ease",
             cursor: scale > 1 ? "grab" : "default",
           }}
-          onClick={(e) => e.stopPropagation()}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
@@ -208,6 +226,7 @@ export function ImageLightbox({
         className="absolute top-4 right-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur-md transition-colors hover:bg-black/60 hover:text-white"
       >
         <svg
+          aria-hidden="true"
           className="h-5 w-5"
           viewBox="0 0 24 24"
           fill="none"
@@ -221,10 +240,7 @@ export function ImageLightbox({
       </button>
 
       {/* Toolbar */}
-      <div
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1.5 backdrop-blur-md"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-black/50 px-2 py-1.5 backdrop-blur-md">
         <LightboxBtn title="缩小 (-)" onClick={handleZoomOut}>
           <path d="M5 12h14" />
         </LightboxBtn>
@@ -263,7 +279,7 @@ export function ImageLightbox({
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
         </LightboxBtn>
       </div>
-    </motion.div>,
+    </motion.dialog>,
     document.body,
   );
 }
@@ -283,6 +299,7 @@ export const ChatImage = React.memo(function ChatImage({
 }) {
   const [open, setOpen] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   if (loadError) {
     return (
@@ -291,6 +308,7 @@ export const ChatImage = React.memo(function ChatImage({
         title="图片加载失败"
       >
         <svg
+          aria-hidden="true"
           className="h-5 w-5 opacity-40"
           viewBox="0 0 24 24"
           fill="none"
@@ -305,19 +323,27 @@ export const ChatImage = React.memo(function ChatImage({
 
   return (
     <>
-      <img
-        src={src}
-        alt={alt}
-        className={`${className} cursor-zoom-in`}
-        loading="lazy"
+      <button
+        ref={triggerRef}
+        type="button"
+        aria-label={`查看${alt}`}
         onClick={() => setOpen(true)}
-        onError={() => setLoadError(true)}
-      />
+        className="inline-block max-w-full text-left"
+      >
+        <img
+          src={src}
+          alt={alt}
+          className={`${className} cursor-zoom-in`}
+          loading="lazy"
+          onError={() => setLoadError(true)}
+        />
+      </button>
       {open && (
         <ImageLightbox
           src={src}
           alt={alt}
           onClose={() => setOpen(false)}
+          triggerRef={triggerRef}
         />
       )}
     </>
@@ -341,7 +367,7 @@ export const ImagePill = React.memo(function ImagePill({
     y: number;
     above: boolean;
   } | null>(null);
-  const pillRef = useRef<HTMLSpanElement>(null);
+  const pillRef = useRef<HTMLButtonElement>(null);
 
   const handleMouseEnter = useCallback(() => {
     if (!pillRef.current) return;
@@ -358,14 +384,13 @@ export const ImagePill = React.memo(function ImagePill({
 
   return (
     <>
-      <span
+      <button
+        type="button"
         ref={pillRef}
         onClick={() => setLightbox(true)}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className="inline-flex h-[22px] items-center gap-1 rounded-md px-1 mx-0.5 border-[0.5px] border-muted-foreground text-foreground hover:bg-muted cursor-pointer align-middle"
-        role="button"
-        tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -384,7 +409,7 @@ export const ImagePill = React.memo(function ImagePill({
         <span className="max-w-[100px] truncate text-[11px] leading-none text-foreground">
           {name}
         </span>
-      </span>
+      </button>
 
       {/* Hover preview portal */}
       {preview &&
@@ -416,6 +441,7 @@ export const ImagePill = React.memo(function ImagePill({
           src={src}
           alt={name}
           onClose={() => setLightbox(false)}
+          triggerRef={pillRef}
         />
       )}
     </>

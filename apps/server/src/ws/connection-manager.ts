@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
-import type { WebSocket } from "ws";
 import type { StreamEvent } from "@loomic/shared";
+import type { WebSocket } from "ws";
 
 type PendingRPC = {
-  resolve: (value: any) => void;
+  resolve: (value: unknown) => void;
   reject: (error: Error) => void;
   timer: NodeJS.Timeout;
 };
@@ -243,7 +243,11 @@ export class ConnectionManager {
         reject(new Error(`RPC timeout: ${method} (${timeout}ms)`));
       }, timeout);
 
-      this.pendingRPCs.set(id, { resolve, reject, timer });
+      this.pendingRPCs.set(id, {
+        resolve: (value) => resolve(value as T),
+        reject,
+        timer,
+      });
 
       ws.send(
         JSON.stringify({
@@ -297,7 +301,10 @@ export class ConnectionManager {
   // Internal helpers
   // ---------------------------------------------------------------------------
 
-  private removeFromIndexes(connectionId: string, entry: ConnectionEntry): void {
+  private removeFromIndexes(
+    connectionId: string,
+    entry: ConnectionEntry,
+  ): void {
     // Remove from user index
     const userSet = this.userIndex.get(entry.userId);
     if (userSet) {

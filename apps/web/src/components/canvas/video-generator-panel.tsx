@@ -1,4 +1,10 @@
 "use client";
+
+import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/data/transform";
+
+import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
 import { Label } from "@/components/ui/label";
 import {
   Popover,
@@ -21,6 +27,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -53,7 +60,7 @@ type VideoGeneratorPanelProps = {
   elementId: string;
   elementBounds: { x: number; y: number; width: number; height: number };
   data: VideoGeneratorData;
-  excalidrawApi: any;
+  excalidrawApi: ExcalidrawImperativeAPI;
   accessToken: string;
   canvasScrollZoom: { scrollX: number; scrollY: number; zoom: number };
   onClose: () => void;
@@ -150,7 +157,7 @@ export function VideoGeneratorPanel({
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = `${Math.min(ta.scrollHeight, 140)}px`;
+    ta.style.height = prompt ? `${Math.min(ta.scrollHeight, 140)}px` : "auto";
   }, [prompt]);
 
   // Calculate panel screen position from canvas coordinates
@@ -192,17 +199,21 @@ export function VideoGeneratorPanel({
     : ASPECT_RATIOS;
   const availableDurations: readonly number[] =
     currentModel?.limits?.allowedDurations ?? DURATIONS;
-  const resolutionOptions =
-    mode === "extend"
-      ? (["720p"] as const)
-      : supportedResolutions(currentModel);
+  const resolutionOptions = useMemo(
+    () =>
+      mode === "extend"
+        ? (["720p"] as const)
+        : supportedResolutions(currentModel),
+    [mode, currentModel],
+  );
   const durationLocked =
     mode === "extend" ||
     (isVeo &&
       (mode === "reference" || resolution === "1080p" || resolution === "4k"));
-  const durationOptions: readonly number[] = durationLocked
-    ? [8]
-    : availableDurations;
+  const durationOptions = useMemo<readonly number[]>(
+    () => (durationLocked ? [8] : availableDurations),
+    [durationLocked, availableDurations],
+  );
   const validInput =
     mode === "text" ||
     (mode === "frames" && (!!firstFrame || (isAgnes && !!lastFrame))) ||
@@ -229,12 +240,12 @@ export function VideoGeneratorPanel({
       ? duration
       : durationOptions.includes(8)
         ? 8
-        : durationOptions[0]!;
+        : (durationOptions[0] ?? 8);
     const nextResolution = resolutionOptions.includes(
       resolution as VideoResolution,
     )
       ? resolution
-      : resolutionOptions[0]!;
+      : (resolutionOptions[0] ?? "720p");
     if (nextDuration !== duration || nextResolution !== resolution) {
       setDuration(nextDuration);
       setResolution(nextResolution);
@@ -246,9 +257,8 @@ export function VideoGeneratorPanel({
   }, [
     duration,
     resolution,
-    durationLocked,
-    currentModel,
-    mode,
+    durationOptions,
+    resolutionOptions,
     excalidrawApi,
     elementId,
   ]);
@@ -417,15 +427,13 @@ export function VideoGeneratorPanel({
             title: prompt.trim().slice(0, 60),
             prompt: prompt.trim(),
           },
-        } as any,
+        } as unknown as ExcalidrawElementSkeleton,
       ]);
 
       // Replace generator placeholder with video embeddable element
       const elements = excalidrawApi
         .getSceneElements()
-        .map((el: any) =>
-          el.id === elementId ? { ...el, isDeleted: true } : el,
-        );
+        .map((el) => (el.id === elementId ? { ...el, isDeleted: true } : el));
       excalidrawApi.updateScene({
         elements: [...elements, ...newElements],
         captureUpdate: "IMMEDIATELY",

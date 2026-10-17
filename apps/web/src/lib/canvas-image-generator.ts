@@ -1,3 +1,11 @@
+import type {
+  ExcalidrawElement,
+  FileId,
+} from "@excalidraw/excalidraw/element/types";
+import type {
+  DataURL,
+  ExcalidrawImperativeAPI,
+} from "@excalidraw/excalidraw/types";
 import { getViewportCenter } from "./canvas-elements";
 
 // Aspect ratio to pixel dimensions mapping (at 1K base)
@@ -9,7 +17,11 @@ const RATIO_DIMENSIONS: Record<string, { w: number; h: number }> = {
   "3:4": { w: 768, h: 1024 },
 };
 
-export type ImageGeneratorStatus = "idle" | "generating" | "completed" | "error";
+export type ImageGeneratorStatus =
+  | "idle"
+  | "generating"
+  | "completed"
+  | "error";
 
 export type ImageGeneratorData = {
   type: "image-generator";
@@ -24,8 +36,7 @@ export type ImageGeneratorData = {
 
 function generateId(): string {
   return (
-    Math.random().toString(36).slice(2) +
-    Math.random().toString(36).slice(2)
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
   ).slice(0, 20);
 }
 
@@ -37,7 +48,7 @@ export function getDisplayDimensions(
   aspectRatio: string,
   displayMaxSize = 400,
 ): { width: number; height: number } {
-  const dims = RATIO_DIMENSIONS[aspectRatio] ?? RATIO_DIMENSIONS["1:1"]!;
+  const dims = RATIO_DIMENSIONS[aspectRatio] ?? { w: 1024, h: 1024 };
   const scale = Math.min(displayMaxSize / dims.w, displayMaxSize / dims.h);
   return {
     width: Math.round(dims.w * scale),
@@ -52,7 +63,7 @@ export function getGenerationDimensions(
   aspectRatio: string,
   quality: string,
 ): { width: number; height: number } {
-  const dims = RATIO_DIMENSIONS[aspectRatio] ?? RATIO_DIMENSIONS["1:1"]!;
+  const dims = RATIO_DIMENSIONS[aspectRatio] ?? { w: 1024, h: 1024 };
   const multiplier = quality === "ultra" ? 4 : quality === "hd" ? 2 : 1;
   return {
     width: dims.w * multiplier,
@@ -64,11 +75,10 @@ export function getGenerationDimensions(
  * Create an Excalidraw rectangle element that serves as an image generator placeholder.
  */
 export function createImageGeneratorElement(
-  api: {
-    getAppState: () => any;
-    getSceneElements: () => readonly any[];
-    updateScene: (scene: { elements: any[]; captureUpdate?: string }) => void;
-  },
+  api: Pick<
+    ExcalidrawImperativeAPI,
+    "getSceneElements" | "getAppState" | "updateScene"
+  >,
   options?: {
     aspectRatio?: string;
     model?: string;
@@ -120,7 +130,10 @@ export function createImageGeneratorElement(
   };
 
   api.updateScene({
-    elements: [...api.getSceneElements(), element],
+    elements: [
+      ...api.getSceneElements(),
+      element as unknown as ExcalidrawElement,
+    ],
     captureUpdate: "IMMEDIATELY",
   });
 
@@ -130,14 +143,18 @@ export function createImageGeneratorElement(
 /**
  * Check if an Excalidraw element is an image-generator placeholder.
  */
-export function isImageGeneratorElement(element: any): element is { customData: ImageGeneratorData } & Record<string, unknown> {
+export function isImageGeneratorElement(
+  element: Pick<ExcalidrawElement, "customData"> | null | undefined,
+): element is { customData: ImageGeneratorData } & Record<string, unknown> {
   return element?.customData?.type === "image-generator";
 }
 
 /**
  * Get the image-generator data from an element, or null if not an image-generator.
  */
-export function getImageGeneratorData(element: any): ImageGeneratorData | null {
+export function getImageGeneratorData(
+  element: Pick<ExcalidrawElement, "customData"> | null | undefined,
+): ImageGeneratorData | null {
   if (!isImageGeneratorElement(element)) return null;
   return element.customData as ImageGeneratorData;
 }
@@ -146,14 +163,11 @@ export function getImageGeneratorData(element: any): ImageGeneratorData | null {
  * Update the customData of an image-generator element.
  */
 export function updateImageGeneratorElement(
-  api: {
-    getSceneElements: () => readonly any[];
-    updateScene: (scene: { elements: any[]; captureUpdate?: string }) => void;
-  },
+  api: Pick<ExcalidrawImperativeAPI, "getSceneElements" | "updateScene">,
   elementId: string,
   updates: Partial<ImageGeneratorData>,
 ): void {
-  const elements = api.getSceneElements().map((el: any) => {
+  const elements = api.getSceneElements().map((el) => {
     if (el.id !== elementId || !isImageGeneratorElement(el)) return el;
     return {
       ...el,
@@ -170,15 +184,12 @@ export function updateImageGeneratorElement(
  * Resize an image-generator element when aspect ratio changes.
  */
 export function resizeImageGeneratorElement(
-  api: {
-    getSceneElements: () => readonly any[];
-    updateScene: (scene: { elements: any[]; captureUpdate?: string }) => void;
-  },
+  api: Pick<ExcalidrawImperativeAPI, "getSceneElements" | "updateScene">,
   elementId: string,
   aspectRatio: string,
 ): void {
   const { width, height } = getDisplayDimensions(aspectRatio);
-  const elements = api.getSceneElements().map((el: any) => {
+  const elements = api.getSceneElements().map((el) => {
     if (el.id !== elementId) return el;
     // Keep center position, adjust size
     const cx = el.x + el.width / 2;
@@ -202,13 +213,10 @@ export function resizeImageGeneratorElement(
  * Delete an image-generator element from the canvas.
  */
 export function deleteImageGeneratorElement(
-  api: {
-    getSceneElements: () => readonly any[];
-    updateScene: (scene: { elements: any[]; captureUpdate?: string }) => void;
-  },
+  api: Pick<ExcalidrawImperativeAPI, "getSceneElements" | "updateScene">,
   elementId: string,
 ): void {
-  const elements = api.getSceneElements().map((el: any) => {
+  const elements = api.getSceneElements().map((el) => {
     if (el.id !== elementId) return el;
     return { ...el, isDeleted: true };
   });

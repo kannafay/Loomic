@@ -1,9 +1,11 @@
 "use client";
 
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
 import { useEffect, useRef, useState } from "react";
 
 type CanvasEmptyHintProps = {
-  excalidrawApi: any;
+  excalidrawApi: ExcalidrawImperativeAPI | null;
   onOpenChat: () => void;
 };
 
@@ -28,8 +30,8 @@ export function CanvasEmptyHint({
         setHasElements(false);
         return;
       }
-      const elements: any[] = excalidrawApi.getSceneElements?.() ?? [];
-      setHasElements(elements.some((el: any) => !el.isDeleted));
+      const elements = excalidrawApi.getSceneElements?.() ?? [];
+      setHasElements(elements.some((el) => !el.isDeleted));
     }
 
     check();
@@ -64,9 +66,7 @@ export function CanvasEmptyHint({
             // Sidebar might animate open; retry once more.
             setTimeout(() => {
               document
-                .querySelector<HTMLTextAreaElement>(
-                  "textarea[data-chat-input]",
-                )
+                .querySelector<HTMLTextAreaElement>("textarea[data-chat-input]")
                 ?.focus();
             }, 100);
           }

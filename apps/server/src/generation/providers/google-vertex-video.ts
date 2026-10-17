@@ -1,3 +1,4 @@
+import type { GenerateVideosOperation } from "@google/genai";
 import { GoogleGenAI } from "@google/genai";
 import { GoogleAuth } from "google-auth-library";
 
@@ -7,7 +8,7 @@ import type {
   VideoModelInfo,
   VideoProvider,
 } from "../types.js";
-import { fetchAsBase64, GenerationError } from "../utils.js";
+import { GenerationError, fetchAsBase64 } from "../utils.js";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -93,8 +94,18 @@ const GOOGLE_VERTEX_VIDEO_MODELS: readonly VideoModelInfo[] = [
     description:
       "Google flagship via Vertex AI. T2V + I2V, native audio, reference images, 4–8s, up to 4K. Best quality.",
     iconUrl: ICON_GOOGLE,
-    capabilities: { textToVideo: true, imageToVideo: true, videoToVideo: false, audio: true },
-    limits: { maxDuration: 8, allowedDurations: [4, 6, 8], maxResolution: "2160p", maxInputImages: 1 },
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: true,
+      videoToVideo: false,
+      audio: true,
+    },
+    limits: {
+      maxDuration: 8,
+      allowedDurations: [4, 6, 8],
+      maxResolution: "2160p",
+      maxInputImages: 1,
+    },
   },
   {
     id: "google-vertex/veo-3.1-fast-generate-001",
@@ -102,8 +113,18 @@ const GOOGLE_VERTEX_VIDEO_MODELS: readonly VideoModelInfo[] = [
     description:
       "Speed-optimized Veo 3.1 via Vertex AI. T2V + I2V, native audio, 4–8s, up to 4K. Faster generation.",
     iconUrl: ICON_GOOGLE,
-    capabilities: { textToVideo: true, imageToVideo: true, videoToVideo: false, audio: true },
-    limits: { maxDuration: 8, allowedDurations: [4, 6, 8], maxResolution: "2160p", maxInputImages: 1 },
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: true,
+      videoToVideo: false,
+      audio: true,
+    },
+    limits: {
+      maxDuration: 8,
+      allowedDurations: [4, 6, 8],
+      maxResolution: "2160p",
+      maxInputImages: 1,
+    },
   },
   {
     id: "google-vertex/veo-3.1-lite-generate-001",
@@ -111,8 +132,18 @@ const GOOGLE_VERTEX_VIDEO_MODELS: readonly VideoModelInfo[] = [
     description:
       "Lightweight Veo 3.1 via Vertex AI. T2V + I2V, native audio, 4–8s, up to 1080p. Most cost-effective 3.1 variant.",
     iconUrl: ICON_GOOGLE,
-    capabilities: { textToVideo: true, imageToVideo: true, videoToVideo: false, audio: true },
-    limits: { maxDuration: 8, allowedDurations: [4, 6, 8], maxResolution: "1080p", maxInputImages: 1 },
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: true,
+      videoToVideo: false,
+      audio: true,
+    },
+    limits: {
+      maxDuration: 8,
+      allowedDurations: [4, 6, 8],
+      maxResolution: "1080p",
+      maxInputImages: 1,
+    },
   },
   {
     id: "google-vertex/veo-3.0-generate-001",
@@ -120,8 +151,18 @@ const GOOGLE_VERTEX_VIDEO_MODELS: readonly VideoModelInfo[] = [
     description:
       "Stable Veo 3 via Vertex AI. T2V + I2V, native audio, reference images, up to 4K. Production-ready.",
     iconUrl: ICON_GOOGLE,
-    capabilities: { textToVideo: true, imageToVideo: true, videoToVideo: false, audio: true },
-    limits: { maxDuration: 8, allowedDurations: [4, 6, 8], maxResolution: "2160p", maxInputImages: 1 },
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: true,
+      videoToVideo: false,
+      audio: true,
+    },
+    limits: {
+      maxDuration: 8,
+      allowedDurations: [4, 6, 8],
+      maxResolution: "2160p",
+      maxInputImages: 1,
+    },
   },
   {
     id: "google-vertex/veo-3.0-fast-generate-001",
@@ -129,8 +170,18 @@ const GOOGLE_VERTEX_VIDEO_MODELS: readonly VideoModelInfo[] = [
     description:
       "Speed-optimized Veo 3 via Vertex AI. T2V + I2V, native audio, up to 4K. Faster than Veo 3.",
     iconUrl: ICON_GOOGLE,
-    capabilities: { textToVideo: true, imageToVideo: true, videoToVideo: false, audio: true },
-    limits: { maxDuration: 8, allowedDurations: [4, 6, 8], maxResolution: "2160p", maxInputImages: 1 },
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: true,
+      videoToVideo: false,
+      audio: true,
+    },
+    limits: {
+      maxDuration: 8,
+      allowedDurations: [4, 6, 8],
+      maxResolution: "2160p",
+      maxInputImages: 1,
+    },
   },
   {
     id: "google-vertex/veo-2.0-generate-001",
@@ -138,8 +189,18 @@ const GOOGLE_VERTEX_VIDEO_MODELS: readonly VideoModelInfo[] = [
     description:
       "Stable Veo 2 via Vertex AI. T2V + I2V, 720p only, silent (no audio), 5–8s. Most cost-effective.",
     iconUrl: ICON_GOOGLE,
-    capabilities: { textToVideo: true, imageToVideo: true, videoToVideo: false, audio: false },
-    limits: { maxDuration: 8, allowedDurations: [5, 6, 7, 8], maxResolution: "720p", maxInputImages: 1 },
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: true,
+      videoToVideo: false,
+      audio: false,
+    },
+    limits: {
+      maxDuration: 8,
+      allowedDurations: [5, 6, 7, 8],
+      maxResolution: "720p",
+      maxInputImages: 1,
+    },
   },
 ];
 
@@ -205,7 +266,9 @@ export class GoogleVertexVideoProvider implements VideoProvider {
     this.auth = new GoogleAuth({
       scopes: ["https://www.googleapis.com/auth/cloud-platform"],
     });
-    console.log(`[google-vertex-video] Initialized Vertex AI provider (project=${config.project}, location=${config.location})`);
+    console.log(
+      `[google-vertex-video] Initialized Vertex AI provider (project=${config.project}, location=${config.location})`,
+    );
   }
 
   async generate(params: VideoGenerateParams): Promise<GeneratedVideo> {
@@ -251,12 +314,15 @@ export class GoogleVertexVideoProvider implements VideoProvider {
     // Build image input for image-to-video.
     let image: { imageBytes: string; mimeType: string } | undefined;
     if (params.inputImages?.length) {
-      const first = await fetchAsBase64(PROVIDER_NAME, params.inputImages[0]!);
+      const first = await fetchAsBase64(
+        PROVIDER_NAME,
+        params.inputImages[0] ?? "",
+      );
       image = { imageBytes: first.data, mimeType: first.mimeType };
     }
 
     // Start the asynchronous generation operation.
-    let operation;
+    let operation: GenerateVideosOperation;
     try {
       operation = await this.client.models.generateVideos({
         model: apiModel,
@@ -271,8 +337,12 @@ export class GoogleVertexVideoProvider implements VideoProvider {
       });
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      console.error(`[google-vertex-video] generateVideos API error:`, detail);
-      if (detail.includes("PERMISSION_DENIED") || detail.includes("403") || detail.includes("SERVICE_DISABLED")) {
+      console.error("[google-vertex-video] generateVideos API error:", detail);
+      if (
+        detail.includes("PERMISSION_DENIED") ||
+        detail.includes("403") ||
+        detail.includes("SERVICE_DISABLED")
+      ) {
         throw new GenerationError(
           PROVIDER_NAME,
           "api_error",
@@ -303,7 +373,7 @@ export class GoogleVertexVideoProvider implements VideoProvider {
         });
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
-        console.error(`[google-vertex-video] polling error:`, detail);
+        console.error("[google-vertex-video] polling error:", detail);
         throw new GenerationError(
           PROVIDER_NAME,
           "api_error",
@@ -314,7 +384,10 @@ export class GoogleVertexVideoProvider implements VideoProvider {
 
     // Check for operation-level errors.
     if (operation.error) {
-      console.error(`[google-vertex-video] operation error:`, JSON.stringify(operation.error));
+      console.error(
+        "[google-vertex-video] operation error:",
+        JSON.stringify(operation.error),
+      );
       throw new GenerationError(
         PROVIDER_NAME,
         "api_error",
@@ -347,16 +420,17 @@ export class GoogleVertexVideoProvider implements VideoProvider {
       );
     }
 
-    const generatedVideo = response.generatedVideos[0]!;
-    const video = generatedVideo.video;
+    const video = response.generatedVideos[0]?.video;
     const mimeType = video?.mimeType ?? "video/mp4";
     const { width, height } = resolutionToDimensions(resolution, aspectRatio);
 
     // Vertex AI returns videoBytes (base64 inline data) instead of a download URI.
     // Developer API returns a URI; Vertex AI returns the raw bytes directly.
     if (video?.videoBytes) {
-      const sizeKB = Math.round(video.videoBytes.length * 0.75 / 1024);
-      console.log(`[google-vertex-video] Got inline video: ${mimeType}, ~${sizeKB}KB`);
+      const sizeKB = Math.round((video.videoBytes.length * 0.75) / 1024);
+      console.log(
+        `[google-vertex-video] Got inline video: ${mimeType}, ~${sizeKB}KB`,
+      );
       const dataUri = `data:${mimeType};base64,${video.videoBytes}`;
       return { url: dataUri, mimeType, width, height, durationSeconds };
     }
@@ -374,10 +448,19 @@ export class GoogleVertexVideoProvider implements VideoProvider {
         const separator = video.uri.includes("?") ? "&" : "?";
         authenticatedUrl = `${video.uri}${separator}access_token=${accessToken}`;
       } catch (err) {
-        console.error(`[google-vertex-video] Failed to get access token for video download:`, err);
+        console.error(
+          "[google-vertex-video] Failed to get access token for video download:",
+          err,
+        );
         authenticatedUrl = video.uri;
       }
-      return { url: authenticatedUrl, mimeType, width, height, durationSeconds };
+      return {
+        url: authenticatedUrl,
+        mimeType,
+        width,
+        height,
+        durationSeconds,
+      };
     }
 
     throw new GenerationError(
@@ -391,7 +474,8 @@ export class GoogleVertexVideoProvider implements VideoProvider {
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 function clampToNearest(requested: number, allowed: number[]): number {
-  let closest = allowed[0]!;
+  let closest = allowed[0];
+  if (closest === undefined) throw new Error("Model has no allowed durations");
   let minDiff = Math.abs(requested - closest);
   for (const v of allowed) {
     const diff = Math.abs(requested - v);

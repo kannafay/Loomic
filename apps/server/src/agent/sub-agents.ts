@@ -2,7 +2,9 @@ import type { SubAgent } from "deepagents";
 
 import { createVideoGenerateTool } from "./tools/video-generate.js";
 
-export function createVideoSubAgent(deps?: Parameters<typeof createVideoGenerateTool>[0]): SubAgent {
+export function createVideoSubAgent(
+  deps?: Parameters<typeof createVideoGenerateTool>[0],
+): SubAgent {
   return {
     name: "video_generate",
     description:

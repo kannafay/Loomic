@@ -1,4 +1,5 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -222,8 +223,12 @@ export function VideoGenerationInputs({
                 return;
               }
               onReferences(nextImages);
-            } else if (target === "first") onFirstFrame(images[0]!);
-            else onLastFrame(images[0]!);
+            } else {
+              const image = images[0];
+              if (!image) return;
+              if (target === "first") onFirstFrame(image);
+              else onLastFrame(image);
+            }
           } catch {
             onError("图片读取失败，请重新选择。");
           }

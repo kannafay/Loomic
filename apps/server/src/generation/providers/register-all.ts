@@ -81,7 +81,11 @@ export function registerAllProviders(env: ServerEnv): void {
   }
 
   if (env.agnesApiKey) {
-    registerImageProvider(new AgnesImageProvider(env.agnesApiKey, env.agnesApiBase));
-    registerVideoProvider(new AgnesVideoProvider(env.agnesApiKey, env.agnesApiBase));
+    registerImageProvider(
+      new AgnesImageProvider(env.agnesApiKey, env.agnesApiBase),
+    );
+    registerVideoProvider(
+      new AgnesVideoProvider(env.agnesApiKey, env.agnesApiBase),
+    );
   }
 }

@@ -129,10 +129,7 @@ const EXAMPLE_COPY: Record<string, readonly [string, string]> = {
     "把静态广告变成吸睛动画",
     "让香水产品动起来，同时保持背景完全静止。",
   ],
-  "Have your model walk.": [
-    "让模特走起来",
-    "让模特行走，镜头跟随她移动。",
-  ],
+  "Have your model walk.": ["让模特走起来", "让模特行走，镜头跟随她移动。"],
   "Generate shortform videos with Sora, sound on.": [
     "用 Sora 生成有声短视频",
     "为提供的产品制作竖屏短广告，强调生活方式与氛围，呈现带颗粒感的柯达胶片质感。蒙太奇展示极简家具细节、鲜花、黄油吐司早餐、透过窗帘的阳光，以及人物向空气中喷洒香水的镜头。搭配柔和的低保真音乐、低饱和暖色调与流畅无缝的剪辑。",
@@ -148,14 +145,38 @@ const EXAMPLE_COPY: Record<string, readonly [string, string]> = {
 };
 
 const DISCOVERY_COPY: Record<string, readonly [string, string]> = {
-  "The ART & Cultural Arts Center": ["文化艺术中心品牌设计", "请以文化艺术中心为灵感，为我做一套品牌探索。输出品牌关键词、主视觉方向、海报延展和社交媒体视觉提案，整体气质要现代、文化感强、适合艺术活动传播。"],
-  "Vintage Car Poster": ["复古汽车海报", "围绕复古汽车主题，帮我设计一组海报。需要包含主海报、社交媒体方图版本和标题排版建议，整体风格偏复古、胶片感、适合活动宣传。"],
-  "Cat Tarot Cards": ["猫咪塔罗牌", "以猫咪塔罗牌为主题，帮我扩展一套插画系列。请给出角色设定、牌面视觉语言、配色建议和可延展的周边方向。"],
-  "Fallout-themed cake shop website.": ["末日废土风蛋糕店网站", "以末日废土风蛋糕店为灵感，帮我设计一个官网。输出首页信息架构、首屏视觉、商品卡片样式和核心配色建议。"],
-  "My Creepy Clown Avatar in Abandoned Circus Park": ["废弃马戏团中的诡异小丑", "围绕废弃马戏团中的诡异小丑，帮我做一套角色设计。包含角色设定、表情变化、服装元素和场景氛围建议。"],
-  "Mixtapes Emotions !": ["音乐混剪与情绪", "围绕音乐混剪与情绪，帮我做一组音乐情绪短片分镜。需要拆出镜头节奏、情绪转场、标题卡和视觉风格建议，适合做 15 到 30 秒的短视频。"],
-  "Product Visualization - Robot Hand": ["机械手产品视觉", "围绕机械手这个概念，帮我设计一组未来感产品视觉。请给出产品卖点表达、主视觉构图、材质方向和电商展示图思路。"],
-  "Building a new website and learning how to AI": ["用 AI 探索建筑工作室网站", "请运用 AI 设计思路，帮我设计一个面向建筑工作室的网站概念。输出网站结构、首页视觉、项目展示模块和整体建筑感风格建议。"],
+  "The ART & Cultural Arts Center": [
+    "文化艺术中心品牌设计",
+    "请以文化艺术中心为灵感，为我做一套品牌探索。输出品牌关键词、主视觉方向、海报延展和社交媒体视觉提案，整体气质要现代、文化感强、适合艺术活动传播。",
+  ],
+  "Vintage Car Poster": [
+    "复古汽车海报",
+    "围绕复古汽车主题，帮我设计一组海报。需要包含主海报、社交媒体方图版本和标题排版建议，整体风格偏复古、胶片感、适合活动宣传。",
+  ],
+  "Cat Tarot Cards": [
+    "猫咪塔罗牌",
+    "以猫咪塔罗牌为主题，帮我扩展一套插画系列。请给出角色设定、牌面视觉语言、配色建议和可延展的周边方向。",
+  ],
+  "Fallout-themed cake shop website.": [
+    "末日废土风蛋糕店网站",
+    "以末日废土风蛋糕店为灵感，帮我设计一个官网。输出首页信息架构、首屏视觉、商品卡片样式和核心配色建议。",
+  ],
+  "My Creepy Clown Avatar in Abandoned Circus Park": [
+    "废弃马戏团中的诡异小丑",
+    "围绕废弃马戏团中的诡异小丑，帮我做一套角色设计。包含角色设定、表情变化、服装元素和场景氛围建议。",
+  ],
+  "Mixtapes Emotions !": [
+    "音乐混剪与情绪",
+    "围绕音乐混剪与情绪，帮我做一组音乐情绪短片分镜。需要拆出镜头节奏、情绪转场、标题卡和视觉风格建议，适合做 15 到 30 秒的短视频。",
+  ],
+  "Product Visualization - Robot Hand": [
+    "机械手产品视觉",
+    "围绕机械手这个概念，帮我设计一组未来感产品视觉。请给出产品卖点表达、主视觉构图、材质方向和电商展示图思路。",
+  ],
+  "Building a new website and learning how to AI": [
+    "用 AI 探索建筑工作室网站",
+    "请运用 AI 设计思路，帮我设计一个面向建筑工作室的网站概念。输出网站结构、首页视觉、项目展示模块和整体建筑感风格建议。",
+  ],
 };
 
 export function localizeHomeExample(title: string, prompt: string) {
@@ -169,19 +190,47 @@ export function localizeHomeDiscovery(title: string, prompt: string) {
 }
 
 const MENTION_LABELS: Record<string, string> = {
-  Chair: "椅子", Nightstand: "床头柜", Beanbag: "懒人沙发", Table: "桌子",
-  Stool: "凳子", Image: "图片", Logo: "标志", Necklace: "项链", Interior: "室内空间",
-  Board: "立牌", Reference: "参考图", Earrings: "耳环", Cat: "猫咪", Spoon: "勺子",
-  Umbrella: "雨伞", Egg: "鸡蛋", Cherry: "樱桃", Hat: "帽子", Box: "盒子",
-  Bunny: "兔子", Avocado: "牛油果", Model: "模特", Sweater: "毛衣",
-  "Front View": "正面视图", Ceramic: "陶瓷", Sofa: "沙发", Perfume: "香水",
-  Ring: "戒指", Poster: "海报", "Princess Elara": "艾拉拉公主",
-  "Forest Sprite": "森林精灵", "Forest Clearing": "林间空地",
+  Chair: "椅子",
+  Nightstand: "床头柜",
+  Beanbag: "懒人沙发",
+  Table: "桌子",
+  Stool: "凳子",
+  Image: "图片",
+  Logo: "标志",
+  Necklace: "项链",
+  Interior: "室内空间",
+  Board: "立牌",
+  Reference: "参考图",
+  Earrings: "耳环",
+  Cat: "猫咪",
+  Spoon: "勺子",
+  Umbrella: "雨伞",
+  Egg: "鸡蛋",
+  Cherry: "樱桃",
+  Hat: "帽子",
+  Box: "盒子",
+  Bunny: "兔子",
+  Avocado: "牛油果",
+  Model: "模特",
+  Sweater: "毛衣",
+  "Front View": "正面视图",
+  Ceramic: "陶瓷",
+  Sofa: "沙发",
+  Perfume: "香水",
+  Ring: "戒指",
+  Poster: "海报",
+  "Princess Elara": "艾拉拉公主",
+  "Forest Sprite": "森林精灵",
+  "Forest Clearing": "林间空地",
 };
 
-export function localizeHomeInputMentions<T extends { type: string; name: string }>(title: string, mentions: T[]): T[] {
+export function localizeHomeInputMentions<
+  T extends { type: string; name: string },
+>(title: string, mentions: T[]): T[] {
   if (!EXAMPLE_COPY[title]) return mentions;
-  return mentions.map((mention) => mention.type === "image"
-    ? { ...mention, name: MENTION_LABELS[mention.name] ?? mention.name }
-    : mention);
+  return mentions.map((mention) =>
+    mention.type === "image"
+      ? { ...mention, name: MENTION_LABELS[mention.name] ?? mention.name }
+      : mention,
+  );
 }

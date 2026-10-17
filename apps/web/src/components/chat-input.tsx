@@ -1,4 +1,5 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -113,7 +114,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       if (!textarea) return;
       textarea.style.height = "auto";
       const maxH = 240; // max-h-60
-      textarea.style.height = `${Math.min(textarea.scrollHeight, maxH)}px`;
+      textarea.style.height = value
+        ? `${Math.min(textarea.scrollHeight, maxH)}px`
+        : "auto";
       textarea.style.overflowY =
         textarea.scrollHeight > maxH ? "auto" : "hidden";
     }, [value]);
@@ -227,6 +230,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                 {selectionImageCount > 0 && (
                   <span className="flex items-center gap-1">
                     <svg
+                      aria-hidden="true"
                       className="h-3 w-3 shrink-0"
                       viewBox="0 0 24 24"
                       fill="none"
@@ -246,6 +250,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                 {selectionShapeCount > 0 && (
                   <span className="flex items-center gap-1">
                     <svg
+                      aria-hidden="true"
                       className="h-3 w-3 shrink-0"
                       viewBox="0 0 24 24"
                       fill="none"
@@ -286,6 +291,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     {mention.label}
                   </span>
                   <svg
+                    aria-hidden="true"
                     className="h-3 w-3 text-muted-foreground"
                     viewBox="0 0 24 24"
                     fill="none"
@@ -332,6 +338,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     title="添加图片附件"
                   >
                     <svg
+                      aria-hidden="true"
                       className="h-[14px] w-[14px]"
                       viewBox="0 0 24 24"
                       fill="currentColor"
@@ -363,6 +370,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     }`}
                   >
                     <svg
+                      aria-hidden="true"
                       className="h-[14px] w-[14px]"
                       viewBox="0 0 24 24"
                       fill="currentColor"
@@ -411,6 +419,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                 </svg>
               ) : (
                 <svg
+                  aria-hidden="true"
                   className="h-[14px] w-[14px]"
                   viewBox="0 0 14 14"
                   fill="none"

@@ -1,20 +1,24 @@
 "use client";
 
-import { getPlanLabel, getBillingPeriodLabel, getUserFacingError } from "@/lib/locale";
-
-import { useCallback, useState } from "react";
-import Link from "next/link";
 import {
+  getBillingPeriodLabel,
+  getPlanLabel,
+  getUserFacingError,
+} from "@/lib/locale";
+
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  AlertTriangle,
   CreditCard,
   Crown,
   ExternalLink,
   Loader2,
-  AlertTriangle,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { useCallback, useState } from "react";
 
-import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
+import { useSubscription } from "@/hooks/use-subscription";
 
 export function BillingSection() {
   const { subscription, loading, error, cancel } = useSubscription();
@@ -29,9 +33,7 @@ export function BillingSection() {
       await cancel();
       setCancelConfirmOpen(false);
     } catch (err) {
-      setCancelError(
-        getUserFacingError(err, "取消订阅失败，请重试。"),
-      );
+      setCancelError(getUserFacingError(err, "取消订阅失败，请重试。"));
     } finally {
       setCancelling(false);
     }
@@ -157,9 +159,7 @@ export function BillingSection() {
               </p>
 
               {cancelError && (
-                <p className="mt-3 text-sm text-destructive">
-                  {cancelError}
-                </p>
+                <p className="mt-3 text-sm text-destructive">{cancelError}</p>
               )}
 
               <div className="mt-5 flex justify-end gap-2">

@@ -1,5 +1,9 @@
 "use client";
 
+import type { BinaryFileData } from "@excalidraw/excalidraw/types";
+
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
 import {
   Copy,
   FolderOpen,
@@ -15,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 
 import { LoomicLogo } from "@/components/icons/loomic-logo";
+import { useToast } from "@/components/toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,21 +29,19 @@ import {
   DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useCreateProject } from "@/hooks/use-create-project";
 import {
   createExcalidrawImageElement,
   getViewportCenter,
   scaleToFit,
 } from "@/lib/canvas-elements";
 import { deleteProject } from "@/lib/server-api";
-import { useToast } from "@/components/toast";
-import { useCreateProject } from "@/hooks/use-create-project";
 
 interface CanvasLogoMenuProps {
   accessToken: string;
   projectId: string;
   canvasId: string;
-  // biome-ignore lint/suspicious/noExplicitAny: Excalidraw API has no public type definition
-  excalidrawApi: any | null;
+  excalidrawApi: ExcalidrawImperativeAPI | null;
 }
 
 function dispatchKeyToExcalidraw(
@@ -85,14 +88,14 @@ export function CanvasLogoMenu({
       appState.selectedElementIds ?? {};
     const allElements = excalidrawApi.getSceneElements();
     const selected = allElements.filter(
-      (el: any) => selectedIds[el.id] && !el.isDeleted,
+      (el) => selectedIds[el.id] && !el.isDeleted,
     );
 
     if (!selected.length) return;
 
     const OFFSET = 10;
-    const newSelectedIds: Record<string, boolean> = {};
-    const clones = selected.map((el: any) => {
+    const newSelectedIds: Record<string, true> = {};
+    const clones = selected.map((el) => {
       const newId = generateFileId();
       newSelectedIds[newId] = true;
       return { ...el, id: newId, x: el.x + OFFSET, y: el.y + OFFSET };
@@ -135,9 +138,10 @@ export function CanvasLogoMenu({
 
           excalidrawApi.addFiles([
             {
-              id: fileId,
-              dataURL,
-              mimeType: file.type || "image/png",
+              id: fileId as BinaryFileData["id"],
+              dataURL: dataURL as BinaryFileData["dataURL"],
+              mimeType: (file.type ||
+                "image/png") as BinaryFileData["mimeType"],
               created: Date.now(),
             },
           ]);

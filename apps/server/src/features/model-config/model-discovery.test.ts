@@ -91,8 +91,8 @@ describe("provider model discovery", () => {
       "/gemini/v1beta/models",
       "/gemini/v1beta/models",
     ]);
-    expect(urls[0]!.searchParams.get("pageSize")).toBe("1000");
-    expect(urls[1]!.searchParams.get("pageToken")).toBe("next/page?token");
+    expect(urls[0]?.searchParams.get("pageSize")).toBe("1000");
+    expect(urls[1]?.searchParams.get("pageToken")).toBe("next/page?token");
     expect(urls.some((url) => String(url).includes(provider.apiKey))).toBe(
       false,
     );
@@ -101,7 +101,7 @@ describe("provider model discovery", () => {
       ["veo-3.1-generate-preview", "video"],
       ["gemini-2.5-flash-image", "image"],
     ]);
-    expect(result.models[0]!.name).toBe("Gemini Flash");
+    expect(result.models[0]?.name).toBe("Gemini Flash");
   });
   it.each([
     "https://provider.example/anthropic",
@@ -132,8 +132,8 @@ describe("provider model discovery", () => {
         baseUrl,
         protocol: "anthropic",
       });
-      expect(urls[1]!.pathname).toBe("/anthropic/v1/models");
-      expect(urls[1]!.searchParams.get("after_id")).toBe("claude-first");
+      expect(urls[1]?.pathname).toBe("/anthropic/v1/models");
+      expect(urls[1]?.searchParams.get("after_id")).toBe("claude-first");
       expect(result.models).toHaveLength(2);
       expect(result.models[0]).toMatchObject({
         name: "Claude First",
@@ -163,7 +163,7 @@ describe("provider model discovery", () => {
       "image",
       "video",
     ]);
-    expect(result.models[1]!.name).toBe("Agnes Image 2.5 Flash");
+    expect(result.models[1]?.name).toBe("Agnes Image 2.5 Flash");
   });
   it.each([
     [401, "鉴权失败"],

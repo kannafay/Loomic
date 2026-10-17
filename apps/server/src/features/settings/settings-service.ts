@@ -1,6 +1,9 @@
 import type { WorkspaceSettings } from "@loomic/shared";
 
-import type { AuthenticatedUser, UserSupabaseClient } from "../../supabase/user.js";
+import type {
+  AuthenticatedUser,
+  UserSupabaseClient,
+} from "../../supabase/user.js";
 
 const FALLBACK_MODEL = "gpt-5.4-mini";
 
@@ -64,24 +67,28 @@ export function createSettingsService(options: {
 
       const saved = data?.default_model;
       if (options.resolveModel) {
-        try { return { defaultModel: await options.resolveModel(saved ?? undefined) }; }
-        catch { return { defaultModel: await options.resolveModel() }; }
+        try {
+          return {
+            defaultModel: await options.resolveModel(saved ?? undefined),
+          };
+        } catch {
+          return { defaultModel: await options.resolveModel() };
+        }
       }
       return { defaultModel: saved ?? defaultModel };
     },
 
     async updateWorkspaceSettings(user, workspaceId, settings) {
-      if (options.resolveModel) await options.resolveModel(settings.defaultModel);
+      if (options.resolveModel)
+        await options.resolveModel(settings.defaultModel);
       const client = options.createUserClient(user.accessToken);
-      const { error } = await client
-        .from("workspace_settings")
-        .upsert(
-          {
-            workspace_id: workspaceId,
-            default_model: settings.defaultModel,
-          },
-          { onConflict: "workspace_id" },
-        );
+      const { error } = await client.from("workspace_settings").upsert(
+        {
+          workspace_id: workspaceId,
+          default_model: settings.defaultModel,
+        },
+        { onConflict: "workspace_id" },
+      );
 
       if (error) {
         throw new SettingsServiceError(

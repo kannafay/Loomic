@@ -13,18 +13,20 @@ export function HomeProjectsSkeleton() {
       </div>
 
       {/* Project card skeletons */}
-      {Array.from({ length: 4 }, (_, i) => (
-        <div
-          key={i}
-          className="aspect-[286/208] rounded-lg bg-card p-2 shadow-card sm:p-3"
-        >
-          <Skeleton className="aspect-[395/227] w-full rounded-lg" />
-          <div className="mt-2 space-y-1 sm:mt-3 sm:space-y-1.5">
-            <Skeleton className="h-3 w-3/4 sm:h-3.5" />
-            <Skeleton className="h-2 w-1/2 sm:h-2.5" />
+      {["placeholder-1", "placeholder-2", "placeholder-3", "placeholder-4"].map(
+        (placeholderId) => (
+          <div
+            key={placeholderId}
+            className="aspect-[286/208] rounded-lg bg-card p-2 shadow-card sm:p-3"
+          >
+            <Skeleton className="aspect-[395/227] w-full rounded-lg" />
+            <div className="mt-2 space-y-1 sm:mt-3 sm:space-y-1.5">
+              <Skeleton className="h-3 w-3/4 sm:h-3.5" />
+              <Skeleton className="h-2 w-1/2 sm:h-2.5" />
+            </div>
           </div>
-        </div>
-      ))}
+        ),
+      )}
     </div>
   );
 }

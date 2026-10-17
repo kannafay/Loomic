@@ -56,7 +56,11 @@ export class OpenAIImageProvider implements ImageProvider {
   readonly models: readonly ModelInfo[];
   private client: OpenAI;
 
-  constructor(apiKey: string, baseURL?: string, models: readonly ModelInfo[] = OPENAI_IMAGE_MODELS) {
+  constructor(
+    apiKey: string,
+    baseURL?: string,
+    models: readonly ModelInfo[] = OPENAI_IMAGE_MODELS,
+  ) {
     this.models = models;
     this.client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
   }

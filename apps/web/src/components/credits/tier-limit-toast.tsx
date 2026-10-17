@@ -1,10 +1,12 @@
-// @credits-system — Tier limit toast notifications: concurrency, model access, and resolution limits
 "use client";
+
+// @credits-system — Tier limit toast notifications: concurrency, model access, and resolution limits
 
 import { getUserFacingError } from "@/lib/locale";
 
 import { AnimatePresence, motion } from "framer-motion";
 import { Lock, Maximize2, Timer, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import {
   createContext,
   useCallback,
@@ -16,7 +18,6 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
 
 // ---------------------------------------------------------------------------
 // Toast config per error code
@@ -79,8 +80,9 @@ interface TierLimitToastContextValue {
 // Context
 // ---------------------------------------------------------------------------
 
-const TierLimitToastContext =
-  createContext<TierLimitToastContextValue | null>(null);
+const TierLimitToastContext = createContext<TierLimitToastContextValue | null>(
+  null,
+);
 
 let nextToastId = 0;
 const MAX_VISIBLE = 3;
@@ -102,7 +104,14 @@ export function TierLimitToastProvider({ children }: { children: ReactNode }) {
       if (!VALID_CODES.has(error.code)) return;
       const id = nextToastId++;
       setToasts((prev) => {
-        const next = [...prev, { id, code: error.code as TierLimitCode, message: getUserFacingError(error) }];
+        const next = [
+          ...prev,
+          {
+            id,
+            code: error.code as TierLimitCode,
+            message: getUserFacingError(error),
+          },
+        ];
         // Keep only the most recent MAX_VISIBLE toasts
         return next.slice(-MAX_VISIBLE);
       });
@@ -130,7 +139,9 @@ export function TierLimitToastProvider({ children }: { children: ReactNode }) {
 export function useTierLimitToast(): TierLimitToastContextValue {
   const ctx = useContext(TierLimitToastContext);
   if (!ctx) {
-    throw new Error("useTierLimitToast must be used within TierLimitToastProvider");
+    throw new Error(
+      "useTierLimitToast must be used within TierLimitToastProvider",
+    );
   }
   return ctx;
 }
@@ -155,7 +166,11 @@ function ToastPortal({
     <div className="fixed right-4 top-4 z-[10000] flex flex-col gap-3">
       <AnimatePresence mode="popLayout">
         {toasts.map((t) => (
-          <TierToastItem key={t.id} toast={t} onDismiss={() => onDismiss(t.id)} />
+          <TierToastItem
+            key={t.id}
+            toast={t}
+            onDismiss={() => onDismiss(t.id)}
+          />
         ))}
       </AnimatePresence>
     </div>,
@@ -212,7 +227,9 @@ function TierToastItem({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-foreground">{config.title}</h4>
+              <h4 className="text-sm font-semibold text-foreground">
+                {config.title}
+              </h4>
               <button
                 type="button"
                 onClick={onDismiss}

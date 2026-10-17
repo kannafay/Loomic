@@ -1,7 +1,11 @@
 // @credits-system — Job creation routes with credit balance checks and tier enforcement
 import type { FastifyInstance, FastifyReply } from "fastify";
 
-import type { BackgroundJobStatus, BackgroundJobType, ImageQualityLevel } from "@loomic/shared";
+import type {
+  BackgroundJobStatus,
+  BackgroundJobType,
+  ImageQualityLevel,
+} from "@loomic/shared";
 import {
   applicationErrorResponseSchema,
   createImageJobRequestSchema,
@@ -12,21 +16,24 @@ import {
   unauthenticatedErrorResponseSchema,
 } from "@loomic/shared";
 
+import type { ViewerService } from "../features/bootstrap/ensure-user-foundation.js";
 import {
-  JobServiceError,
-  type JobService,
-} from "../features/jobs/job-service.js";
-import {
-  CreditServiceError,
   type CreditService,
+  CreditServiceError,
 } from "../features/credits/credit-service.js";
 import {
-  TierGuardError,
   type TierGuard,
+  TierGuardError,
 } from "../features/credits/tier-guard.js";
-import type { ViewerService } from "../features/bootstrap/ensure-user-foundation.js";
+import {
+  type JobService,
+  JobServiceError,
+} from "../features/jobs/job-service.js";
+import {
+  ModelConfigError,
+  type ModelConfigService,
+} from "../features/model-config/model-config-service.js";
 import type { RequestAuthenticator } from "../supabase/user.js";
-import { ModelConfigError, type ModelConfigService } from "../features/model-config/model-config-service.js";
 
 export async function registerJobRoutes(
   app: FastifyInstance,
@@ -50,19 +57,26 @@ export async function registerJobRoutes(
 
       // Credit checks (skip if credit system not configured)
       const model = options.modelConfigService
-        ? (await options.modelConfigService.resolve("image", payload.model)).model.key
-        : payload.model ?? "black-forest-labs/flux-kontext-pro";
+        ? (await options.modelConfigService.resolve("image", payload.model))
+            .model.key
+        : (payload.model ?? "black-forest-labs/flux-kontext-pro");
       let creditsCost = 0;
       let quality: ImageQualityLevel = payload.quality ?? "hd";
 
       if (options.creditService && options.tierGuard) {
-        const sub = await options.creditService.getSubscription(viewer.workspace.id);
+        const sub = await options.creditService.getSubscription(
+          viewer.workspace.id,
+        );
         const planConfig = getPlanConfig(sub.plan);
         quality = payload.quality ?? planConfig.maxResolution;
         options.tierGuard.checkModelAccess(sub.plan, model);
         options.tierGuard.checkResolution(sub.plan, quality);
         await options.tierGuard.checkConcurrency(viewer.workspace.id, sub.plan);
-        creditsCost = options.tierGuard.calculateCreditCost(model, "image_generation", { quality });
+        creditsCost = options.tierGuard.calculateCreditCost(
+          model,
+          "image_generation",
+          { quality },
+        );
       }
 
       const job = await options.jobService.createJob(user, {
@@ -130,12 +144,15 @@ export async function registerJobRoutes(
 
       // Credit checks (skip if credit system not configured)
       const model = options.modelConfigService
-        ? (await options.modelConfigService.resolve("video", payload.model)).model.key
-        : payload.model ?? "wan-video/wan-2.6";
+        ? (await options.modelConfigService.resolve("video", payload.model))
+            .model.key
+        : (payload.model ?? "wan-video/wan-2.6");
       let creditsCost = 0;
 
       if (options.creditService && options.tierGuard) {
-        const sub = await options.creditService.getSubscription(viewer.workspace.id);
+        const sub = await options.creditService.getSubscription(
+          viewer.workspace.id,
+        );
         options.tierGuard.checkModelAccess(sub.plan, model);
         await options.tierGuard.checkConcurrency(viewer.workspace.id, sub.plan);
         creditsCost = options.tierGuard.calculateCreditCost(
@@ -163,17 +180,39 @@ export async function registerJobRoutes(
         payload: {
           prompt: payload.prompt,
           model,
-          ...(payload.duration !== undefined ? { duration: payload.duration } : {}),
-          ...(payload.resolution !== undefined ? { resolution: payload.resolution } : {}),
-          ...(payload.aspect_ratio !== undefined ? { aspect_ratio: payload.aspect_ratio } : {}),
-          ...(payload.input_images !== undefined ? { input_images: payload.input_images } : {}),
-          ...(payload.input_video !== undefined ? { input_video: payload.input_video } : {}),
-          ...(payload.first_frame !== undefined ? { first_frame: payload.first_frame } : {}),
-          ...(payload.last_frame !== undefined ? { last_frame: payload.last_frame } : {}),
-          ...(payload.reference_images !== undefined ? { reference_images: payload.reference_images } : {}),
-          ...(payload.reference_audios !== undefined ? { reference_audios: payload.reference_audios } : {}),
-          ...(payload.input_video_duration !== undefined ? { input_video_duration: payload.input_video_duration } : {}),
-          ...(payload.enable_audio !== undefined ? { enable_audio: payload.enable_audio } : {}),
+          ...(payload.duration !== undefined
+            ? { duration: payload.duration }
+            : {}),
+          ...(payload.resolution !== undefined
+            ? { resolution: payload.resolution }
+            : {}),
+          ...(payload.aspect_ratio !== undefined
+            ? { aspect_ratio: payload.aspect_ratio }
+            : {}),
+          ...(payload.input_images !== undefined
+            ? { input_images: payload.input_images }
+            : {}),
+          ...(payload.input_video !== undefined
+            ? { input_video: payload.input_video }
+            : {}),
+          ...(payload.first_frame !== undefined
+            ? { first_frame: payload.first_frame }
+            : {}),
+          ...(payload.last_frame !== undefined
+            ? { last_frame: payload.last_frame }
+            : {}),
+          ...(payload.reference_images !== undefined
+            ? { reference_images: payload.reference_images }
+            : {}),
+          ...(payload.reference_audios !== undefined
+            ? { reference_audios: payload.reference_audios }
+            : {}),
+          ...(payload.input_video_duration !== undefined
+            ? { input_video_duration: payload.input_video_duration }
+            : {}),
+          ...(payload.enable_audio !== undefined
+            ? { enable_audio: payload.enable_audio }
+            : {}),
         },
       });
 
@@ -227,7 +266,10 @@ export async function registerJobRoutes(
       if (!user) return sendUnauthenticated(reply);
 
       const query = request.query as { status?: string; job_type?: string };
-      const filters: { status?: BackgroundJobStatus; jobType?: BackgroundJobType } = {};
+      const filters: {
+        status?: BackgroundJobStatus;
+        jobType?: BackgroundJobType;
+      } = {};
       if (query.status) filters.status = query.status as BackgroundJobStatus;
       if (query.job_type) filters.jobType = query.job_type as BackgroundJobType;
       const jobs = await options.jobService.listJobs(user, filters);
@@ -276,7 +318,10 @@ function sendJobError(
   reply: FastifyReply,
   fallbackCode: JobErrorFallbackCode,
 ) {
-  if (error instanceof ModelConfigError) return reply.code(error.statusCode).send({ error: { code: error.code, message: error.message } });
+  if (error instanceof ModelConfigError)
+    return reply
+      .code(error.statusCode)
+      .send({ error: { code: error.code, message: error.message } });
   if (error instanceof JobServiceError) {
     return reply.code(error.statusCode).send(
       applicationErrorResponseSchema.parse({

@@ -1,4 +1,5 @@
 "use client";
+
 import { Textarea } from "@/components/ui/textarea";
 
 import { FileText, Plus, X } from "lucide-react";
@@ -101,14 +102,17 @@ export function CreateSkillDialog({
   const [category, setCategory] = useState<SkillCategory>("custom");
   const [skillContent, setSkillContent] = useState("");
   const [files, setFiles] = useState<
-    Array<{ filePath: string; content: string }>
+    Array<{ id: string; filePath: string; content: string }>
   >([]);
   const [submitting, setSubmitting] = useState(false);
 
   // -- File management helpers --
 
   const addFile = useCallback(() => {
-    setFiles((prev) => [...prev, { filePath: "", content: "" }]);
+    setFiles((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), filePath: "", content: "" },
+    ]);
   }, []);
 
   const removeFile = useCallback((index: number) => {
@@ -146,9 +150,9 @@ export function CreateSkillDialog({
       if (!name.trim() || !description.trim() || !skillContent.trim()) return;
 
       // Only include files where both filePath and content are non-empty
-      const validFiles = files.filter(
-        (f) => f.filePath.trim() && f.content.trim(),
-      );
+      const validFiles = files
+        .filter((f) => f.filePath.trim() && f.content.trim())
+        .map(({ filePath, content }) => ({ filePath, content }));
 
       setSubmitting(true);
       try {
@@ -283,7 +287,7 @@ export function CreateSkillDialog({
 
                   return (
                     <div
-                      key={index}
+                      key={file.id}
                       className="relative rounded-lg border border-border bg-secondary/40 p-3 space-y-2"
                     >
                       {/* Remove button */}

@@ -9,7 +9,11 @@ import {
   ToolMessage as ToolMessageClass,
 } from "@langchain/core/messages";
 
-import { imageArtifactSchema, videoArtifactSchema } from "@loomic/shared";
+import {
+  imageArtifactSchema,
+  isRecord,
+  videoArtifactSchema,
+} from "@loomic/shared";
 import type { StreamEvent, ToolArtifact } from "@loomic/shared";
 
 import { sanitizeErrorForClient } from "../utils/error-sanitizer.js";
@@ -214,11 +218,17 @@ export async function* adaptDeepAgentStream(
           timestamp: now(),
           toolCallId,
           toolName,
-          ...(toolInput ? { input: {
-            ...toolInput,
-            ...(typeof toolInput.model === "string" && options.modelNames?.[toolInput.model]
-              ? { modelDisplayName: options.modelNames[toolInput.model] } : {}),
-          } } : {}),
+          ...(toolInput
+            ? {
+                input: {
+                  ...toolInput,
+                  ...(typeof toolInput.model === "string" &&
+                  options.modelNames?.[toolInput.model]
+                    ? { modelDisplayName: options.modelNames[toolInput.model] }
+                    : {}),
+                },
+              }
+            : {}),
           type: "tool.started",
         };
         continue;
@@ -239,8 +249,13 @@ export async function* adaptDeepAgentStream(
         // suppress its artifacts because the parent will re-emit them.
         const isNestedInSubAgent =
           INNER_SUB_AGENT_TOOLS.has(toolName) && activeSubAgentRuns.size > 0;
-        const extractedArtifacts = isNestedInSubAgent ? undefined : extractArtifacts(output);
-        const extractedOutput = extractOutput(output, (extractedArtifacts?.length ?? 0) > 0);
+        const extractedArtifacts = isNestedInSubAgent
+          ? undefined
+          : extractArtifacts(output);
+        const extractedOutput = extractOutput(
+          output,
+          (extractedArtifacts?.length ?? 0) > 0,
+        );
         yield {
           output: extractedOutput,
           outputSummary: summarizeOutput(output),
@@ -264,7 +279,6 @@ export async function* adaptDeepAgentStream(
             timestamp: now(),
           } satisfies StreamEvent;
         }
-        continue;
       }
     }
   } catch (error) {
@@ -321,12 +335,15 @@ function unwrapCommandOutput(
 ): Record<string, unknown> {
   if (record.lg_name !== "Command") return record;
   try {
-    const messages = (record.update as any)?.messages;
+    const messages = isRecord(record.update)
+      ? record.update.messages
+      : undefined;
     if (!Array.isArray(messages) || messages.length === 0) return record;
     const content = messages[0]?.kwargs?.content ?? messages[0]?.content;
     if (typeof content !== "string") return record;
     const inner = JSON.parse(content);
-    if (inner && typeof inner === "object") return inner as Record<string, unknown>;
+    if (inner && typeof inner === "object")
+      return inner as Record<string, unknown>;
   } catch {
     // fall through
   }
@@ -408,8 +425,12 @@ function extractArtifacts(output: unknown): ToolArtifact[] | undefined {
       type: "image" as const,
       url: record.url,
       mimeType: (record.mimeType as string) ?? "image/png",
-      width: (record.placement as any)?.width ?? 512,
-      height: (record.placement as any)?.height ?? 512,
+      width:
+        (isRecord(record.placement) ? record.placement.width : undefined) ??
+        512,
+      height:
+        (isRecord(record.placement) ? record.placement.height : undefined) ??
+        512,
     };
     if (typeof record.title === "string" && record.title.length > 0) {
       candidate.title = record.title;

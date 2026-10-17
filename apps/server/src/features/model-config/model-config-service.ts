@@ -288,8 +288,8 @@ export function createModelConfigService(options: {
       const { error } = await options
         .getAdminClient()
         .rpc("create_model_provider_with_models", {
-          p_provider: providerRow as Json,
-          p_models: rows as Json,
+          p_provider: providerRow as NonNullable<Json>,
+          p_models: rows as NonNullable<Json>,
         });
       dbError(error);
       invalidate();
@@ -341,7 +341,7 @@ export function createModelConfigService(options: {
           description: value.description,
           adapter: value.adapter,
           enabled: value.enabled,
-          options: value.options as Json,
+          options: value.options as NonNullable<Json>,
           is_default:
             (oldModel?.isDefault &&
               oldModel.kind === value.kind &&
@@ -388,7 +388,7 @@ export function createModelConfigService(options: {
           description: model.description,
           adapter: model.adapter,
           enabled: false,
-          options: model.options as Json,
+          options: model.options as NonNullable<Json>,
         };
       });
       if (rows.length) {
@@ -513,7 +513,7 @@ export function createModelConfigService(options: {
             (model.kind === "image" || model.kind === "video")
               ? "agnes"
               : "auto"),
-          options: (known?.options ?? {}) as Json,
+          options: (known?.options ?? {}) as NonNullable<Json>,
           enabled: false,
         };
       });

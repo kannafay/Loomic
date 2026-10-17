@@ -3,6 +3,8 @@
  * Logs full error detail server-side, returns user-friendly message.
  */
 
+import { isRecord } from "@loomic/shared";
+
 const PROVIDER_PATTERN =
   /google|vertex|openai|replicate|langchain|gaxios|undici|fetch failed/i;
 const DB_PATTERN =
@@ -19,19 +21,35 @@ export function sanitizeErrorForClient(error: unknown): string {
   console.error("[error-sanitizer] Raw error:", raw);
   if (error instanceof Error) {
     // Log nested cause chain (LangChain wraps errors multiple levels deep)
-    let cause = (error as any).cause;
-    while (cause) {
-      console.error("[error-sanitizer] Caused by:", cause.message ?? cause);
-      cause = cause.cause;
+    let cause: unknown = error.cause;
+    const seen = new Set<unknown>();
+    while (cause && !seen.has(cause)) {
+      seen.add(cause);
+      console.error(
+        "[error-sanitizer] Caused by:",
+        isRecord(cause) ? (cause.message ?? cause) : cause,
+      );
+      cause = isRecord(cause) ? cause.cause : undefined;
     }
     // Log response details if present (Google API errors attach response/details)
-    const errAny = error as any;
-    if (errAny.response) {
-      console.error("[error-sanitizer] Response status:", errAny.response.status);
-      console.error("[error-sanitizer] Response data:", JSON.stringify(errAny.response.data ?? errAny.response.body ?? "").substring(0, 2000));
+    const details = error as Error & { response?: unknown; details?: unknown };
+    if (isRecord(details.response)) {
+      console.error(
+        "[error-sanitizer] Response status:",
+        details.response.status,
+      );
+      console.error(
+        "[error-sanitizer] Response data:",
+        JSON.stringify(
+          details.response.data ?? details.response.body ?? "",
+        ).substring(0, 2000),
+      );
     }
-    if (errAny.details) {
-      console.error("[error-sanitizer] Details:", JSON.stringify(errAny.details).substring(0, 2000));
+    if (details.details) {
+      console.error(
+        "[error-sanitizer] Details:",
+        JSON.stringify(details.details).substring(0, 2000),
+      );
     }
     if (error.stack) {
       console.error("[error-sanitizer] Stack:", error.stack);

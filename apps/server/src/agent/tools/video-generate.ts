@@ -1,19 +1,24 @@
 import { tool } from "langchain";
 import { z } from "zod";
 
+import { buildAgnesVideoRequest } from "../../generation/providers/agnes-video.js";
 import {
   type AvailableVideoModel,
   getAvailableVideoModels,
   resolveVideoProviderName,
 } from "../../generation/providers/registry.js";
 import { generateVideo } from "../../generation/video-generation.js";
-import { buildAgnesVideoRequest } from "../../generation/providers/agnes-video.js";
 
 const DEFAULT_MODEL = "wan-video/wan-2.6";
 
 // ── Submit function type ───────────────────────────────────────────────────
 
 export type SubmitVideoJobFn = (input: {
+  title?: string;
+  placementX?: number;
+  placementY?: number;
+  placementWidth?: number;
+  placementHeight?: number;
   prompt: string;
   model: string;
   duration?: number;
@@ -109,12 +114,40 @@ function buildVideoGenerateSchema(models: AvailableVideoModel[]) {
       .describe(
         "Source video URL. Veo 3.1/3.1 Fast can extend a Veo-generated 720p video from the last 48 hours by 7 seconds; provide inputVideoDuration, duration=8, resolution=720p and retain its aspect ratio. Kling O1 supports video editing.",
       ),
-    firstFrame: z.string().optional().describe("Starting frame image URL. Do not combine with inputImages or referenceImages."),
-    lastFrame: z.string().optional().describe("Ending frame image URL for models advertising lastFrame. Veo requires firstFrame; Agnes also supports last-frame-only control."),
-    referenceImages: z.array(z.string()).min(1).max(8).optional().describe("Asset references, separate from first/last frames. Veo: up to 3 images, duration=8. Agnes Video 2.5: up to 8 images; Flash: up to 5 images, duration=4–12. Agnes accepts image URLs (including local storage) or image Data URIs; the server sends image bytes inline."),
-    referenceAudios: z.array(z.string()).max(3).optional().describe("Agnes only: up to 3 public audio URLs in reference mode, combined audio length 2–12 seconds. Do not combine with first/last frames. Use <Audio N> in the prompt."),
+    firstFrame: z
+      .string()
+      .optional()
+      .describe(
+        "Starting frame image URL. Do not combine with inputImages or referenceImages.",
+      ),
+    lastFrame: z
+      .string()
+      .optional()
+      .describe(
+        "Ending frame image URL for models advertising lastFrame. Veo requires firstFrame; Agnes also supports last-frame-only control.",
+      ),
+    referenceImages: z
+      .array(z.string())
+      .min(1)
+      .max(8)
+      .optional()
+      .describe(
+        "Asset references, separate from first/last frames. Veo: up to 3 images, duration=8. Agnes Video 2.5: up to 8 images; Flash: up to 5 images, duration=4–12. Agnes accepts image URLs (including local storage) or image Data URIs; the server sends image bytes inline.",
+      ),
+    referenceAudios: z
+      .array(z.string())
+      .max(3)
+      .optional()
+      .describe(
+        "Agnes only: up to 3 public audio URLs in reference mode, combined audio length 2–12 seconds. Do not combine with first/last frames. Use <Audio N> in the prompt.",
+      ),
     // Gemini function declarations support minimum, but not exclusiveMinimum.
-    inputVideoDuration: z.number().min(1).max(141).optional().describe("Duration in seconds of the existing Veo video to extend."),
+    inputVideoDuration: z
+      .number()
+      .min(1)
+      .max(141)
+      .optional()
+      .describe("Duration in seconds of the existing Veo video to extend."),
     enableAudio: z
       .boolean()
       .optional()
@@ -231,10 +264,16 @@ export async function runVideoGenerate(
         ...(input.inputImages ? { inputImages: input.inputImages } : {}),
         ...(input.firstFrame ? { firstFrame: input.firstFrame } : {}),
         ...(input.lastFrame ? { lastFrame: input.lastFrame } : {}),
-        ...(input.referenceImages ? { referenceImages: input.referenceImages } : {}),
-        ...(input.referenceAudios ? { referenceAudios: input.referenceAudios } : {}),
+        ...(input.referenceImages
+          ? { referenceImages: input.referenceImages }
+          : {}),
+        ...(input.referenceAudios
+          ? { referenceAudios: input.referenceAudios }
+          : {}),
         ...(input.inputVideo ? { inputVideo: input.inputVideo } : {}),
-        ...(input.inputVideoDuration != null ? { inputVideoDuration: input.inputVideoDuration } : {}),
+        ...(input.inputVideoDuration != null
+          ? { inputVideoDuration: input.inputVideoDuration }
+          : {}),
         ...(enableAudio != null ? { enableAudio } : {}),
       });
 
@@ -296,16 +335,20 @@ export async function runVideoGenerate(
       model: input.model,
       duration: input.duration,
       aspectRatio: input.aspectRatio,
-      ...(input.resolution
-        ? { resolution: input.resolution }
-        : {}),
+      ...(input.resolution ? { resolution: input.resolution } : {}),
       ...(input.inputImages ? { inputImages: input.inputImages } : {}),
       ...(input.firstFrame ? { firstFrame: input.firstFrame } : {}),
       ...(input.lastFrame ? { lastFrame: input.lastFrame } : {}),
-      ...(input.referenceImages ? { referenceImages: input.referenceImages } : {}),
-      ...(input.referenceAudios ? { referenceAudios: input.referenceAudios } : {}),
+      ...(input.referenceImages
+        ? { referenceImages: input.referenceImages }
+        : {}),
+      ...(input.referenceAudios
+        ? { referenceAudios: input.referenceAudios }
+        : {}),
       ...(input.inputVideo ? { inputVideo: input.inputVideo } : {}),
-      ...(input.inputVideoDuration != null ? { inputVideoDuration: input.inputVideoDuration } : {}),
+      ...(input.inputVideoDuration != null
+        ? { inputVideoDuration: input.inputVideoDuration }
+        : {}),
       ...(enableAudio != null ? { enableAudio } : {}),
     });
     lap("direct_generate_done");
@@ -366,30 +409,58 @@ function validateCapabilities(
   input: VideoGenerateInput,
   model: AvailableVideoModel,
 ): string | undefined {
-  if ((input.inputImages?.length || input.firstFrame) && !model.capabilities.imageToVideo) {
+  if (
+    (input.inputImages?.length || input.firstFrame) &&
+    !model.capabilities.imageToVideo
+  ) {
     return `${model.displayName} does not support image-to-video input`;
   }
   if ((input.inputImages?.length ?? 0) > model.limits.maxInputImages) {
     return `${model.displayName} accepts at most ${model.limits.maxInputImages} input image(s)`;
   }
-  if (input.lastFrame && !model.capabilities.lastFrame) return `${model.displayName} does not support last-frame control`;
-  if (input.lastFrame && !input.firstFrame && model.provider !== "agnes") return "A last frame requires a first frame";
-  if (input.referenceImages?.length && !model.capabilities.referenceImages) return `${model.displayName} does not support reference images`;
-  if ((input.referenceImages?.length ?? 0) > model.limits.maxInputImages) return `${model.displayName} accepts at most ${model.limits.maxInputImages} reference images`;
-  if (input.referenceAudios?.length && model.provider !== "agnes") return `${model.displayName} does not support reference audio`;
+  if (input.lastFrame && !model.capabilities.lastFrame)
+    return `${model.displayName} does not support last-frame control`;
+  if (input.lastFrame && !input.firstFrame && model.provider !== "agnes")
+    return "A last frame requires a first frame";
+  if (input.referenceImages?.length && !model.capabilities.referenceImages)
+    return `${model.displayName} does not support reference images`;
+  if ((input.referenceImages?.length ?? 0) > model.limits.maxInputImages)
+    return `${model.displayName} accepts at most ${model.limits.maxInputImages} reference images`;
+  if (input.referenceAudios?.length && model.provider !== "agnes")
+    return `${model.displayName} does not support reference audio`;
   if (model.provider === "agnes") {
-    try { buildAgnesVideoRequest({
-      prompt: input.prompt, model: input.model, duration: input.duration, resolution: input.resolution, aspectRatio: input.aspectRatio,
-      ...(input.inputImages ? { inputImages: input.inputImages } : {}),
-      ...(input.firstFrame ? { firstFrame: input.firstFrame } : {}),
-      ...(input.lastFrame ? { lastFrame: input.lastFrame } : {}),
-      ...(input.referenceImages ? { referenceImages: input.referenceImages } : {}),
-      ...(input.referenceAudios ? { referenceAudios: input.referenceAudios } : {}),
-      ...(input.inputVideo ? { inputVideo: input.inputVideo } : {}),
-    }, [model]); }
-    catch (error) { return error instanceof Error ? error.message : "Invalid Agnes video input"; }
+    try {
+      buildAgnesVideoRequest(
+        {
+          prompt: input.prompt,
+          model: input.model,
+          duration: input.duration,
+          resolution: input.resolution,
+          aspectRatio: input.aspectRatio,
+          ...(input.inputImages ? { inputImages: input.inputImages } : {}),
+          ...(input.firstFrame ? { firstFrame: input.firstFrame } : {}),
+          ...(input.lastFrame ? { lastFrame: input.lastFrame } : {}),
+          ...(input.referenceImages
+            ? { referenceImages: input.referenceImages }
+            : {}),
+          ...(input.referenceAudios
+            ? { referenceAudios: input.referenceAudios }
+            : {}),
+          ...(input.inputVideo ? { inputVideo: input.inputVideo } : {}),
+        },
+        [model],
+      );
+    } catch (error) {
+      return error instanceof Error
+        ? error.message
+        : "Invalid Agnes video input";
+    }
   }
-  if (input.inputVideo && !model.capabilities.videoToVideo && !model.capabilities.videoExtension) {
+  if (
+    input.inputVideo &&
+    !model.capabilities.videoToVideo &&
+    !model.capabilities.videoExtension
+  ) {
     return `${model.displayName} does not support reference-video input`;
   }
   if (input.duration > model.limits.maxDuration) {

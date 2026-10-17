@@ -1,13 +1,13 @@
 import type {
-  Database,
-  Json,
+  BrandKitAsset,
   BrandKitAssetCreateRequest,
   BrandKitAssetUpdateRequest,
   BrandKitCreateRequest,
   BrandKitDetail,
-  BrandKitAsset,
   BrandKitSummary,
   BrandKitUpdateRequest,
+  Database,
+  Json,
 } from "@loomic/shared";
 
 import type {
@@ -87,10 +87,7 @@ export type BrandKitService = {
     fileBuffer: Buffer,
     mimeType: string,
   ): Promise<BrandKitAsset>;
-  duplicateKit(
-    user: AuthenticatedUser,
-    kitId: string,
-  ): Promise<BrandKitDetail>;
+  duplicateKit(user: AuthenticatedUser, kitId: string): Promise<BrandKitDetail>;
 };
 
 export function createBrandKitService(options: {
@@ -102,7 +99,9 @@ export function createBrandKitService(options: {
   ): Promise<BrandKitDetail> {
     const { data: kit, error: kitError } = await client
       .from("brand_kits")
-      .select("id, name, is_default, guidance_text, cover_url, created_at, updated_at")
+      .select(
+        "id, name, is_default, guidance_text, cover_url, created_at, updated_at",
+      )
       .eq("id", kitId)
       .maybeSingle();
 
@@ -142,9 +141,12 @@ export function createBrandKitService(options: {
     const mappedAssets = (assets ?? []).map(mapAssetRow);
 
     // Resolve signed URLs for file-based assets (logo/image)
-    const fileAssets = mappedAssets.filter((a) => a.file_url);
+    const fileAssets = mappedAssets.filter(
+      (a): a is typeof a & { file_url: string } =>
+        typeof a.file_url === "string" && a.file_url.length > 0,
+    );
     if (fileAssets.length > 0) {
-      const paths = fileAssets.map((a) => a.file_url!);
+      const paths = fileAssets.map((a) => a.file_url);
       const { data: signedData } = await client.storage
         .from(BRAND_KIT_BUCKET)
         .createSignedUrls(paths, SIGNED_URL_EXPIRY_SECONDS);
@@ -156,7 +158,7 @@ export function createBrandKitService(options: {
             .map((e) => [e.path, e.signedUrl]),
         );
         for (const asset of fileAssets) {
-          const url = urlByPath.get(asset.file_url!);
+          const url = urlByPath.get(asset.file_url);
           if (url) asset.file_url = url;
         }
       }
@@ -226,20 +228,22 @@ export function createBrandKitService(options: {
         counts[asset.asset_type] += 1;
       }
 
-      return kits.map((kit): BrandKitSummary => ({
-        id: kit.id,
-        name: kit.name,
-        is_default: kit.is_default,
-        cover_url: kit.cover_url,
-        asset_counts: countsByKit.get(kit.id) ?? {
-          color: 0,
-          font: 0,
-          logo: 0,
-          image: 0,
-        },
-        created_at: kit.created_at,
-        updated_at: kit.updated_at,
-      }));
+      return kits.map(
+        (kit): BrandKitSummary => ({
+          id: kit.id,
+          name: kit.name,
+          is_default: kit.is_default,
+          cover_url: kit.cover_url,
+          asset_counts: countsByKit.get(kit.id) ?? {
+            color: 0,
+            font: 0,
+            logo: 0,
+            image: 0,
+          },
+          created_at: kit.created_at,
+          updated_at: kit.updated_at,
+        }),
+      );
     },
 
     async getKit(user, kitId) {
@@ -290,7 +294,8 @@ export function createBrandKitService(options: {
 
       const payload: Database["public"]["Tables"]["brand_kits"]["Update"] = {};
       if (input.name !== undefined) payload.name = input.name.trim();
-      if (input.guidance_text !== undefined) payload.guidance_text = input.guidance_text;
+      if (input.guidance_text !== undefined)
+        payload.guidance_text = input.guidance_text;
       if (input.is_default !== undefined) payload.is_default = input.is_default;
 
       if (Object.keys(payload).length === 0) {
@@ -414,7 +419,7 @@ export function createBrandKitService(options: {
           text_content: input.text_content ?? null,
           role: input.role ?? null,
           sort_order: nextSortOrder,
-          metadata: (input.metadata ?? {}) as import("@loomic/shared").Json,
+          metadata: (input.metadata ?? {}) as Json,
         })
         .select(
           "id, asset_type, display_name, role, sort_order, text_content, file_url, metadata, created_at, updated_at",
@@ -435,12 +440,16 @@ export function createBrandKitService(options: {
     async updateAsset(user, kitId, assetId, input) {
       const client = options.createUserClient(user.accessToken);
 
-      const payload: Database["public"]["Tables"]["brand_kit_assets"]["Update"] = {};
-      if (input.display_name !== undefined) payload.display_name = input.display_name;
-      if (input.text_content !== undefined) payload.text_content = input.text_content;
+      const payload: Database["public"]["Tables"]["brand_kit_assets"]["Update"] =
+        {};
+      if (input.display_name !== undefined)
+        payload.display_name = input.display_name;
+      if (input.text_content !== undefined)
+        payload.text_content = input.text_content;
       if (input.role !== undefined) payload.role = input.role;
       if (input.sort_order !== undefined) payload.sort_order = input.sort_order;
-      if (input.metadata !== undefined) payload.metadata = input.metadata as Json;
+      if (input.metadata !== undefined)
+        payload.metadata = input.metadata as Json;
 
       if (Object.keys(payload).length === 0) {
         // Nothing to update, just fetch and return current state
@@ -667,7 +676,9 @@ export function createBrandKitService(options: {
       // Copy non-file assets (colors, fonts) directly
       const { data: assets } = await client
         .from("brand_kit_assets")
-        .select("asset_type, display_name, role, sort_order, text_content, file_url, metadata")
+        .select(
+          "asset_type, display_name, role, sort_order, text_content, file_url, metadata",
+        )
         .eq("kit_id", kitId)
         .order("sort_order", { ascending: true });
 

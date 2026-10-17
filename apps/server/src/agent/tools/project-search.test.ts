@@ -13,21 +13,30 @@ let backend: FilesystemBackend;
 beforeEach(async () => {
   fixtureRoot = await mkdtemp(fixturePrefix);
   await mkdir(join(fixtureRoot, "workspace"));
-  await writeFile(join(fixtureRoot, "workspace", "a.md"), "alpha first\nbeta\nalpha second\n");
+  await writeFile(
+    join(fixtureRoot, "workspace", "a.md"),
+    "alpha first\nbeta\nalpha second\n",
+  );
   await writeFile(join(fixtureRoot, "workspace", "b.txt"), "alpha third\n");
   backend = new FilesystemBackend({ rootDir: fixtureRoot, virtualMode: true });
 });
 
 afterEach(async () => {
   const target = resolve(fixtureRoot);
-  if (!target.startsWith(fixturePrefix) || target.slice(fixturePrefix.length).includes(sep)) {
+  if (
+    !target.startsWith(fixturePrefix) ||
+    target.slice(fixturePrefix.length).includes(sep)
+  ) {
     throw new Error("Unexpected test fixture path");
   }
   await rm(target, { recursive: true, force: true });
 });
 
 it("searches a real v2 filesystem backend and limits the displayed matches", async () => {
-  const result = await runProjectSearch(backend, { query: "alpha", maxMatches: 2 });
+  const result = await runProjectSearch(backend, {
+    query: "alpha",
+    maxMatches: 2,
+  });
   expect(result.matchCount).toBe(3);
   expect(result.matches).toEqual([
     { path: "/workspace/a.md", line: 1, text: "alpha first" },
@@ -37,7 +46,10 @@ it("searches a real v2 filesystem backend and limits the displayed matches", asy
 });
 
 it("passes the file filter to the filesystem backend", async () => {
-  const result = await runProjectSearch(backend, { query: "alpha", glob: "*.txt" });
+  const result = await runProjectSearch(backend, {
+    query: "alpha",
+    glob: "*.txt",
+  });
   expect(result.matchCount).toBe(1);
   expect(result.matches).toEqual([
     { path: "/workspace/b.txt", line: 1, text: "alpha third" },

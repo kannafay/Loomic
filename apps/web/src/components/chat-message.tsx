@@ -38,11 +38,7 @@ type ChatMessageProps = {
  * each independently memoized for fine-grained update control.
  */
 export const ChatMessage = React.memo(
-  function ChatMessage({
-    role,
-    contentBlocks,
-    isStreaming,
-  }: ChatMessageProps) {
+  function ChatMessage({ role, contentBlocks, isStreaming }: ChatMessageProps) {
     const isUser = role === "user";
 
     if (isUser) {
@@ -79,8 +75,8 @@ const UserMessage = React.memo(function UserMessage({
   // Categorize blocks once per render
   const { text, imageBlocks, mentionBlocks } = useMemo(() => {
     const textParts: string[] = [];
-    const images: ContentBlock[] = [];
-    const mentions: ContentBlock[] = [];
+    const images: Extract<ContentBlock, { type: "image" }>[] = [];
+    const mentions: Extract<ContentBlock, { type: "mention" }>[] = [];
 
     for (const block of contentBlocks) {
       if (block.type === "text") {
@@ -113,17 +109,11 @@ const UserMessage = React.memo(function UserMessage({
           </span>
           {mentionBlocks.length > 0 && (
             <span className="inline">
-              {mentionBlocks.map((block, idx) => (
+              {mentionBlocks.map((block) => (
                 <MentionPill
-                  key={idx}
-                  label={(block as { label: string }).label}
-                  kind={
-                    (
-                      block as {
-                        mentionType: "image-model" | "brand-kit-asset";
-                      }
-                    ).mentionType
-                  }
+                  key={`${block.mentionType}:${block.id}`}
+                  label={block.label}
+                  kind={block.mentionType}
                 />
               ))}
             </span>
@@ -132,12 +122,9 @@ const UserMessage = React.memo(function UserMessage({
             <span className="inline">
               {imageBlocks.map((block, idx) => (
                 <ImagePill
-                  key={idx}
-                  src={(block as { url: string }).url}
-                  name={
-                    (block as { name?: string }).name ??
-                    `image-${idx + 1}`
-                  }
+                  key={block.assetId}
+                  src={block.url}
+                  name={block.name ?? `image-${idx + 1}`}
                 />
               ))}
             </span>
@@ -146,26 +133,18 @@ const UserMessage = React.memo(function UserMessage({
       )}
       {!text && (imageBlocks.length > 0 || mentionBlocks.length > 0) && (
         <div className="inline-block rounded-xl bg-muted px-3 py-2.5">
-          {mentionBlocks.map((block, idx) => (
+          {mentionBlocks.map((block) => (
             <MentionPill
-              key={`mention-${idx}`}
-              label={(block as { label: string }).label}
-              kind={
-                (
-                  block as {
-                    mentionType: "image-model" | "brand-kit-asset";
-                  }
-                ).mentionType
-              }
+              key={`${block.mentionType}:${block.id}`}
+              label={block.label}
+              kind={block.mentionType}
             />
           ))}
           {imageBlocks.map((block, idx) => (
             <ImagePill
-              key={idx}
-              src={(block as { url: string }).url}
-              name={
-                (block as { name?: string }).name ?? `image-${idx + 1}`
-              }
+              key={block.assetId}
+              src={block.url}
+              name={block.name ?? `image-${idx + 1}`}
             />
           ))}
         </div>
@@ -188,7 +167,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
   // Find the last text block index for streaming cursor placement
   const lastTextIdx = useMemo(() => {
     for (let i = contentBlocks.length - 1; i >= 0; i--) {
-      if (contentBlocks[i]!.type === "text") return i;
+      if (contentBlocks[i]?.type === "text") return i;
     }
     return -1;
   }, [contentBlocks]);
@@ -235,11 +214,10 @@ const AssistantMessage = React.memo(function AssistantMessage({
         if (block.type === "thinking") {
           return (
             <ThinkingBlockView
+              // biome-ignore lint/suspicious/noArrayIndexKey: Stream blocks are append-only; deltas replace the same slot and must preserve expanded state.
               key={`thinking-${idx}`}
               thinking={block.thinking}
-              isStreaming={
-                isStreaming && idx === contentBlocks.length - 1
-              }
+              isStreaming={isStreaming && idx === contentBlocks.length - 1}
             />
           );
         }
@@ -248,6 +226,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
           const showCursor = isStreaming && idx === lastTextIdx;
           return (
             <MarkdownRenderer
+              // biome-ignore lint/suspicious/noArrayIndexKey: Text deltas update the same append-only slot; content-based keys would remount on every token.
               key={idx}
               text={block.text}
               showCursor={showCursor}
@@ -256,9 +235,7 @@ const AssistantMessage = React.memo(function AssistantMessage({
         }
 
         if (block.type === "tool") {
-          return (
-            <ToolBlockView key={block.toolCallId} block={block} />
-          );
+          return <ToolBlockView key={block.toolCallId} block={block} />;
         }
 
         // ImageBlock -- skip in assistant messages (user-side only)

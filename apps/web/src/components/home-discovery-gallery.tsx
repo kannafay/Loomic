@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 
 import type {
-  HomeDiscoveryCategory,
   HomeDiscoveryCase,
+  HomeDiscoveryCategory,
   HomeDiscoverySelection,
 } from "@/lib/home-discovery-seeds";
 import { cn } from "@/lib/utils";

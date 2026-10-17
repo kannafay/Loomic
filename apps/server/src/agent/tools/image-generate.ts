@@ -1,13 +1,14 @@
 import { tool } from "langchain";
 import { z } from "zod";
+import type { ImageQuality, OutputFormat } from "../../generation/types.js";
 
 import { randomUUID } from "node:crypto";
 
 import { generateImage } from "../../generation/image-generation.js";
 import {
+  type AvailableModel,
   getAvailableImageModels,
   resolveImageProviderName,
-  type AvailableModel,
 } from "../../generation/providers/registry.js";
 
 const DEFAULT_MODEL = "black-forest-labs/flux-kontext-pro";
@@ -20,7 +21,7 @@ function buildImageGenerateSchema(models: AvailableModel[]) {
   const modelIds = models.map((m) => m.id);
   const defaultModel = modelIds.includes(DEFAULT_MODEL)
     ? DEFAULT_MODEL
-    : modelIds[0] ?? DEFAULT_MODEL;
+    : (modelIds[0] ?? DEFAULT_MODEL);
 
   const modelDescription = models.length
     ? `Model to use. Available:\n${models.map((m) => `- ${m.id}: ${m.displayName} — ${m.description}`).join("\n")}`
@@ -48,7 +49,9 @@ function buildImageGenerateSchema(models: AvailableModel[]) {
       .string()
       .optional()
       .default("1:1")
-      .describe("Aspect ratio (e.g. 1:1, 16:9, 9:16, 4:3, 3:4, 4:5, 5:4, 2:3, 3:2). Provider auto-normalizes unsupported ratios to nearest match."),
+      .describe(
+        "Aspect ratio (e.g. 1:1, 16:9, 9:16, 4:3, 3:4, 4:5, 5:4, 2:3, 3:2). Provider auto-normalizes unsupported ratios to nearest match.",
+      ),
     quality: z
       .enum(["standard", "hd", "ultra"])
       .optional()
@@ -59,7 +62,9 @@ function buildImageGenerateSchema(models: AvailableModel[]) {
     outputFormat: z
       .enum(["png", "jpg", "webp"])
       .optional()
-      .describe("Output image format. PNG for transparency, JPG for photos, WebP for web."),
+      .describe(
+        "Output image format. PNG for transparency, JPG for photos, WebP for web.",
+      ),
     inputImages: z
       .array(z.string())
       .optional()
@@ -96,8 +101,8 @@ type ImageGenerateInput = {
   prompt: string;
   model: string;
   aspectRatio?: string;
-  quality?: string;
-  outputFormat?: string;
+  quality?: ImageQuality;
+  outputFormat?: OutputFormat;
   inputImages?: string[];
   placementX?: number;
   placementY?: number;
@@ -138,6 +143,10 @@ export type SubmitImageJobFn = (input: {
   title: string;
   model: string;
   aspectRatio: string;
+  placementX?: number;
+  placementY?: number;
+  placementWidth?: number;
+  placementHeight?: number;
   inputImages?: string[];
   quality?: string;
 }) => Promise<{
@@ -151,23 +160,25 @@ export type SubmitImageJobFn = (input: {
 }>;
 
 export async function runImageGenerate(
-  input: ImageGenerateInput,
+  rawInput: ImageGenerateInput,
   persistImage?: PersistImageFn,
   submitImageJob?: SubmitImageJobFn,
   attachmentMap?: Record<string, string>,
 ): Promise<ImageGenerateResult> {
+  let input = rawInput;
   const t0 = Date.now();
   const lap = (label: string, extra?: Record<string, unknown>) => {
-    console.log(`[generate_image] ${label} +${Date.now() - t0}ms`, extra ? JSON.stringify(extra) : "");
+    console.log(
+      `[generate_image] ${label} +${Date.now() - t0}ms`,
+      extra ? JSON.stringify(extra) : "",
+    );
   };
 
   // Resolve assetId references in inputImages to base64 data URIs
   if (input.inputImages?.length && attachmentMap) {
     input = {
       ...input,
-      inputImages: input.inputImages.map((ref) =>
-        attachmentMap[ref] ?? ref,
-      ),
+      inputImages: input.inputImages.map((ref) => attachmentMap[ref] ?? ref),
     };
   }
 
@@ -175,21 +186,28 @@ export async function runImageGenerate(
   // Agent may pass canvas element IDs or unresolved assetIds that aren't
   // in the attachmentMap. These would cause Replicate 422 errors.
   if (input.inputImages?.length) {
-    const validImages = input.inputImages.filter((img) =>
-      img.startsWith("http://") || img.startsWith("https://") || img.startsWith("data:"),
+    const validImages = input.inputImages.filter(
+      (img) =>
+        img.startsWith("http://") ||
+        img.startsWith("https://") ||
+        img.startsWith("data:"),
     );
     if (validImages.length !== input.inputImages.length) {
       lap("filtered_invalid_refs", {
         before: input.inputImages.length,
         after: validImages.length,
-        dropped: input.inputImages.filter((img) =>
-          !img.startsWith("http://") && !img.startsWith("https://") && !img.startsWith("data:"),
+        dropped: input.inputImages.filter(
+          (img) =>
+            !img.startsWith("http://") &&
+            !img.startsWith("https://") &&
+            !img.startsWith("data:"),
         ),
       });
     }
-    input = validImages.length > 0
-      ? { ...input, inputImages: validImages }
-      : { ...input, inputImages: [] };
+    input =
+      validImages.length > 0
+        ? { ...input, inputImages: validImages }
+        : { ...input, inputImages: [] };
   }
 
   // Job mode: submit to PGMQ and wait for worker to complete
@@ -210,7 +228,7 @@ export async function runImageGenerate(
         const isTimeout = jobResult.error.includes("timed out");
         return {
           summary: isTimeout
-            ? `Image is still being generated by the server. It will automatically appear on the canvas once ready — no action needed from the user.`
+            ? "Image is still being generated by the server. It will automatically appear on the canvas once ready — no action needed from the user."
             : `Image generation failed with model ${input.model}: ${jobResult.error}. Consider trying a different model or simplifying the prompt.`,
           error: jobResult.error,
           // Expose jobId so frontend can poll for late-arriving results
@@ -224,7 +242,9 @@ export async function runImageGenerate(
       const result: ImageGenerateResult = {
         summary: `Generated image (${jobResult.width ?? 0}x${jobResult.height ?? 0}) via ${input.model}`,
         title: input.title,
-        ...(jobResult.elementId != null ? { elementId: jobResult.elementId } : {}),
+        ...(jobResult.elementId != null
+          ? { elementId: jobResult.elementId }
+          : {}),
         imageUrl: jobResult.imageUrl ?? "",
         mimeType: jobResult.mimeType ?? "image/png",
         ...(jobResult.width != null ? { width: jobResult.width } : {}),
@@ -256,8 +276,8 @@ export async function runImageGenerate(
       prompt: input.prompt,
       model: input.model,
       ...(input.aspectRatio ? { aspectRatio: input.aspectRatio } : {}),
-      ...(input.quality ? { quality: input.quality as any } : {}),
-      ...(input.outputFormat ? { outputFormat: input.outputFormat as any } : {}),
+      ...(input.quality ? { quality: input.quality } : {}),
+      ...(input.outputFormat ? { outputFormat: input.outputFormat } : {}),
       ...(input.inputImages?.length ? { inputImages: input.inputImages } : {}),
     });
     lap("direct_generate_done", { width: result.width, height: result.height });
@@ -265,7 +285,11 @@ export async function runImageGenerate(
     let imageUrl = result.url;
     if (persistImage) {
       try {
-        imageUrl = await persistImage(result.url, result.mimeType, input.prompt);
+        imageUrl = await persistImage(
+          result.url,
+          result.mimeType,
+          input.prompt,
+        );
         lap("persist_image_done");
       } catch {
         // Fall back to ephemeral URL if upload fails
@@ -312,9 +336,9 @@ export function createImageGenerateTool(deps?: {
 
   return tool(
     async (input: ImageGenerateInput, config) => {
-      const attachmentMap =
-        (config as any)?.configurable?.user_attachment_map as
-          Record<string, string> | undefined;
+      const attachmentMap = config?.configurable?.user_attachment_map as
+        | Record<string, string>
+        | undefined;
       return await runImageGenerate(
         input,
         deps?.persistImage,

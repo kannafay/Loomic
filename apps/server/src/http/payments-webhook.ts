@@ -1,12 +1,13 @@
 // @credits-system — Lemon Squeezy webhook handler: subscription events, payment confirmation
 import crypto from "node:crypto";
+import type { Json } from "@loomic/shared";
 import type { FastifyInstance } from "fastify";
 
-import type { AdminSupabaseClient } from "../supabase/admin.js";
 import type {
   PaymentService,
   WebhookPayload,
 } from "../features/payments/payment-service.js";
+import type { AdminSupabaseClient } from "../supabase/admin.js";
 
 export async function registerPaymentWebhookRoute(
   app: FastifyInstance,
@@ -40,7 +41,9 @@ export async function registerPaymentWebhookRoute(
       .update(rawBody)
       .digest("hex");
 
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    if (
+      !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+    ) {
       return reply.code(401).send({ error: "Invalid webhook signature" });
     }
 
@@ -60,23 +63,22 @@ export async function registerPaymentWebhookRoute(
     const workspaceId = payload.meta?.custom_data?.workspace_id ?? null;
 
     // ── 3. Log to payment_events audit table ─────────────────
-    // NOTE: payment_events table is added via migration but not yet in the
-    // generated Database type — use `as any` until types are regenerated.
     const admin = options.getAdminClient();
     const eventId = payload.data?.id ?? null;
 
-    const { error: insertError } = await (admin as any)
-      .from("payment_events")
-      .insert({
-        event_name: eventName,
-        lemon_squeezy_event_id: eventId,
-        workspace_id: workspaceId,
-        payload: payload as unknown as Record<string, unknown>,
-        processed: false,
-      });
+    const { error: insertError } = await admin.from("payment_events").insert({
+      event_name: eventName,
+      lemon_squeezy_event_id: eventId,
+      workspace_id: workspaceId,
+      payload: payload as unknown as NonNullable<Json>,
+      processed: false,
+    });
 
     if (insertError) {
-      console.error("[Webhook] Failed to log payment event:", (insertError as any).message);
+      console.error(
+        "[Webhook] Failed to log payment event:",
+        insertError.message,
+      );
       // Continue processing even if audit logging fails
     }
 
@@ -86,7 +88,7 @@ export async function registerPaymentWebhookRoute(
 
       // Mark as processed
       if (eventId) {
-        await (admin as any)
+        await admin
           .from("payment_events")
           .update({ processed: true })
           .eq("lemon_squeezy_event_id", eventId);
@@ -101,7 +103,7 @@ export async function registerPaymentWebhookRoute(
 
       // Record error in audit trail
       if (eventId) {
-        await (admin as any)
+        await admin
           .from("payment_events")
           .update({ error_message: errorMessage })
           .eq("lemon_squeezy_event_id", eventId);

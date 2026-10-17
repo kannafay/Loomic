@@ -1,10 +1,10 @@
 import { mkdirSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
-  type StateAndStore,
   CompositeBackend,
   FilesystemBackend,
   LocalShellBackend,
+  type StateAndStore,
   StoreBackend,
 } from "deepagents";
 
@@ -41,7 +41,9 @@ export function createDevelopmentBackend(
   mkdirSync(sandboxDir, { recursive: true });
   const realSandboxDir = realpathSync(sandboxDir);
 
-  const skillsRoot = resolve(env.skillsRoot ?? join(env.agentFilesRoot, "skills"));
+  const skillsRoot = resolve(
+    env.skillsRoot ?? join(env.agentFilesRoot, "skills"),
+  );
 
   const sandbox = new LocalShellBackend({
     rootDir: sandboxDir,
@@ -54,7 +56,10 @@ export function createDevelopmentBackend(
       PYTHONDONTWRITEBYTECODE: "1",
     },
   });
-  const skillsBackend = new FilesystemBackend({ rootDir: skillsRoot, virtualMode: true });
+  const skillsBackend = new FilesystemBackend({
+    rootDir: skillsRoot,
+    virtualMode: true,
+  });
 
   const workspaceBackend = new FilesystemBackend({
     rootDir: env.agentFilesRoot,
@@ -68,7 +73,11 @@ export function createDevelopmentBackend(
     };
 
     // In dev mode, workspace skills are served from the Store when available.
-    if (options?.hasWorkspaceSkills && options.canvasId && stateAndStore.store) {
+    if (
+      options?.hasWorkspaceSkills &&
+      options.canvasId &&
+      stateAndStore.store
+    ) {
       routes["/workspace-skills/"] = new StoreBackend(stateAndStore, {
         namespace: ["projects", options.canvasId, "workspace-skills"],
       });

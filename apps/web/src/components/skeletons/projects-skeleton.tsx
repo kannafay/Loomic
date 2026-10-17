@@ -18,8 +18,17 @@ export function ProjectsSkeleton() {
         </div>
 
         {/* Project card skeletons */}
-        {Array.from({ length: 5 }, (_, i) => (
-          <div key={i} className="overflow-hidden rounded-lg bg-card">
+        {[
+          "placeholder-1",
+          "placeholder-2",
+          "placeholder-3",
+          "placeholder-4",
+          "placeholder-5",
+        ].map((placeholderId) => (
+          <div
+            key={placeholderId}
+            className="overflow-hidden rounded-lg bg-card"
+          >
             <Skeleton className="aspect-[395/227] rounded-lg" />
             <div className="space-y-1 px-1 py-2 sm:space-y-1.5">
               <Skeleton className="h-3 w-3/4 sm:h-4" />

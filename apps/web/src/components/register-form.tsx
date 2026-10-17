@@ -1,28 +1,30 @@
 "use client";
 
+import type { Variants } from "framer-motion";
+
 import { getUserFacingError } from "@/lib/locale";
 
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
 
+import { fetchViewer } from "../lib/server-api";
+import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Separator } from "./ui/separator";
-import { fetchViewer } from "../lib/server-api";
-import { getSupabaseBrowserClient } from "../lib/supabase-browser";
 
 const stagger = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
-} as any;
+} satisfies Variants;
 
 const fadeIn = {
   hidden: { opacity: 0, y: 12 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
-} as any;
+} satisfies Variants;
 
 export function RegisterForm() {
   const router = useRouter();
@@ -94,10 +96,22 @@ export function RegisterForm() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{ delay: 0.2, type: "spring", stiffness: 200, damping: 15 }}
+              transition={{
+                delay: 0.2,
+                type: "spring",
+                stiffness: 200,
+                damping: 15,
+              }}
               className="flex h-14 w-14 items-center justify-center rounded-full bg-foreground"
             >
-              <svg viewBox="0 0 24 24" className="h-6 w-6 text-background" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                className="h-6 w-6 text-background"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
                 <motion.path
                   d="M5 13l4 4L19 7"
                   initial={{ pathLength: 0 }}
@@ -112,7 +126,10 @@ export function RegisterForm() {
             <p className="text-sm text-muted-foreground">
               验证链接已发送至 <strong>{email}</strong>
             </p>
-            <Link href="/login" className="text-sm text-foreground underline underline-offset-4">
+            <Link
+              href="/login"
+              className="text-sm text-foreground underline underline-offset-4"
+            >
               返回登录
             </Link>
           </motion.div>
@@ -126,13 +143,19 @@ export function RegisterForm() {
             className="space-y-6"
           >
             <motion.div variants={fadeIn} className="space-y-2 text-center">
-              <h2 className="text-2xl font-semibold tracking-tight">创建账号</h2>
+              <h2 className="text-2xl font-semibold tracking-tight">
+                创建账号
+              </h2>
               <p className="text-sm text-muted-foreground">
                 使用邮箱和密码开始创作
               </p>
             </motion.div>
 
-            <motion.form variants={fadeIn} onSubmit={handleSubmit} className="space-y-4">
+            <motion.form
+              variants={fadeIn}
+              onSubmit={handleSubmit}
+              className="space-y-4"
+            >
               <div className="space-y-2">
                 <Label htmlFor="register-email">邮箱</Label>
                 <Input
@@ -187,13 +210,21 @@ export function RegisterForm() {
 
             <motion.div variants={fadeIn} className="flex items-center gap-4">
               <Separator className="flex-1" />
-              <span className="text-xs uppercase text-muted-foreground">或</span>
+              <span className="text-xs uppercase text-muted-foreground">
+                或
+              </span>
               <Separator className="flex-1" />
             </motion.div>
 
-            <motion.p variants={fadeIn} className="text-center text-sm text-muted-foreground">
+            <motion.p
+              variants={fadeIn}
+              className="text-center text-sm text-muted-foreground"
+            >
               已有账号？{" "}
-              <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
+              <Link
+                href="/login"
+                className="font-medium text-foreground underline underline-offset-4"
+              >
                 登录
               </Link>
             </motion.p>

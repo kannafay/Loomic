@@ -2,8 +2,8 @@ import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { Button } from "../src/components/ui/button";
 import { ImageModelPreferencePopover } from "../src/components/image-model-preference";
+import { Button } from "../src/components/ui/button";
 
 const fetchImageModels = vi.hoisted(() => vi.fn());
 vi.mock("../src/lib/server-api", () => ({
@@ -37,7 +37,7 @@ it("replaces a previously disabled selection when the user chooses an enabled mo
     await screen.findByRole("checkbox", { name: "Agnes 测试模型" }),
   );
   expect(
-    JSON.parse(localStorage.getItem("loomic:image-model-preference")!),
+    JSON.parse(localStorage.getItem("loomic:image-model-preference") ?? "null"),
   ).toEqual({ mode: "manual", models: ["agnes/enabled"] });
 });
 it("explains when the administrator has not enabled any models", async () => {

@@ -20,15 +20,39 @@ const OPENAI_MODELS: ModelInfo[] = [
 ];
 
 const GOOGLE_MODELS: ModelInfo[] = [
-  { id: "google:gemini-3.8-flash", name: "Gemini 3.8 Flash", provider: "google" },
+  {
+    id: "google:gemini-3.8-flash",
+    name: "Gemini 3.8 Flash",
+    provider: "google",
+  },
   // Gemini 3 series (Preview)
-  { id: "google:gemini-3.1-pro-preview", name: "Gemini 3.1 Pro", provider: "google" },
-  { id: "google:gemini-3-flash-preview", name: "Gemini 3 Flash", provider: "google" },
-  { id: "google:gemini-3.1-flash-lite-preview", name: "Gemini 3.1 Flash Lite", provider: "google" },
+  {
+    id: "google:gemini-3.1-pro-preview",
+    name: "Gemini 3.1 Pro",
+    provider: "google",
+  },
+  {
+    id: "google:gemini-3-flash-preview",
+    name: "Gemini 3 Flash",
+    provider: "google",
+  },
+  {
+    id: "google:gemini-3.1-flash-lite-preview",
+    name: "Gemini 3.1 Flash Lite",
+    provider: "google",
+  },
   // Gemini 2.5 series (GA)
   { id: "google:gemini-2.5-pro", name: "Gemini 2.5 Pro", provider: "google" },
-  { id: "google:gemini-2.5-flash", name: "Gemini 2.5 Flash", provider: "google" },
-  { id: "google:gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite", provider: "google" },
+  {
+    id: "google:gemini-2.5-flash",
+    name: "Gemini 2.5 Flash",
+    provider: "google",
+  },
+  {
+    id: "google:gemini-2.5-flash-lite",
+    name: "Gemini 2.5 Flash Lite",
+    provider: "google",
+  },
 ];
 
 const AGNES_MODELS: ModelInfo[] = [
@@ -37,17 +61,32 @@ const AGNES_MODELS: ModelInfo[] = [
   { id: "agnes:agnes-2.5-flash", name: "Agnes 2.5 Flash", provider: "agnes" },
 ];
 
-export async function registerModelRoutes(app: FastifyInstance, env: ServerEnv, service?: ModelConfigService) {
+export async function registerModelRoutes(
+  app: FastifyInstance,
+  env: ServerEnv,
+  service?: ModelConfigService,
+) {
   app.get("/api/models", async (_request, reply) => {
     if (service) {
       const catalog = await service.catalog();
-      return reply.code(200).send(modelListResponseSchema.parse({ models: catalog.models.filter(m => m.kind === "text").map(m => ({
-        id: m.key, name: m.name, provider: catalog.providers.find(p => p.id === m.providerId)!.name,
-      })) }));
+      return reply.code(200).send(
+        modelListResponseSchema.parse({
+          models: catalog.models
+            .filter((m) => m.kind === "text")
+            .map((m) => ({
+              id: m.key,
+              name: m.name,
+              provider:
+                catalog.providers.find((p) => p.id === m.providerId)?.name ??
+                "未知提供商",
+            })),
+        }),
+      );
     }
     const models: ModelInfo[] = [];
     if (env.openAIApiKey) models.push(...OPENAI_MODELS);
-    if (env.googleApiKey || env.googleVertexProject) models.push(...GOOGLE_MODELS);
+    if (env.googleApiKey || env.googleVertexProject)
+      models.push(...GOOGLE_MODELS);
     if (env.agnesApiKey) models.push(...AGNES_MODELS);
     return reply.code(200).send(modelListResponseSchema.parse({ models }));
   });

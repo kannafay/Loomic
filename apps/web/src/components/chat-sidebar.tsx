@@ -1,8 +1,9 @@
 "use client";
 
+import type { ChatInputHandle } from "./chat-input";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { useBreakpoint } from "../hooks/use-breakpoint";
 import type {
   ContentBlock,
   ImageArtifact,
@@ -13,9 +14,10 @@ import type {
   VideoGenerationPreference,
 } from "@loomic/shared";
 import { useAgentModel } from "../hooks/use-agent-model";
+import { useBreakpoint } from "../hooks/use-breakpoint";
+import { useChatRuns } from "../hooks/use-chat-runs";
 import { mapServerMessages, useChatSessions } from "../hooks/use-chat-sessions";
 import { useChatStream } from "../hooks/use-chat-stream";
-import { useChatRuns } from "../hooks/use-chat-runs";
 import {
   INITIAL_AGENT_MODEL_KEY,
   INITIAL_ATTACHMENTS_KEY,
@@ -27,22 +29,26 @@ import { useImageModelPreference } from "../hooks/use-image-model-preference";
 import { useVideoModelPreference } from "../hooks/use-video-model-preference";
 import type { WebSocketHandle } from "../hooks/use-websocket";
 import { fetchBrandKit } from "../lib/brand-kit-api";
-import { fetchImageModels, fetchWorkspaceSkills, saveMessage } from "../lib/server-api";
+import {
+  fetchImageModels,
+  fetchWorkspaceSkills,
+  saveMessage,
+} from "../lib/server-api";
 import type { CanvasSelectedElement } from "./canvas-editor";
 import {
   type BrandKitMentionItem,
   type CanvasImageItem,
   type ImageModelMentionItem,
-  type SkillMentionItem,
   MessageMentionPicker,
   type MessageMentionPickerItem,
+  type SkillMentionItem,
 } from "./canvas-image-picker";
 import { ChatInput } from "./chat-input";
 import { ChatMessage } from "./chat-message";
 import { ChatSkills } from "./chat-skills";
-import { useToast } from "./toast";
 import { ErrorBoundary } from "./error-boundary";
 import { SessionSelector } from "./session-selector";
+import { useToast } from "./toast";
 
 type ChatSidebarProps = {
   accessToken: string;
@@ -110,7 +116,8 @@ export function ChatSidebar({
 
   // ── Stream event handler (extracted hook, shared between send & reconnect) ──
   const { applyStreamEvent } = useChatStream(updateSessionMessages);
-  const { runs, startRun, acceptRun, resumeRun, stopRun, finishRun } = useChatRuns(ws.cancelRun);
+  const { runs, startRun, acceptRun, resumeRun, stopRun, finishRun } =
+    useChatRuns(ws.cancelRun);
   const activeRun = activeSessionId ? runs[activeSessionId] : undefined;
   const streaming = !!activeRun;
   useEffect(() => {
@@ -129,7 +136,7 @@ export function ChatSidebar({
   const [skillMentionItems, setSkillMentionItems] = useState<
     SkillMentionItem[]
   >([]);
-  const chatInputRef = useRef<import("./chat-input").ChatInputHandle>(null);
+  const chatInputRef = useRef<ChatInputHandle>(null);
 
   const initialPromptSent = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -230,7 +237,9 @@ export function ChatSidebar({
         document.removeEventListener("touchcancel", handleTouchEnd);
       };
 
-      document.addEventListener("touchmove", handleTouchMove, { passive: false });
+      document.addEventListener("touchmove", handleTouchMove, {
+        passive: false,
+      });
       document.addEventListener("touchend", handleTouchEnd);
       document.addEventListener("touchcancel", handleTouchEnd);
     },
@@ -257,7 +266,7 @@ export function ChatSidebar({
   }, []);
 
   useEffect(() => {
-    scrollToBottom();
+    if (messages.length > 0) scrollToBottom();
   }, [messages, scrollToBottom]);
 
   // ── Fetch image models for @mention picker ──
@@ -296,7 +305,9 @@ export function ChatSidebar({
         if (cancelled) return;
         const allSkills = data.skills ?? [];
         const enabledSkills = allSkills.filter((s) => s.enabled);
-        console.log(`[chat-sidebar] Workspace skills loaded: ${allSkills.length} total, ${enabledSkills.length} enabled`);
+        console.log(
+          `[chat-sidebar] Workspace skills loaded: ${allSkills.length} total, ${enabledSkills.length} enabled`,
+        );
         setSkillMentionItems(
           enabledSkills.map((s) => ({
             kind: "skill" as const,
@@ -378,7 +389,7 @@ export function ChatSidebar({
           .filter((el) => !existingIds.has(el.id))
           .map((el) => ({
             assetId: el.id,
-            url: el.storageUrl ?? el.dataUrl!,
+            url: el.storageUrl ?? el.dataUrl ?? "",
             mimeType: "image/png",
             source: "canvas-ref" as const,
             name: `画布选区 ${el.id.slice(0, 6)}`,
@@ -474,9 +485,11 @@ export function ChatSidebar({
 
           // Fire canvas insertion callbacks for image/video artifacts.
           // Skip if the backend already inserted the element (elementId in output).
-          const backendInserted = event.type === "tool.completed"
-            && event.output
-            && typeof (event.output as Record<string, unknown>).elementId === "string";
+          const backendInserted =
+            event.type === "tool.completed" &&
+            event.output &&
+            typeof (event.output as Record<string, unknown>).elementId ===
+              "string";
           if (
             event.type === "tool.completed" &&
             event.artifacts &&
@@ -605,6 +618,7 @@ export function ChatSidebar({
       startRun,
       acceptRun,
       finishRun,
+      showToast,
     ],
   );
 
@@ -631,9 +645,18 @@ export function ChatSidebar({
       setMessageMentions((prev) => {
         let nextMention: MessageMention;
         if (item.kind === "image-model") {
-          nextMention = { mentionType: "image-model", id: item.id, label: item.label };
+          nextMention = {
+            mentionType: "image-model",
+            id: item.id,
+            label: item.label,
+          };
         } else if (item.kind === "skill") {
-          nextMention = { mentionType: "skill", id: item.id, label: item.label, slug: item.slug };
+          nextMention = {
+            mentionType: "skill",
+            id: item.id,
+            label: item.label,
+            slug: item.slug,
+          };
         } else {
           nextMention = {
             mentionType: "brand-kit-asset",
@@ -643,9 +666,7 @@ export function ChatSidebar({
             ...(item.textContent !== undefined
               ? { textContent: item.textContent }
               : {}),
-            ...(item.fileUrl !== undefined
-              ? { fileUrl: item.fileUrl }
-              : {}),
+            ...(item.fileUrl !== undefined ? { fileUrl: item.fileUrl } : {}),
           };
         }
 
@@ -789,9 +810,11 @@ export function ChatSidebar({
 
             // Fire canvas insertion callbacks for artifacts arriving after reconnect.
             // Skip if the backend already inserted the element (elementId in output).
-            const wsBackendInserted = evt.type === "tool.completed"
-              && evt.output
-              && typeof (evt.output as Record<string, unknown>).elementId === "string";
+            const wsBackendInserted =
+              evt.type === "tool.completed" &&
+              evt.output &&
+              typeof (evt.output as Record<string, unknown>).elementId ===
+                "string";
             if (
               evt.type === "tool.completed" &&
               evt.artifacts &&
@@ -851,7 +874,12 @@ export function ChatSidebar({
           type="button"
           className="group inline-flex items-center gap-1 rounded-xl bg-card/80 backdrop-blur-sm border border-border px-2.5 py-1.5 text-xs text-foreground/60 shadow-sm hover:bg-card hover:text-foreground transition-colors cursor-pointer md:px-2.5 md:py-1.5 min-h-[36px] md:min-h-0"
         >
-          <svg className="size-4 md:size-3.5" viewBox="0 0 24 24" fill="none">
+          <svg
+            aria-hidden="true"
+            className="size-4 md:size-3.5"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
             <path
               fill="currentColor"
               fillOpacity={0.9}
@@ -902,7 +930,12 @@ export function ChatSidebar({
           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
           title="收起面板"
         >
-          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
             <path
               d="M4 3.25a.75.75 0 0 1 .75.75v16a.75.75 0 0 1-1.5 0V4A.75.75 0 0 1 4 3.25m9.47 2.22a.75.75 0 0 1 1.06 0l6 6a.75.75 0 0 1 0 1.06l-6 6a.75.75 0 1 1-1.06-1.06l4.72-4.72H8a.75.75 0 0 1 0-1.5h10.19l-4.72-4.72a.75.75 0 0 1 0-1.06"
               fill="currentColor"
@@ -927,7 +960,11 @@ export function ChatSidebar({
           console.error("[chat-sidebar] message area render crashed:", err)
         }
       >
-        <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-6 px-4 py-4" aria-live="polite" aria-relevant="additions">
+        <div
+          className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-6 px-4 py-4"
+          aria-live="polite"
+          aria-relevant="additions"
+        >
           {sessionsLoading || messagesLoading ? (
             <div className="flex h-full items-center justify-center">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
@@ -995,7 +1032,10 @@ export function ChatSidebar({
       <>
         {/* Semi-transparent backdrop — click to close */}
         {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- backdrop is a non-interactive dismissal layer, keyboard close is handled via Escape */}
-        <div
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="关闭智能助手"
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200"
           onClick={onToggle}
         />
@@ -1035,9 +1075,7 @@ export function ChatSidebar({
         onTouchStart={handleTouchStart}
         onKeyDown={handleResizeKeyDown}
       />
-      <div className="flex flex-1 flex-col bg-card min-w-0">
-        {panelContent}
-      </div>
+      <div className="flex flex-1 flex-col bg-card min-w-0">{panelContent}</div>
     </div>
   );
 }

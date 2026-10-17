@@ -131,16 +131,16 @@ export function createElementBase(): CanvasElement {
 /** Find an active (non-deleted) element by ID. */
 export function findElement(
   elements: CanvasElement[],
-  id: string,
+  id: string | undefined,
 ): CanvasElement | undefined {
+  if (!id) return undefined;
   return elements.find((el) => el.id === id && !el.isDeleted);
 }
 
 /** Return a short human-readable label for log / result messages. */
 export function shortLabel(el: CanvasElement): string {
   if (el.type === "text" && typeof el.text === "string") {
-    const short =
-      el.text.length > 20 ? el.text.slice(0, 17) + "..." : el.text;
+    const short = el.text.length > 20 ? `${el.text.slice(0, 17)}...` : el.text;
     return `text '${short}'`;
   }
   return `${el.type ?? "element"}(${el.id})`;
@@ -214,7 +214,10 @@ export function validateBindings(elements: CanvasElement[]): void {
 export const BINDING_GAP = 8;
 
 /** Return the center point of a canvas element. */
-export function getElementCenter(el: CanvasElement): { cx: number; cy: number } {
+export function getElementCenter(el: CanvasElement): {
+  cx: number;
+  cy: number;
+} {
   const x = Number(el.x) || 0;
   const y = Number(el.y) || 0;
   const w = Number(el.width) || 0;
@@ -263,8 +266,8 @@ export function computeEdgePoint(
   }
 
   // Rectangle: ray-box intersection
-  const tx = nx !== 0 ? hw / Math.abs(nx) : Infinity;
-  const ty = ny !== 0 ? hh / Math.abs(ny) : Infinity;
+  const tx = nx !== 0 ? hw / Math.abs(nx) : Number.POSITIVE_INFINITY;
+  const ty = ny !== 0 ? hh / Math.abs(ny) : Number.POSITIVE_INFINITY;
   const t = Math.min(tx, ty);
   return {
     x: cx + nx * (t + BINDING_GAP),
@@ -290,7 +293,6 @@ export function computeFixedPoint(
   const absDy = Math.abs(dy);
   if (absDx > absDy) {
     return dx > 0 ? [1, 0.5] : [0, 0.5];
-  } else {
-    return dy > 0 ? [0.5, 1] : [0.5, 0];
   }
+  return dy > 0 ? [0.5, 1] : [0.5, 0];
 }

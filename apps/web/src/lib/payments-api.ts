@@ -4,7 +4,7 @@ import { getUserFacingError } from "./locale";
 import type { BillingPeriod, SubscriptionPlan } from "@loomic/shared";
 
 import { getServerBaseUrl } from "./env";
-import { ApiAuthError, ApiApplicationError } from "./server-api";
+import { ApiApplicationError, ApiAuthError } from "./server-api";
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -37,7 +37,10 @@ async function handleErrorResponse(response: Response): Promise<never> {
   }
   const body = await response.json().catch(() => null);
   const code = body?.error?.code ?? "application_error";
-  const message = getUserFacingError({ code, message: body?.error?.message ?? body?.message }, "请求失败，请重试。");
+  const message = getUserFacingError(
+    { code, message: body?.error?.message ?? body?.message },
+    "请求失败，请重试。",
+  );
   throw new ApiApplicationError(code, message);
 }
 
@@ -68,9 +71,7 @@ export async function getSubscription(
   return (await response.json()) as SubscriptionStatus;
 }
 
-export async function cancelSubscription(
-  accessToken: string,
-): Promise<void> {
+export async function cancelSubscription(accessToken: string): Promise<void> {
   const response = await fetch(`${getServerBaseUrl()}/api/payments/cancel`, {
     method: "POST",
     headers: authHeaders(accessToken),

@@ -1,18 +1,20 @@
 "use client";
 
+import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+
 import { getUserFacingError } from "@/lib/locale";
 
 import { useCallback, useRef, useState } from "react";
 
 import type { ImageArtifact } from "@loomic/shared";
 
-import { generateImageDirect } from "../lib/server-api";
-import { insertImageOnCanvas } from "../lib/canvas-elements";
 import { useGenerationErrorHandler } from "../hooks/use-generation-error-handler";
+import { insertImageOnCanvas } from "../lib/canvas-elements";
+import { generateImageDirect } from "../lib/server-api";
 
 type CanvasImageGenPanelProps = {
   accessToken: string;
-  excalidrawApi: any;
+  excalidrawApi: ExcalidrawImperativeAPI | null;
   onClose: () => void;
 };
 
@@ -35,7 +37,10 @@ export function CanvasImageGenPanel({
     setError(null);
 
     try {
-      const result = await generateImageDirect(accessTokenRef.current, prompt.trim());
+      const result = await generateImageDirect(
+        accessTokenRef.current,
+        prompt.trim(),
+      );
 
       if (excalidrawApi) {
         const artifact: ImageArtifact = {
@@ -64,10 +69,16 @@ export function CanvasImageGenPanel({
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-foreground">AI 图片</h3>
         <button
+          type="button"
           onClick={onClose}
           className="text-muted-foreground hover:text-foreground transition-colors"
         >
-          <svg className="h-4 w-4" viewBox="0 0 16 16" fill="currentColor">
+          <svg
+            aria-hidden="true"
+            className="h-4 w-4"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+          >
             <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
           </svg>
         </button>
@@ -91,6 +102,7 @@ export function CanvasImageGenPanel({
       {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
 
       <button
+        type="button"
         onClick={() => void handleGenerate()}
         disabled={!prompt.trim() || loading}
         className="mt-3 w-full rounded-lg bg-foreground text-background py-2 text-sm font-medium transition-opacity disabled:opacity-40 hover:opacity-90"

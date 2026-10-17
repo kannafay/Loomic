@@ -29,10 +29,7 @@ import { cn } from "@/lib/utils";
 // Source badge config (mirrors skill-card)
 // ---------------------------------------------------------------------------
 
-const SOURCE_CONFIG: Record<
-  SkillSource,
-  { label: string; icon: typeof ShieldCheck }
-> = {
+const SOURCE_CONFIG = {
   system: { label: "官方", icon: ShieldCheck },
   community: { label: "社区", icon: Users },
   user: { label: "自定义", icon: UserPen },
@@ -115,13 +112,9 @@ export function SkillDetailDialog({
   );
 
   if (!skill) return null;
-
-  // SOURCE_CONFIG exhaustively covers all SkillSource values ("system" | "community" | "user")
-  // Non-null assertion is safe: every possible SkillSource key is present in SOURCE_CONFIG.
-  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const sourceEntry = (SOURCE_CONFIG[
-    skill.source as keyof typeof SOURCE_CONFIG
-  ] ?? SOURCE_CONFIG.system)!;
+  const sourceEntry =
+    SOURCE_CONFIG[skill.source as keyof typeof SOURCE_CONFIG] ??
+    SOURCE_CONFIG.system;
   const { label: sourceLabel, icon: SourceIcon } = sourceEntry;
   const isUserSkill = skill.source === "user";
   const isInstalled = skill.installed ?? false;

@@ -4,8 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
 
 import { AuthShell } from "../../components/auth/auth-shell";
-import { LoginForm } from "../../components/login-form";
 import { LoadingScreen } from "../../components/loading-screen";
+import { LoginForm } from "../../components/login-form";
 import { useAuth } from "../../lib/auth-context";
 
 const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
@@ -21,8 +21,7 @@ function LoginPageContent() {
   const searchParams = useSearchParams();
   const callbackError = searchParams.get("error");
   const initialErrorMessage = callbackError
-    ? CALLBACK_ERROR_MESSAGES[callbackError] ??
-      "登录失败，请重试。"
+    ? (CALLBACK_ERROR_MESSAGES[callbackError] ?? "登录失败，请重试。")
     : null;
 
   useEffect(() => {
