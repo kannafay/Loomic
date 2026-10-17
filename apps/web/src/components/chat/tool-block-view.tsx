@@ -174,7 +174,7 @@ export const ToolBlockView = React.memo(function ToolBlockView({
           ?.error as string | undefined)
       : undefined;
   const inputData = block.input as Record<string, unknown> | undefined;
-  const modelName = inputData?.model as string | undefined;
+  const modelName = (inputData?.modelDisplayName ?? inputData?.model) as string | undefined;
   const aspectRatio =
     (inputData?.aspectRatio as string) ?? (isVideoTool ? "16:9" : "1:1");
 
@@ -442,7 +442,7 @@ const ImageArtifactCard = React.memo(function ImageArtifactCard({
       <div className="relative aspect-square max-h-[280px] w-full overflow-hidden bg-muted">
         <img
           src={artifact.url}
-          alt={artifact.title ?? "Generated image"}
+          alt={artifact.title ?? "生成的图片"}
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
           loading="lazy"
         />
@@ -452,7 +452,7 @@ const ImageArtifactCard = React.memo(function ImageArtifactCard({
             type="button"
             onClick={handleDownload}
             className="absolute bottom-2 right-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm text-white hover:bg-white/30 transition-colors"
-            title="\u4e0b\u8f7d\u56fe\u7247"
+            title="下载图片"
           >
             <svg
               className="h-3.5 w-3.5"
@@ -628,7 +628,7 @@ function ToolDetailPanel({
                     <ChatImage
                       key={artifact.url}
                       src={artifact.url}
-                      alt={artifact.title ?? "Generated image"}
+                      alt={artifact.title ?? "生成的图片"}
                       className="max-w-[200px] rounded-lg border border-border"
                     />
                   ) : null,
@@ -757,7 +757,7 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
       {colors.length > 0 && (
         <div>
           <div className="text-xs font-medium text-muted-foreground mb-2">
-            Color
+            颜色
           </div>
           <div className="flex flex-wrap gap-3">
             {colors.map((color, i) => (
@@ -779,7 +779,7 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
       {fonts.length > 0 && (
         <div>
           <div className="text-xs font-medium text-muted-foreground mb-2">
-            Fonts
+            字体
           </div>
           <div className="grid grid-cols-2 gap-2">
             {fonts.map((font, i) => (
@@ -809,7 +809,7 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
       {(logos.length > 0 || images.length > 0) && (
         <div>
           <div className="text-xs font-medium text-muted-foreground mb-2">
-            Photography
+            摄影素材
           </div>
           <div className="grid grid-cols-2 gap-2">
             {logos.map((logo, i) => (
@@ -819,7 +819,7 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
               >
                 <img
                   src={logo.url}
-                  alt={logo.name ?? "Logo"}
+                  alt={logo.name ?? "标志"}
                   className="h-auto w-full object-cover"
                   loading="lazy"
                 />
@@ -837,7 +837,7 @@ function BrandKitOutput({ data }: { data: BrandKitData }) {
               >
                 <img
                   src={img.url}
-                  alt={img.name ?? "Image"}
+                  alt={img.name ?? "图片"}
                   className="h-auto w-full object-cover"
                   loading="lazy"
                 />

@@ -1,7 +1,8 @@
 "use client";
+import { Textarea } from "@/components/ui/textarea";
 
-import { useCallback, useState } from "react";
 import { FileText, Plus, X } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import type { SkillCategory } from "@loomic/shared";
 
@@ -16,28 +17,35 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // ---------------------------------------------------------------------------
 // SKILL.md boilerplate template
 // ---------------------------------------------------------------------------
 
-const SKILL_TEMPLATE = `# Skill Name
+const SKILL_TEMPLATE = `# 技能名称
 
-## Description
-Describe what this skill does and when the agent should use it.
+## 技能说明
+描述这个技能的用途，以及智能助手应在什么情况下使用它。
 
-## Instructions
-1. Step-by-step instructions for the agent.
-2. Be specific about inputs, outputs, and constraints.
+## 使用步骤
+1. 按顺序描述智能助手应执行的操作。
+2. 明确说明输入、输出和限制条件。
 
-## Examples
+## 示例
 \`\`\`
-User: example prompt
-Agent: example response
+用户：示例需求
+智能助手：示例回复
 \`\`\`
 
-## Constraints
-- List any limitations or boundaries.
+## 约束条件
+- 列出需要遵守的限制和边界。
 `;
 
 // ---------------------------------------------------------------------------
@@ -45,12 +53,12 @@ Agent: example response
 // ---------------------------------------------------------------------------
 
 const CATEGORY_OPTIONS: Array<{ value: SkillCategory; label: string }> = [
-  { value: "design", label: "Design" },
-  { value: "generation", label: "Generation" },
-  { value: "code", label: "Code" },
-  { value: "data", label: "Data" },
-  { value: "writing", label: "Writing" },
-  { value: "custom", label: "Custom" },
+  { value: "design", label: "设计" },
+  { value: "generation", label: "生成" },
+  { value: "code", label: "代码" },
+  { value: "data", label: "数据" },
+  { value: "writing", label: "写作" },
+  { value: "custom", label: "自定义" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -92,7 +100,9 @@ export function CreateSkillDialog({
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<SkillCategory>("custom");
   const [skillContent, setSkillContent] = useState("");
-  const [files, setFiles] = useState<Array<{ filePath: string; content: string }>>([]);
+  const [files, setFiles] = useState<
+    Array<{ filePath: string; content: string }>
+  >([]);
   const [submitting, setSubmitting] = useState(false);
 
   // -- File management helpers --
@@ -154,7 +164,15 @@ export function CreateSkillDialog({
         setSubmitting(false);
       }
     },
-    [name, description, category, skillContent, files, onSubmit, handleOpenChange],
+    [
+      name,
+      description,
+      category,
+      skillContent,
+      files,
+      onSubmit,
+      handleOpenChange,
+    ],
   );
 
   const canSubmit =
@@ -178,7 +196,7 @@ export function CreateSkillDialog({
             <Label htmlFor="skill-name">名称</Label>
             <Input
               id="skill-name"
-              placeholder="e.g. UI Design Expert"
+              placeholder="例如：界面设计专家"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={200}
@@ -188,31 +206,37 @@ export function CreateSkillDialog({
           {/* Category */}
           <div className="space-y-1.5">
             <Label htmlFor="skill-category">分类</Label>
-            <select
-              id="skill-category"
+            <Select
+              items={CATEGORY_OPTIONS}
               value={category}
-              onChange={(e) => setCategory(e.target.value as SkillCategory)}
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              onValueChange={(value) => {
+                if (value) setCategory(value as SkillCategory);
+              }}
             >
-              {CATEGORY_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="skill-category" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {CATEGORY_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
             <Label htmlFor="skill-desc">描述</Label>
-            <textarea
+            <Textarea
               id="skill-desc"
               rows={2}
               placeholder="简述技能的功能和用途..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               maxLength={2000}
-              className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 text-sm outline-none resize-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 placeholder:text-muted-foreground"
+              className="field-sizing-fixed resize-none"
             />
           </div>
 
@@ -230,13 +254,13 @@ export function CreateSkillDialog({
                 使用模板
               </Button>
             </div>
-            <textarea
+            <Textarea
               id="skill-content"
               rows={8}
-              placeholder="# Skill Name&#10;&#10;## Instructions&#10;..."
+              placeholder="# 技能名称&#10;&#10;## 使用说明&#10;…"
               value={skillContent}
               onChange={(e) => setSkillContent(e.target.value)}
-              className="w-full rounded-lg border border-input bg-secondary px-3 py-2 font-mono text-xs leading-relaxed outline-none resize-y focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 placeholder:text-muted-foreground"
+              className="field-sizing-fixed resize-y bg-secondary font-mono text-xs leading-relaxed"
             />
           </div>
 
@@ -244,12 +268,7 @@ export function CreateSkillDialog({
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label>附属文件（可选）</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                onClick={addFile}
-              >
+              <Button type="button" variant="ghost" size="xs" onClick={addFile}>
                 <Plus className="size-3" />
                 添加
               </Button>
@@ -268,14 +287,15 @@ export function CreateSkillDialog({
                       className="relative rounded-lg border border-border bg-secondary/40 p-3 space-y-2"
                     >
                       {/* Remove button */}
-                      <button
+                      <Button
+                        variant="ghost"
                         type="button"
                         onClick={() => removeFile(index)}
                         className="absolute top-2 right-2 p-0.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         aria-label="删除文件"
                       >
                         <X className="size-3.5" />
-                      </button>
+                      </Button>
 
                       {/* File path input */}
                       <div className="pr-6">
@@ -296,14 +316,14 @@ export function CreateSkillDialog({
                       </div>
 
                       {/* File content textarea */}
-                      <textarea
+                      <Textarea
                         rows={4}
                         placeholder="文件内容..."
                         value={file.content}
                         onChange={(e) =>
                           updateFile(index, "content", e.target.value)
                         }
-                        className="w-full rounded-lg border border-input bg-transparent px-2.5 py-1.5 font-mono text-xs leading-relaxed outline-none resize-y focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 placeholder:text-muted-foreground"
+                        className="field-sizing-fixed resize-y font-mono text-xs leading-relaxed"
                       />
                     </div>
                   );

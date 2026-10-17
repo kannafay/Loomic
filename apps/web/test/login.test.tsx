@@ -80,9 +80,10 @@ describe("Login page", () => {
       </AuthProvider>,
     );
     expect((await screen.findByText("Loomic")).textContent).toBe("Loomic");
-    expect(screen.getByText(/Send login link/i).textContent).toContain("Send login link");
-    expect(screen.getByText(/Continue with Google/i).textContent).toContain("Continue with Google");
-    expect(screen.getByRole("link", { name: /create one/i }).getAttribute("href")).toBe("/register");
+    expect(screen.getByRole("button", { name: "登录" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "使用邮件链接登录" })).toBeInTheDocument();
+    expect(screen.getByText(/使用 Google 登录/i).textContent).toContain("使用 Google 登录");
+    expect(screen.getByRole("link", { name: /立即注册/i }).getAttribute("href")).toBe("/register");
   });
 
   it("shows callback errors from the query string as a banner", async () => {
@@ -95,7 +96,7 @@ describe("Login page", () => {
     );
 
     expect((await screen.findByRole("alert")).textContent).toContain(
-      "This sign-in link could not be verified. Request a new one and try again.",
+      "登录链接验证失败，请重新获取后再试。",
     );
   });
 
@@ -106,10 +107,11 @@ describe("Login page", () => {
       </AuthProvider>,
     );
 
-    fireEvent.change(await screen.findByLabelText(/email/i), {
+    fireEvent.click(await screen.findByRole("button", { name: "使用邮件链接登录" }));
+    fireEvent.change(await screen.findByLabelText(/邮箱/i), {
       target: { value: "user@example.com" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /send login link/i }));
+    fireEvent.click(screen.getByRole("button", { name: /发送登录链接/i }));
 
     await waitFor(() => {
       expect(mockSignInWithOtp).toHaveBeenCalledWith({
@@ -129,14 +131,13 @@ describe("Login page", () => {
       </AuthProvider>,
     );
 
-    fireEvent.click(await screen.findByRole("button", { name: /use password instead/i }));
-    fireEvent.change(screen.getByLabelText(/email/i), {
+    fireEvent.change(await screen.findByLabelText(/邮箱/i), {
       target: { value: "user@example.com" },
     });
-    fireEvent.change(screen.getByLabelText(/password/i), {
+    fireEvent.change(screen.getByLabelText(/密码/i), {
       target: { value: "password-123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /^登录$/i }));
 
     await waitFor(() => {
       expect(mockSignInWithPassword).toHaveBeenCalledWith({

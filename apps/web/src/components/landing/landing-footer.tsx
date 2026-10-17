@@ -39,7 +39,6 @@ const FOOTER_COLUMNS: FooterColumn[] = [
     title: "产品",
     links: [
       { label: "功能介绍", href: "#features" },
-      { label: "定价方案", href: "#pricing" },
       { label: "更新日志", href: "/changelog" },
       { label: "产品路线图", href: "/roadmap" },
     ],
@@ -189,7 +188,7 @@ export function LandingFooter() {
         {/* Bottom bar */}
         <div className="mt-12 pt-6 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-3">
           <p className="text-sm text-muted-foreground">
-            &copy; {currentYear} Loomic. All rights reserved.
+            &copy; {currentYear} Loomic。保留所有权利。
           </p>
           <span className="text-sm text-muted-foreground">简体中文</span>
         </div>

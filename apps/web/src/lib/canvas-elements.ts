@@ -121,14 +121,14 @@ export async function fetchAsDataURL(url: string): Promise<string> {
 
   const response = await fetch(proxyUrl);
   if (!response.ok) {
-    throw new Error(`Failed to fetch image: ${response.status}`);
+    throw new Error(`图片加载失败：${response.status}`);
   }
   const blob = await response.blob();
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = () =>
-      reject(new Error("Failed to convert image to data URL"));
+      reject(new Error("图片数据转换失败。"));
     reader.readAsDataURL(blob);
   });
 }

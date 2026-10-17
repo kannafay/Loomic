@@ -419,7 +419,7 @@ export function CanvasEditor({
         const dataUrl = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
-          reader.onerror = () => reject(new Error("Failed to convert screenshot to data URL"));
+          reader.onerror = () => reject(new Error("截图数据转换失败。"));
           reader.readAsDataURL(blob);
         });
 
@@ -562,6 +562,7 @@ export function CanvasEditor({
     >
       <div className="h-full w-full relative">
         <Excalidraw
+          langCode="zh-CN"
           theme={resolvedTheme === "dark" ? "dark" : "light"}
           initialData={{
             elements: initialContent.elements as any,

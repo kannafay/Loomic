@@ -1,6 +1,8 @@
 // @credits-system — Tier limit toast notifications: concurrency, model access, and resolution limits
 "use client";
 
+import { getUserFacingError } from "@/lib/locale";
+
 import { AnimatePresence, motion } from "framer-motion";
 import { Lock, Maximize2, Timer, X } from "lucide-react";
 import {
@@ -100,7 +102,7 @@ export function TierLimitToastProvider({ children }: { children: ReactNode }) {
       if (!VALID_CODES.has(error.code)) return;
       const id = nextToastId++;
       setToasts((prev) => {
-        const next = [...prev, { id, code: error.code as TierLimitCode, message: error.message }];
+        const next = [...prev, { id, code: error.code as TierLimitCode, message: getUserFacingError(error) }];
         // Keep only the most recent MAX_VISIBLE toasts
         return next.slice(-MAX_VISIBLE);
       });

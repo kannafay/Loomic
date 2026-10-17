@@ -1,3 +1,5 @@
+import { localizeHomeExample, localizeHomeInputMentions } from "./home-content-locale";
+
 export type InputMention = {
   /** "image" = reference image to attach; "tool" = model/tool selector (informational only) */
   type: "image" | "tool";
@@ -39,7 +41,11 @@ function ex(
   previewImages: string[],
   inputMentions: InputMention[],
 ): HomeExampleCard {
-  return { title, prompt, previewImages, inputMentions };
+  return {
+    ...localizeHomeExample(title, prompt),
+    previewImages,
+    inputMentions: localizeHomeInputMentions(title, inputMentions),
+  };
 }
 
 function cat(
@@ -129,7 +135,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
       ],
       [
         tool("Nano Banana Pro", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
-        img("Image", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/nano-banana-pro/e5-input-1.webp"),
+        img("图片", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/nano-banana-pro/e5-input-1.webp"),
       ],
     ),
     ex(
@@ -142,11 +148,11 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
       ],
       [
         tool("Nano Banana Pro", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
-        img("Logo", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/common/loomic-logo.png"),
+        img("标志", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/common/loomic-logo.png"),
       ],
     ),
   ], "special"),
-  cat("design", "Design", "Poster", [
+  cat("design", "设计", "Poster", [
     ex(
       "Design a Bauhaus-inspired poster.",
       "Make a poster for a music festival in the Bauhaus style. Use a limited color palette of pink, red, and cream. Abstract geometric shapes representing sound waves. Minimalist vertical text.",
@@ -221,7 +227,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
       ],
     ),
   ]),
-  cat("branding", "Branding", "Branding", [
+  cat("branding", "品牌设计", "Branding", [
     ex(
       "Generate logo options.",
       "Minimalist vector cartoon logo for a sushi shop. Use simple, bold, rounded lines. Very clean, modern, and well designed.",
@@ -243,7 +249,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
         "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/examples/branding/e2-3.webp",
       ],
       [
-        img("Logo", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/common/loomic-logo.png"),
+        img("标志", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/common/loomic-logo.png"),
         tool("Nano Banana", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
       ],
     ),
@@ -256,7 +262,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
         "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/examples/branding/e3-3.webp",
       ],
       [
-        img("Logo", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/common/loomic-logo.png"),
+        img("标志", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/common/loomic-logo.png"),
         tool("Nano Banana", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
       ],
     ),
@@ -271,7 +277,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
       [
         tool("Nano Banana", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
         img("Board", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/branding/e4-input-1.webp"),
-        img("Image", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/branding/e4-input-2.webp"),
+        img("图片", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/branding/e4-input-2.webp"),
       ],
     ),
     ex(
@@ -301,7 +307,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
       ],
     ),
   ]),
-  cat("illustration", "Illustration", "Illustration", [
+  cat("illustration", "插画", "Illustration", [
     ex(
       "From sketch to endless illustration styles.",
       "Turn this sketch into a 2D illustration, try 5 different styles.",
@@ -324,7 +330,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
         "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/examples/illustration/e2-3.webp",
       ],
       [
-        img("Image", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/illustration/e2-input-1.webp"),
+        img("图片", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/illustration/e2-input-1.webp"),
         tool("Nano Banana", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
       ],
     ),
@@ -382,11 +388,11 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
       ],
       [
         tool("Nano Banana", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
-        img("Image", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/illustration/e6-input-1.webp"),
+        img("图片", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/illustration/e6-input-1.webp"),
       ],
     ),
   ]),
-  cat("e-commerce", "E-Commerce", "Character", [
+  cat("e-commerce", "电商设计", "Character", [
     ex(
       "Show your clothing on a model.",
       "Change her top to this sweater.",
@@ -396,7 +402,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
         "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/examples/e-commerce/e1-3.webp",
       ],
       [
-        img("Model", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/e-commerce/e1-input-1.webp"),
+        img("模型", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/e-commerce/e1-input-1.webp"),
         img("Sweater", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/e-commerce/e1-input-2.webp"),
         tool("Nano Banana", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
       ],
@@ -462,13 +468,13 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
         "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/examples/e-commerce/e6-3.webp",
       ],
       [
-        img("Logo", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/common/loomic-logo.png"),
+        img("标志", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/common/loomic-logo.png"),
         img("Perfume", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/e-commerce/e6-input-2.webp"),
         tool("Nano Banana", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/imagen-3.svg"),
       ],
     ),
   ]),
-  cat("video", "Video", "Video", [
+  cat("video", "视频", "Video", [
     ex(
       "Turn product photos into 360\u00b0 videos.",
       "Use this  as the start and end frame, generate a video of the ring rotating in slow motion.",
@@ -504,7 +510,7 @@ export const homeExampleSeedCategories: HomeExampleCategory[] = [
         "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/examples/video/e3-3.webp",
       ],
       [
-        img("Model", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/video/e3-input-1.webp"),
+        img("模型", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/inputs/video/e3-input-1.webp"),
         tool("Kling 2.5 Turbo", "https://jmcrxgenontlkxktpihl.supabase.co/storage/v1/object/public/project-assets/home-seeds/icons/kling.svg"),
       ],
     ),

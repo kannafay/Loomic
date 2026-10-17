@@ -2,6 +2,7 @@ import type { Database } from "@loomic/shared";
 
 import type { HomeDiscoveryCategory } from "./home-discovery-seeds";
 import { homeDiscoverySeedCategories } from "./home-discovery-seeds";
+import { localizeHomeDiscovery } from "./home-content-locale";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
 type HomeDiscoveryCategoryRow =
@@ -30,13 +31,12 @@ export function mapHomeDiscoveryRows(
         .sort((left, right) => left.sort_order - right.sort_order)
         .map((item) => ({
           id: item.id,
-          title: item.title,
+          ...localizeHomeDiscovery(item.title, item.seed_prompt),
           coverImageUrl: item.cover_image_url,
           authorName: item.author_name,
           authorAvatarUrl: item.author_avatar_url,
           viewCount: item.view_count,
           likeCount: item.like_count,
-          prompt: item.seed_prompt,
         })),
     }));
 }

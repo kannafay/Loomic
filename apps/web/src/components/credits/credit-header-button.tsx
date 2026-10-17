@@ -1,6 +1,8 @@
 // @credits-system — Header button showing credit balance + upgrade CTA (Lovart style)
 "use client";
 
+import { getPlanLabel } from "@/lib/locale";
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -115,7 +117,7 @@ export function CreditHeaderButton() {
           className="flex h-8 items-center gap-1.5 rounded-lg bg-muted px-3 text-xs font-medium tabular-nums text-foreground transition-colors hover:bg-accent"
         >
           <Zap className="h-3 w-3 text-muted-foreground fill-muted-foreground" />
-          <span>{balance.toLocaleString()}</span>
+          <span>{balance.toLocaleString("zh-CN")}</span>
         </button>
 
         {/* User avatar */}
@@ -150,13 +152,13 @@ export function CreditHeaderButton() {
                   <span
                     className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${PLAN_COLORS[plan] ?? PLAN_COLORS.free}`}
                   >
-                    {plan}
+                    {getPlanLabel(plan)}
                   </span>
                   {limits && (
                     <span className="text-xs text-muted-foreground">
                       {isFree
-                        ? `${limits.dailyCredits}/day`
-                        : `${limits.monthlyCredits.toLocaleString()}/mo`}
+                        ? `${limits.dailyCredits}/天`
+                        : `${limits.monthlyCredits.toLocaleString("zh-CN")}/月`}
                     </span>
                   )}
                 </div>
@@ -165,9 +167,9 @@ export function CreditHeaderButton() {
                 <div className="mb-3 flex items-center gap-2">
                   <Zap className="h-5 w-5 text-muted-foreground" />
                   <span className="text-2xl font-semibold tabular-nums text-foreground">
-                    {balance.toLocaleString()}
+                    {balance.toLocaleString("zh-CN")}
                   </span>
-                  <span className="text-xs text-muted-foreground">credits</span>
+                  <span className="text-xs text-muted-foreground">积分</span>
                 </div>
 
                 <div className="mb-3 h-px bg-border" />
@@ -193,7 +195,7 @@ export function CreditHeaderButton() {
                     ) : (
                       <Gift className="h-4 w-4" />
                     )}
-                    {claiming ? "Claiming..." : "Claim Daily Credits"}
+                    {claiming ? "正在领取…" : "领取每日积分"}
                   </button>
                 )}
 
@@ -201,7 +203,7 @@ export function CreditHeaderButton() {
                 {isFree && dailyClaimed && (
                   <div className="mb-3 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
                     <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-                    Daily credits claimed
+                    今日积分已领取
                   </div>
                 )}
 
@@ -211,7 +213,7 @@ export function CreditHeaderButton() {
                   onClick={() => setOpen(false)}
                   className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted"
                 >
-                  <span>Usage Details</span>
+                  <span>用量明细</span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>
               </motion.div>

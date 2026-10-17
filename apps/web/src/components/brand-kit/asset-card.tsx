@@ -1,4 +1,5 @@
 "use client";
+import { Button } from "@/components/ui/button";
 
 import type { BrandKitAsset } from "@loomic/shared";
 import { Image as ImageIcon, Plus, X } from "lucide-react";
@@ -29,7 +30,9 @@ export function AssetCard({ asset, onDelete, onUpdateLabel }: AssetCardProps) {
             <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
           )}
         </div>
-        <button
+        <Button
+          size="icon"
+          variant="ghost"
           type="button"
           onClick={() => onDelete(asset.id)}
           className={cn(
@@ -37,10 +40,10 @@ export function AssetCard({ asset, onDelete, onUpdateLabel }: AssetCardProps) {
             "flex items-center justify-center",
             "opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
           )}
-          aria-label={`Delete ${asset.display_name}`}
+          aria-label={`删除${asset.display_name}`}
         >
           <X className="h-3 w-3 text-muted-foreground" />
-        </button>
+        </Button>
       </div>
       <InlineInput
         value={asset.display_name}
@@ -67,7 +70,9 @@ export function AddAssetCard({
 }: AddAssetCardProps) {
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <button
+      <Button
+        size="icon"
+        variant="ghost"
         type="button"
         onClick={onClick}
         disabled={disabled}
@@ -81,7 +86,7 @@ export function AddAssetCard({
         aria-label={label}
       >
         <Plus className="h-5 w-5 text-muted-foreground/60" />
-      </button>
+      </Button>
       <span className="text-xs text-muted-foreground/60">{label}</span>
     </div>
   );

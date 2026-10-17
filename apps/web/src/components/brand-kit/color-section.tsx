@@ -1,8 +1,9 @@
 "use client";
+import { Button } from "@/components/ui/button";
 
 import type { BrandKitAsset } from "@loomic/shared";
 import { Plus, X } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { cn } from "../../lib/utils";
 import { ColorPickerPopover } from "./color-picker-popover";
@@ -26,8 +27,6 @@ export function ColorSection({
 }: ColorSectionProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<BrandKitAsset | null>(null);
-  const addButtonRef = useRef<HTMLButtonElement>(null);
-  const editAnchorRef = useRef<HTMLDivElement>(null);
 
   const handleAddClick = useCallback(() => {
     setEditingAsset(null);
@@ -57,19 +56,34 @@ export function ColorSection({
 
   return (
     <section>
-      <SectionHeader title="Colors" count={colors.length} />
+      <SectionHeader title="颜色" count={colors.length} />
       <div className="flex flex-wrap gap-3">
         {colors.map((color) => (
           <div key={color.id} className="flex flex-col items-center gap-1.5">
-            <div className="relative group" ref={editingAsset?.id === color.id ? editAnchorRef : undefined}>
-              <button
-                type="button"
-                onClick={() => handleSwatchClick(color)}
-                className="w-[69px] h-[69px] rounded-xl border cursor-pointer transition-shadow hover:shadow-md"
-                style={{ backgroundColor: color.text_content ?? "#888888" }}
-                aria-label={`Edit color ${color.display_name}`}
-              />
-              <button
+            <div className="relative group">
+              <ColorPickerPopover
+                open={pickerOpen && editingAsset?.id === color.id}
+                onOpenChange={(open) => {
+                  if (open) handleSwatchClick(color);
+                  else handlePickerClose();
+                }}
+                onSave={handlePickerSave}
+                initialName={color.display_name}
+                initialHex={color.text_content ?? "#888888"}
+                mode="edit"
+              >
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  type="button"
+                  className="w-[69px] h-[69px] rounded-xl border cursor-pointer transition-shadow hover:shadow-md"
+                  style={{ backgroundColor: color.text_content ?? "#888888" }}
+                  aria-label={`编辑颜色${color.display_name}`}
+                />
+              </ColorPickerPopover>
+              <Button
+                size="icon"
+                variant="ghost"
                 type="button"
                 onClick={() => onDeleteColor(color.id)}
                 className={cn(
@@ -77,22 +91,10 @@ export function ColorSection({
                   "flex items-center justify-center",
                   "opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
                 )}
-                aria-label={`Delete color ${color.display_name}`}
+                aria-label={`删除颜色${color.display_name}`}
               >
                 <X className="h-3 w-3 text-muted-foreground" />
-              </button>
-              {/* Popover anchored to the swatch being edited */}
-              {editingAsset?.id === color.id && (
-                <ColorPickerPopover
-                  open={pickerOpen}
-                  onClose={handlePickerClose}
-                  onSave={handlePickerSave}
-                  initialName={color.display_name}
-                  initialHex={color.text_content ?? "#888888"}
-                  mode="edit"
-                  anchorRef={editAnchorRef}
-                />
-              )}
+              </Button>
             </div>
             <InlineInput
               value={color.display_name}
@@ -106,27 +108,27 @@ export function ColorSection({
         {/* Add button */}
         <div className="flex flex-col items-center gap-1.5">
           <div className="relative">
-            <button
-              ref={addButtonRef}
-              type="button"
-              onClick={handleAddClick}
-              className="w-[69px] h-[69px] rounded-xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
-              aria-label="Add color"
+            <ColorPickerPopover
+              open={pickerOpen && !editingAsset}
+              onOpenChange={(open) => {
+                if (open) handleAddClick();
+                else handlePickerClose();
+              }}
+              onSave={handlePickerSave}
+              mode="create"
             >
-              <Plus className="h-5 w-5 text-muted-foreground/60" />
-            </button>
-            {/* Popover anchored to add button */}
-            {!editingAsset && (
-              <ColorPickerPopover
-                open={pickerOpen}
-                onClose={handlePickerClose}
-                onSave={handlePickerSave}
-                mode="create"
-                anchorRef={addButtonRef}
-              />
-            )}
+              <Button
+                size="icon"
+                variant="ghost"
+                type="button"
+                className="w-[69px] h-[69px] rounded-xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
+                aria-label="添加颜色"
+              >
+                <Plus className="h-5 w-5 text-muted-foreground/60" />
+              </Button>
+            </ColorPickerPopover>
           </div>
-          <span className="text-xs text-muted-foreground/60">Add</span>
+          <span className="text-xs text-muted-foreground/60">添加</span>
         </div>
       </div>
     </section>

@@ -100,16 +100,16 @@ describe("Projects page", () => {
     mockSuccessfulLoad({ projects: [] });
     render(<ProjectsPage />);
 
-    expect(await screen.findByText(/no projects yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/暂无项目/i)).toBeInTheDocument();
   });
 
   it("opens create dialog on + New Project click", async () => {
     mockSuccessfulLoad();
     render(<ProjectsPage />);
 
-    const button = await screen.findByRole("button", { name: /new project/i });
+    const button = await screen.findByRole("button", { name: /新建项目/i });
     await userEvent.click(button);
-    expect(await screen.findByLabelText(/name/i)).toBeInTheDocument();
+    expect(await screen.findByLabelText(/名称/i)).toBeInTheDocument();
   });
 
   it("calls signOut and redirects on 401 from fetchViewer", async () => {
@@ -143,7 +143,7 @@ describe("Projects page", () => {
 
     render(<ProjectsPage />);
     expect(await screen.findByText(/failed to load/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /重试/i })).toBeInTheDocument();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
@@ -172,10 +172,10 @@ describe("Projects page", () => {
     mockSuccessfulLoad();
     render(<ProjectsPage />);
 
-    const newBtn = await screen.findByRole("button", { name: /new project/i });
+    const newBtn = await screen.findByRole("button", { name: /新建项目/i });
     await userEvent.click(newBtn);
 
-    const nameInput = await screen.findByLabelText(/name/i);
+    const nameInput = await screen.findByLabelText(/名称/i);
     await userEvent.type(nameInput, "Duplicate");
 
     // Override fetch for the create call
@@ -196,7 +196,7 @@ describe("Projects page", () => {
       return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
     });
 
-    const submitBtn = screen.getByRole("button", { name: /create/i });
+    const submitBtn = screen.getByRole("button", { name: /创建/i });
     await userEvent.click(submitBtn);
     expect(await screen.findByText(/already exists/i)).toBeInTheDocument();
   });
@@ -205,10 +205,10 @@ describe("Projects page", () => {
     mockSuccessfulLoad();
     render(<ProjectsPage />);
 
-    const newBtn = await screen.findByRole("button", { name: /new project/i });
+    const newBtn = await screen.findByRole("button", { name: /新建项目/i });
     await userEvent.click(newBtn);
 
-    const nameInput = await screen.findByLabelText(/name/i);
+    const nameInput = await screen.findByLabelText(/名称/i);
     await userEvent.type(nameInput, "Failing");
 
     // Override fetch for the create call
@@ -228,7 +228,7 @@ describe("Projects page", () => {
       return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
     });
 
-    const submitBtn = screen.getByRole("button", { name: /create/i });
+    const submitBtn = screen.getByRole("button", { name: /创建/i });
     await userEvent.click(submitBtn);
     expect(await screen.findByText(/failed to create/i)).toBeInTheDocument();
   });

@@ -1,4 +1,21 @@
 "use client";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { GoogleFontItem } from "../../lib/font-api";
@@ -7,16 +24,20 @@ import { fetchGoogleFonts } from "../../lib/font-api";
 interface FontPickerDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (font: { family: string; variant: string; category: string }) => void;
+  onSelect: (font: {
+    family: string;
+    variant: string;
+    category: string;
+  }) => void;
 }
 
 const CATEGORIES = [
   { value: "", label: "全部字体" },
-  { value: "sans-serif", label: "Sans-serif" },
-  { value: "serif", label: "Serif" },
-  { value: "display", label: "Display" },
-  { value: "handwriting", label: "Handwriting" },
-  { value: "monospace", label: "Monospace" },
+  { value: "sans-serif", label: "无衬线字体" },
+  { value: "serif", label: "衬线字体" },
+  { value: "display", label: "展示字体" },
+  { value: "handwriting", label: "手写字体" },
+  { value: "monospace", label: "等宽字体" },
 ];
 
 const PAGE_SIZE = 50;
@@ -32,28 +53,38 @@ export function FontPickerDialog({
   const [selected, setSelected] = useState<GoogleFontItem | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const loadedRef = useRef<Set<string>>(new Set());
-  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const listRef = useRef<HTMLDivElement>(null);
 
   // Fetch fonts on open / search / category change
   useEffect(() => {
     if (!open) return;
     clearTimeout(searchTimer.current);
-    searchTimer.current = setTimeout(async () => {
-      try {
-        const result = await fetchGoogleFonts(search || undefined, category || undefined);
-        setFonts(result);
-        setVisibleCount(PAGE_SIZE);
-      } catch {
-        // API failure — keep current list or show empty
-        setFonts([]);
-      }
-    }, search ? 300 : 0);
+    searchTimer.current = setTimeout(
+      async () => {
+        try {
+          const result = await fetchGoogleFonts(
+            search || undefined,
+            category || undefined,
+          );
+          setFonts(result);
+          setVisibleCount(PAGE_SIZE);
+        } catch {
+          // API failure — keep current list or show empty
+          setFonts([]);
+        }
+      },
+      search ? 300 : 0,
+    );
     return () => clearTimeout(searchTimer.current);
   }, [open, search, category]);
 
   // Load Google Fonts CSS for visible items (side-effect in useEffect, not during render)
-  const visibleFamilies = open ? fonts.slice(0, visibleCount).map((f) => f.family) : [];
+  const visibleFamilies = open
+    ? fonts.slice(0, visibleCount).map((f) => f.family)
+    : [];
   useEffect(() => {
     for (const family of visibleFamilies) {
       if (loadedRef.current.has(family)) continue;
@@ -78,7 +109,9 @@ export function FontPickerDialog({
     if (!selected) return;
     onSelect({
       family: selected.family,
-      variant: selected.variants.includes("regular") ? "regular" : selected.variants[0] ?? "400",
+      variant: selected.variants.includes("regular")
+        ? "regular"
+        : (selected.variants[0] ?? "400"),
       category: selected.category,
     });
     onClose();
@@ -90,80 +123,73 @@ export function FontPickerDialog({
   // Font CSS is loaded via useEffect above (visibleFamilies), not during render
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={onClose}>
-      <div
-        className="w-[420px] max-h-[520px] bg-popover rounded-xl shadow-lg border flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Search */}
-        <div className="p-3 border-b">
-          <input
-            type="text"
-            placeholder="搜索字体..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-1.5 text-sm border rounded-lg outline-none focus:ring-1 focus:ring-black/10"
-          />
-        </div>
-
-        {/* Category filter */}
-        <div className="px-3 py-2 border-b">
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="text-sm bg-transparent outline-none cursor-pointer"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
+    <Dialog
+      open={open}
+      onOpenChange={(value) => {
+        if (!value) onClose();
+      }}
+    >
+      <DialogContent className="flex max-h-[min(80vh,620px)] flex-col gap-3 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>选择字体</DialogTitle>
+          <DialogDescription>
+            搜索字体并选择要添加到品牌套件的字体。
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          aria-label="搜索字体"
+          placeholder="搜索字体..."
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+        <Select
+          value={category}
+          items={CATEGORIES}
+          onValueChange={(value) => setCategory(value ?? "")}
+        >
+          <SelectTrigger aria-label="字体分类" className="w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent className="p-1">
+            {CATEGORIES.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
             ))}
-          </select>
-        </div>
-
-        {/* Font list */}
+          </SelectContent>
+        </Select>
         <div
           ref={listRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto min-h-0"
+          className="min-h-0 flex-1 overflow-y-auto"
         >
-          {visibleFonts.map((font) => (
-              <button
-                key={font.family}
-                type="button"
-                onClick={() => setSelected(font)}
-                className={`w-full px-4 py-2 text-left text-base hover:bg-muted cursor-pointer ${
-                  selected?.family === font.family ? "bg-muted" : ""
-                }`}
-                style={{ fontFamily: `"${font.family}", sans-serif` }}
-              >
-                {font.family}
-              </button>
+          {visibleFonts.map((item) => (
+            <Button
+              key={item.family}
+              variant="ghost"
+              aria-pressed={selected?.family === item.family}
+              onClick={() => setSelected(item)}
+              className={`h-auto w-full justify-start px-3 py-2 text-left text-base ${selected?.family === item.family ? "bg-muted" : ""}`}
+              style={{ fontFamily: `"${item.family}", sans-serif` }}
+            >
+              {item.family}
+            </Button>
           ))}
           {fonts.length === 0 && (
-            <p className="p-4 text-sm text-muted-foreground text-center">
+            <p className="p-4 text-center text-sm text-muted-foreground">
               {search ? "未找到匹配字体" : "加载中..."}
             </p>
           )}
         </div>
-
-        {/* Footer */}
-        <div className="flex justify-end gap-2 p-3 border-t">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 text-sm border rounded-lg hover:bg-muted cursor-pointer"
-          >
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
             取消
-          </button>
-          <button
-            type="button"
-            onClick={handleAdd}
-            disabled={!selected}
-            className="px-4 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-40 cursor-pointer"
-          >
+          </Button>
+          <Button onClick={handleAdd} disabled={!selected}>
             添加
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

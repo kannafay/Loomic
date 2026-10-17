@@ -29,7 +29,7 @@ function CanvasVisual() {
     <div className="aspect-[4/3] relative overflow-hidden rounded-xl">
       <Image
         src="/images/showcase/showcase-5.jpg"
-        alt="AI canvas multi-person scene composition"
+        alt="AI 画布多人物场景构图"
         width={800}
         height={600}
         unoptimized
@@ -46,7 +46,7 @@ function ChatVisual() {
     <div className="aspect-[4/3] relative overflow-hidden rounded-xl">
       <Image
         src="/images/showcase/showcase-10.jpg"
-        alt="AI understanding creative intent for fashion styling"
+        alt="AI 理解时尚造型设计意图"
         width={800}
         height={600}
         unoptimized
@@ -63,7 +63,7 @@ function BrandVisual() {
     <div className="aspect-[4/3] relative overflow-hidden rounded-xl">
       <Image
         src="/images/showcase/showcase-11.jpg"
-        alt="Consistent brand visual aesthetic"
+        alt="统一的品牌视觉风格"
         width={800}
         height={600}
         unoptimized
@@ -80,7 +80,7 @@ function EditVisual() {
     <div className="aspect-[4/3] relative overflow-hidden rounded-xl">
       <Image
         src="/images/showcase/showcase-3.jpg"
-        alt="Pixel-level precision control for design elements"
+        alt="设计元素的像素级精确控制"
         width={800}
         height={600}
         unoptimized

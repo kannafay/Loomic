@@ -97,7 +97,7 @@ function ExamplePreviewCard({
             <img
               key={image}
               src={image}
-              alt={`${title} preview ${index + 1}`}
+              alt={`${title}预览 ${index + 1}`}
               loading="lazy"
               className={cn(
                 "absolute aspect-[7/8] rounded-[4px] border-[0.5px] border-border object-cover transition-all duration-500 ease-out group-hover:shadow-lg",

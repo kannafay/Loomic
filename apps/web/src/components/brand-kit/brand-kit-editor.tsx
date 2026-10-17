@@ -1,14 +1,22 @@
 "use client";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Switch } from "@/components/ui/switch";
+
+import { Button } from "@/components/ui/button";
 
 import type {
   BrandKitAsset,
-  BrandKitDetail,
   BrandKitAssetType,
+  BrandKitDetail,
 } from "@loomic/shared";
 import { Copy, Ellipsis, Sparkles, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 
-import { cn } from "../../lib/utils";
 import { ColorSection } from "./color-section";
 import { FontSection } from "./font-section";
 import { GuidanceSection } from "./guidance-section";
@@ -95,7 +103,7 @@ export function BrandKitEditor({
   const handleAddFont = useCallback(
     (data: { family: string; variant: string; category: string }) => {
       const weight = data.variant === "regular" ? "400" : data.variant;
-      const displayName = `${data.family} ${weight === "400" ? "Regular" : weight}`;
+      const displayName = `${data.family} ${weight === "400" ? "常规" : weight}`;
       onAddAsset("font", displayName, data.family, {
         weight,
         category: data.category,
@@ -139,7 +147,7 @@ export function BrandKitEditor({
         <InlineInput
           value={kit.name}
           onCommit={handleNameCommit}
-          placeholder="Kit name"
+          placeholder="品牌套件名称"
           inputClassName="text-2xl font-semibold text-foreground"
         />
 
@@ -148,32 +156,17 @@ export function BrandKitEditor({
           <span className="text-sm text-muted-foreground whitespace-nowrap">
             应用到新项目
           </span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={kit.is_default}
-            onClick={handleToggleDefault}
-            className={cn(
-              "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer",
-              kit.is_default ? "bg-primary" : "bg-muted",
-            )}
-          >
-            <span
-              className={cn(
-                "inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-                kit.is_default ? "translate-x-6" : "translate-x-1",
-              )}
-            />
-          </button>
+          <Switch
+            aria-label="应用到新项目"
+            checked={kit.is_default}
+            onCheckedChange={handleToggleDefault}
+          />
 
           {/* Divider */}
           <div className="h-5 w-px bg-border" />
 
           {/* More menu */}
-          <MoreMenu
-            onDuplicate={onDuplicateKit}
-            onDelete={onDeleteKit}
-          />
+          <MoreMenu onDuplicate={onDuplicateKit} onDelete={onDeleteKit} />
         </div>
       </header>
 
@@ -181,14 +174,15 @@ export function BrandKitEditor({
       <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-[80px] xl:px-[160px]">
         <div className="flex flex-col gap-8 max-w-[960px] mx-auto">
           {/* Extract from URL — disabled Phase 1 */}
-          <button
+          <Button
+            variant="ghost"
             type="button"
             disabled
             className="inline-flex items-center gap-2 self-start rounded-xl border border-dashed px-4 py-2.5 text-sm text-muted-foreground opacity-50 cursor-not-allowed"
           >
             <Sparkles className="h-4 w-4" />
-            Extract from URL
-          </button>
+            从网址提取
+          </Button>
 
           <GuidanceSection
             value={kit.guidance_text}
@@ -234,61 +228,24 @@ export function BrandKitEditor({
 function MoreMenu({
   onDuplicate,
   onDelete,
-}: {
-  onDuplicate: () => void;
-  onDelete: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleMouseDown(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [open]);
-
+}: { onDuplicate: () => void; onDelete: () => void }) {
   return (
-    <div ref={menuRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className="rounded-lg p-2 text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
-        aria-label="More actions"
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button variant="ghost" size="icon" aria-label="更多操作" />}
       >
-        <Ellipsis className="h-5 w-5" />
-      </button>
-
-      {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-[140px] rounded-xl border bg-popover p-1.5 shadow-lg">
-          <button
-            type="button"
-            onClick={() => {
-              onDuplicate();
-              setOpen(false);
-            }}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
-          >
-            <Copy className="h-4 w-4 text-muted-foreground" />
-            复制
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              onDelete();
-              setOpen(false);
-            }}
-            className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-          >
-            <Trash2 className="h-4 w-4" />
-            删除
-          </button>
-        </div>
-      )}
-    </div>
+        <Ellipsis className="size-5" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-36">
+        <DropdownMenuItem onClick={onDuplicate}>
+          <Copy className="size-4" />
+          复制
+        </DropdownMenuItem>
+        <DropdownMenuItem variant="destructive" onClick={onDelete}>
+          <Trash2 className="size-4" />
+          删除
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

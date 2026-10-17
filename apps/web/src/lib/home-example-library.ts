@@ -2,6 +2,7 @@ import type { Database } from "@loomic/shared";
 
 import type { HomeExampleCategory, InputMention } from "./home-example-seeds";
 import { homeExampleSeedCategories } from "./home-example-seeds";
+import { localizeHomeExample, localizeHomeInputMentions } from "./home-content-locale";
 import { getSupabaseBrowserClient } from "./supabase-browser";
 
 type HomeExampleCategoryRow =
@@ -25,7 +26,7 @@ export function mapHomeExampleRows(
     .sort((left, right) => left.sort_order - right.sort_order)
     .map((category) => ({
       key: category.key,
-      label: category.label,
+      label: homeExampleSeedCategories.find((item) => item.key === category.key)?.label ?? category.label,
       dataType: category.data_type,
       ...(category.accent === "special"
         ? { accent: "special" as const }
@@ -33,10 +34,10 @@ export function mapHomeExampleRows(
       examples: [...(examplesByCategory.get(category.key) ?? [])]
         .sort((left, right) => left.sort_order - right.sort_order)
         .map((example) => ({
-          title: example.title,
-          prompt: example.prompt,
+          ...localizeHomeExample(example.title, example.prompt),
           previewImages: example.image_urls,
-          inputMentions: (Array.isArray(example.input_mentions) ? example.input_mentions : []) as InputMention[],
+          inputMentions: localizeHomeInputMentions(example.title,
+            (Array.isArray(example.input_mentions) ? example.input_mentions : []) as InputMention[]),
         })),
     }));
 }

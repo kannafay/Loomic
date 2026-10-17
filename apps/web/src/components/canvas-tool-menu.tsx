@@ -130,7 +130,7 @@ const GeneratingOverlay = memo(function GeneratingOverlay({
           </span>
         )}
         <span className="mt-1 text-[11px] text-muted-foreground">
-          Generating...
+          正在生成…
         </span>
       </div>
       <div className="absolute inset-0 animate-shimmer-scan">
@@ -148,6 +148,7 @@ const GeneratingOverlay = memo(function GeneratingOverlay({
 
 export function CanvasToolMenu({ accessToken, excalidrawApi, leftPanelOpen }: CanvasToolMenuProps) {
   const [activeTool, setActiveTool] = useState<string>("selection");
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
 
   // Image generator state
   const [activeGeneratorId, setActiveGeneratorId] = useState<string | null>(null);
@@ -228,9 +229,12 @@ export function CanvasToolMenu({ accessToken, excalidrawApi, leftPanelOpen }: Ca
   // careful to avoid unnecessary state updates that trigger re-renders.
   useEffect(() => {
     if (!excalidrawApi) return;
+    setContextMenuOpen(Boolean(excalidrawApi.getAppState().contextMenu));
 
     const unsubscribe = excalidrawApi.onChange(
       (elements: any[], appState: any) => {
+        // Keep forms mounted so opening the native menu preserves unsent inputs.
+        setContextMenuOpen(Boolean(appState.contextMenu));
         // --- Tool sync (cheap string comparison, skip if unchanged) ---
         const tool = appState?.activeTool?.type;
         if (tool) setActiveTool((prev: string) => prev === tool ? prev : tool);
@@ -424,6 +428,7 @@ export function CanvasToolMenu({ accessToken, excalidrawApi, leftPanelOpen }: Ca
   return (
     <>
       <div
+        hidden={contextMenuOpen}
         className="absolute bottom-5 z-30 flex items-center gap-0.5 rounded-xl p-1 bg-card/75 backdrop-blur-lg border border-border shadow-card transition-[left,transform] duration-200"
         style={{
           left: leftPanelOpen ? "calc(140px + 50%)" : "50%",
@@ -502,6 +507,7 @@ export function CanvasToolMenu({ accessToken, excalidrawApi, leftPanelOpen }: Ca
       {/* Image Generator Panel -- floats below the selected placeholder */}
       {activeGeneratorId && generatorData && generatorBounds && (
         <ImageGeneratorPanel
+          hidden={contextMenuOpen}
           elementId={activeGeneratorId}
           elementBounds={generatorBounds}
           data={generatorData}
@@ -515,6 +521,7 @@ export function CanvasToolMenu({ accessToken, excalidrawApi, leftPanelOpen }: Ca
       {/* Video Generator Panel -- floats below the selected placeholder */}
       {activeVideoGenId && videoGenData && videoGenBounds && (
         <VideoGeneratorPanel
+          hidden={contextMenuOpen}
           elementId={activeVideoGenId}
           elementBounds={videoGenBounds}
           data={videoGenData}
@@ -528,6 +535,7 @@ export function CanvasToolMenu({ accessToken, excalidrawApi, leftPanelOpen }: Ca
       {/* Video Player Panel -- floats when a completed video element is selected */}
       {activeVideoPlayerId && videoPlayerData && videoPlayerBounds && (
         <VideoPlayerPanel
+          hidden={contextMenuOpen}
           elementId={activeVideoPlayerId}
           elementBounds={videoPlayerBounds}
           videoUrl={videoPlayerData.videoUrl}
@@ -540,7 +548,7 @@ export function CanvasToolMenu({ accessToken, excalidrawApi, leftPanelOpen }: Ca
       )}
 
       {/* Shimmer overlays for generating elements */}
-      {generatingElements.length > 0 &&
+      {!contextMenuOpen && generatingElements.length > 0 &&
         createPortal(
           <>
             {generatingElements.map((el) => (

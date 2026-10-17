@@ -1,3 +1,5 @@
+import { localizeHomeDiscovery } from "./home-content-locale";
+
 export type HomeDiscoveryCase = {
   id: string;
   title: string;
@@ -34,13 +36,12 @@ function createCase(
 ): HomeDiscoveryCase {
   return {
     id,
-    title,
+    ...localizeHomeDiscovery(title, prompt),
     coverImageUrl,
     authorName,
     authorAvatarUrl,
     viewCount,
     likeCount,
-    prompt,
     ...(sourceUrl ? { sourceUrl } : {}),
   };
 }

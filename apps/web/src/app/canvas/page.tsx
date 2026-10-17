@@ -21,7 +21,6 @@ import { BrandKitSelector } from "../../components/brand-kit-selector";
 import { CanvasBottomBar } from "../../components/canvas-bottom-bar";
 import { CanvasFilesPanel } from "../../components/canvas-files-panel";
 import { CanvasLayersPanel } from "../../components/canvas-layers-panel";
-import { CreditHeaderButton } from "../../components/credits/credit-header-button";
 
 function CanvasPageContent() {
   const searchParams = useSearchParams();
@@ -53,7 +52,7 @@ function CanvasPageContent() {
   const [layersOpen, setLayersOpen] = useState(false);
   const [filesOpen, setFilesOpen] = useState(false);
   const [brandKitId, setBrandKitId] = useState<string | null>(null);
-  const [projectName, setProjectName] = useState("Untitled");
+  const [projectName, setProjectName] = useState("未命名项目");
   const [selectedCanvasElements, setSelectedCanvasElements] = useState<CanvasSelectedElement[]>([]);
 
   const excalidrawApiRef = useRef<any>(null);
@@ -158,7 +157,7 @@ function CanvasPageContent() {
         const title =
           el.customData?.title ||
           el.customData?.label ||
-          `Image ${idx}`;
+          `图片 ${idx}`;
         return {
           kind: "canvas-image",
           id: el.id,
@@ -204,7 +203,7 @@ function CanvasPageContent() {
         fetchProject(token, c.projectId)
           .then((projectData) => {
             setBrandKitId(projectData.project.brand_kit_id);
-            setProjectName(projectData.project.name ?? "Untitled");
+            setProjectName(projectData.project.name ?? "未命名项目");
           })
           .catch((err) => console.warn("Failed to fetch project for brand kit:", err));
       })
@@ -213,7 +212,7 @@ function CanvasPageContent() {
           signOutRef.current().then(() => routerRef.current.replace("/login"));
           return;
         }
-        setError("Failed to load canvas.");
+        setError("画布加载失败。");
         setPageLoading(false);
       });
     // Intentionally omitting accessTokenRef (stable ref) and signOutRef/routerRef
@@ -225,7 +224,7 @@ function CanvasPageContent() {
   if (!canvasId) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-sm text-muted-foreground">No canvas ID specified.</p>
+        <p className="text-sm text-muted-foreground">未指定画布，请从项目列表进入。</p>
       </div>
     );
   }
@@ -268,10 +267,6 @@ function CanvasPageContent() {
       </div>
       {/* Canvas always takes full width; on mobile/tablet, ChatSidebar overlays instead of side-by-side */}
       <div className="flex-1 relative min-w-0 overflow-hidden">
-        {/* Credits button — canvas area top-right, NOT chatbar */}
-        <div className="absolute top-3 right-3 z-20">
-          <CreditHeaderButton />
-        </div>
         <CanvasEditor
           canvasId={canvasData.id}
           projectId={canvasData.projectId}

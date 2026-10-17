@@ -1,4 +1,5 @@
 "use client";
+import { Input } from "@/components/ui/input";
 
 import { useCallback, useRef, useState } from "react";
 
@@ -51,7 +52,7 @@ export function InlineInput({
 
   return (
     <div className={cn("group", className)}>
-      <input
+      <Input
         ref={inputRef}
         type="text"
         value={editing ? draft : value}

@@ -1,4 +1,6 @@
 // @credits-system — Frontend API client for payments: checkout, subscription, cancellation, plan change
+import { getUserFacingError } from "./locale";
+
 import type { BillingPeriod, SubscriptionPlan } from "@loomic/shared";
 
 import { getServerBaseUrl } from "./env";
@@ -35,7 +37,7 @@ async function handleErrorResponse(response: Response): Promise<never> {
   }
   const body = await response.json().catch(() => null);
   const code = body?.error?.code ?? "application_error";
-  const message = body?.error?.message ?? "Request failed";
+  const message = getUserFacingError({ code, message: body?.error?.message ?? body?.message }, "请求失败，请重试。");
   throw new ApiApplicationError(code, message);
 }
 

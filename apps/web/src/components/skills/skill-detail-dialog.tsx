@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import {
   Calendar,
@@ -11,10 +10,10 @@ import {
   UserPen,
   Users,
 } from "lucide-react";
+import { useCallback, useState } from "react";
 
 import type { SkillDetail, SkillFileEntry, SkillSource } from "@loomic/shared";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Source badge config (mirrors skill-card)
@@ -47,10 +47,11 @@ function FileTreeItem({ file }: { file: SkillFileEntry }) {
 
   return (
     <div>
-      <button
+      <Button
+        variant="ghost"
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-2 px-3 py-2 text-xs font-mono text-foreground hover:bg-muted/50 transition-colors"
+        className="justify-start w-full flex items-center gap-2 px-3 py-2 text-xs font-mono text-foreground hover:bg-muted/50 transition-colors"
       >
         <ChevronRight
           className={cn(
@@ -59,7 +60,7 @@ function FileTreeItem({ file }: { file: SkillFileEntry }) {
           )}
         />
         <span className="truncate">{file.filePath}</span>
-      </button>
+      </Button>
       {expanded && (
         <pre className="px-3 pb-2 font-mono text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-words max-h-48 overflow-auto border-t border-border bg-secondary/50">
           {file.content}
@@ -118,8 +119,9 @@ export function SkillDetailDialog({
   // SOURCE_CONFIG exhaustively covers all SkillSource values ("system" | "community" | "user")
   // Non-null assertion is safe: every possible SkillSource key is present in SOURCE_CONFIG.
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const sourceEntry =
-    (SOURCE_CONFIG[skill.source as keyof typeof SOURCE_CONFIG] ?? SOURCE_CONFIG.system)!;
+  const sourceEntry = (SOURCE_CONFIG[
+    skill.source as keyof typeof SOURCE_CONFIG
+  ] ?? SOURCE_CONFIG.system)!;
   const { label: sourceLabel, icon: SourceIcon } = sourceEntry;
   const isUserSkill = skill.source === "user";
   const isInstalled = skill.installed ?? false;
@@ -202,49 +204,44 @@ export function SkillDetailDialog({
         {/* Footer actions */}
         <DialogFooter>
           {/* Delete (user skills only) */}
-          {isUserSkill && onDelete && (
-            <>
-              {confirmDelete ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="mr-auto flex items-center gap-2"
+          {isUserSkill &&
+            onDelete &&
+            (confirmDelete ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="mr-auto flex items-center gap-2"
+              >
+                <span className="text-xs text-destructive">确认删除?</span>
+                <Button
+                  variant="destructive"
+                  size="xs"
+                  disabled={actionLoading === "delete"}
+                  onClick={() =>
+                    handleAction(() => onDelete(skill.id), "delete")
+                  }
                 >
-                  <span className="text-xs text-destructive">确认删除?</span>
-                  <Button
-                    variant="destructive"
-                    size="xs"
-                    disabled={actionLoading === "delete"}
-                    onClick={() =>
-                      handleAction(
-                        () => onDelete(skill.id),
-                        "delete",
-                      )
-                    }
-                  >
-                    {actionLoading === "delete" ? "删除中..." : "确认"}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    取消
-                  </Button>
-                </motion.div>
-              ) : (
+                  {actionLoading === "delete" ? "删除中..." : "确认"}
+                </Button>
                 <Button
                   variant="ghost"
-                  size="sm"
-                  className="mr-auto text-destructive hover:text-destructive"
-                  onClick={() => setConfirmDelete(true)}
+                  size="xs"
+                  onClick={() => setConfirmDelete(false)}
                 >
-                  <Trash2 className="size-3.5" />
-                  删除
+                  取消
                 </Button>
-              )}
-            </>
-          )}
+              </motion.div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mr-auto text-destructive hover:text-destructive"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Trash2 className="size-3.5" />
+                删除
+              </Button>
+            ))}
 
           {/* Edit (user skills only — placeholder) */}
           {isUserSkill && (
@@ -261,10 +258,7 @@ export function SkillDetailDialog({
               size="sm"
               disabled={actionLoading === "uninstall"}
               onClick={() =>
-                handleAction(
-                  () => onUninstall(skill.id),
-                  "uninstall",
-                )
+                handleAction(() => onUninstall(skill.id), "uninstall")
               }
             >
               {actionLoading === "uninstall" ? "卸载中..." : "卸载"}
@@ -273,12 +267,7 @@ export function SkillDetailDialog({
             <Button
               size="sm"
               disabled={actionLoading === "install"}
-              onClick={() =>
-                handleAction(
-                  () => onInstall(skill.id),
-                  "install",
-                )
-              }
+              onClick={() => handleAction(() => onInstall(skill.id), "install")}
             >
               {actionLoading === "install" ? "安装中..." : "安装"}
             </Button>

@@ -63,16 +63,16 @@ describe("Register page", () => {
       </AuthProvider>,
     );
 
-    fireEvent.change(await screen.findByLabelText(/^email$/i), {
+    fireEvent.change(await screen.findByLabelText(/^邮箱$/i), {
       target: { value: "new-user@example.com" },
     });
-    fireEvent.change(screen.getByLabelText(/^password$/i), {
+    fireEvent.change(screen.getByLabelText(/^密码$/i), {
       target: { value: "password-123" },
     });
-    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+    fireEvent.change(screen.getByLabelText(/确认密码/i), {
       target: { value: "password-123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+    fireEvent.click(screen.getByRole("button", { name: /注册账号/i }));
 
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith({
@@ -84,8 +84,8 @@ describe("Register page", () => {
       });
     });
 
-    expect((await screen.findByText(/check your email/i)).textContent).toContain("Check your email");
-    expect(screen.getByRole("link", { name: /sign in/i }).getAttribute("href")).toBe("/login");
+    expect((await screen.findByText(/请查收邮件/i)).textContent).toContain("请查收邮件");
+    expect(screen.getByRole("link", { name: "返回登录" }).getAttribute("href")).toBe("/login");
   });
 
   it("bootstraps the viewer when sign-up returns an active session", async () => {
@@ -105,16 +105,16 @@ describe("Register page", () => {
       </AuthProvider>,
     );
 
-    fireEvent.change(await screen.findByLabelText(/^email$/i), {
+    fireEvent.change(await screen.findByLabelText(/^邮箱$/i), {
       target: { value: "new-user@example.com" },
     });
-    fireEvent.change(screen.getByLabelText(/^password$/i), {
+    fireEvent.change(screen.getByLabelText(/^密码$/i), {
       target: { value: "password-123" },
     });
-    fireEvent.change(screen.getByLabelText(/confirm password/i), {
+    fireEvent.change(screen.getByLabelText(/确认密码/i), {
       target: { value: "password-123" },
     });
-    fireEvent.click(screen.getByRole("button", { name: /create account/i }));
+    fireEvent.click(screen.getByRole("button", { name: /注册账号/i }));
 
     await waitFor(() => {
       expect(mockFetchViewer).toHaveBeenCalledWith("fresh-token");

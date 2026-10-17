@@ -7,25 +7,26 @@ import type { CreditTransaction } from "@loomic/shared";
 
 import { useAuth } from "@/lib/auth-context";
 import { fetchCreditTransactions } from "@/lib/credits-api";
+import { getCreditDescription } from "@/lib/locale";
 
 // ── Transaction type labels ──────────────────────────────────
 
 const TYPE_LABELS: Record<string, string> = {
-  subscription_grant: "Subscription Grant",
-  daily_grant: "Daily Grant",
-  purchase: "Purchase",
-  generation_deduct: "Generation",
-  generation_refund: "Refund",
-  admin_adjustment: "Adjustment",
-  bonus: "Bonus",
+  subscription_grant: "订阅赠送",
+  daily_grant: "每日赠送",
+  purchase: "购买积分",
+  generation_deduct: "生成",
+  generation_refund: "退还积分",
+  admin_adjustment: "人工调整",
+  bonus: "奖励积分",
 };
 
 type FilterMode = "all" | "deducted" | "granted";
 
 const FILTER_OPTIONS: Array<{ value: FilterMode; label: string }> = [
-  { value: "all", label: "All" },
-  { value: "deducted", label: "Deducted" },
-  { value: "granted", label: "Granted" },
+  { value: "all", label: "全部" },
+  { value: "deducted", label: "已消耗" },
+  { value: "granted", label: "已获得" },
 ];
 
 const DEDUCT_TYPES = new Set(["generation_deduct"]);
@@ -46,7 +47,7 @@ const PAGE_SIZE = 20;
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
+  return d.toLocaleDateString("zh-CN", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -104,7 +105,7 @@ export function CreditUsageHistory() {
     return (
       <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Loading usage history...
+        正在加载用量记录…
       </div>
     );
   }
@@ -112,9 +113,9 @@ export function CreditUsageHistory() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold">Usage</h2>
+        <h2 className="text-base font-semibold">用量记录</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          View your credit usage history and transactions.
+          查看积分使用记录和收支明细。
         </p>
       </div>
 
@@ -141,7 +142,7 @@ export function CreditUsageHistory() {
         <div className="flex flex-col items-center gap-2 py-12 text-center">
           <Zap className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No transactions found.
+            暂无积分记录。
           </p>
         </div>
       ) : (
@@ -149,10 +150,10 @@ export function CreditUsageHistory() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-secondary text-left text-xs font-medium text-muted-foreground">
-                <th className="px-4 py-2.5">Description</th>
-                <th className="px-4 py-2.5">Type</th>
-                <th className="px-4 py-2.5">Date</th>
-                <th className="px-4 py-2.5 text-right">Credits</th>
+                <th className="px-4 py-2.5">说明</th>
+                <th className="px-4 py-2.5">类型</th>
+                <th className="px-4 py-2.5">日期</th>
+                <th className="px-4 py-2.5 text-right">积分</th>
               </tr>
             </thead>
             <tbody>
@@ -166,10 +167,10 @@ export function CreditUsageHistory() {
                     }`}
                   >
                     <td className="px-4 py-2.5 text-foreground">
-                      {t.description ?? TYPE_LABELS[t.transaction_type] ?? t.transaction_type}
+                      {getCreditDescription(t.description) ?? TYPE_LABELS[t.transaction_type] ?? "其他"}
                     </td>
                     <td className="px-4 py-2.5 text-muted-foreground">
-                      {TYPE_LABELS[t.transaction_type] ?? t.transaction_type}
+                      {TYPE_LABELS[t.transaction_type] ?? "其他"}
                     </td>
                     <td className="px-4 py-2.5 tabular-nums text-muted-foreground">
                       {formatDate(t.created_at)}
@@ -204,7 +205,7 @@ export function CreditUsageHistory() {
             className="flex items-center gap-2 rounded-lg border px-4 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary disabled:opacity-50"
           >
             {loadingMore && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            {loadingMore ? "Loading..." : "Load More"}
+            {loadingMore ? "正在加载…" : "加载更多"}
           </button>
         </div>
       )}

@@ -102,7 +102,7 @@ export function useCreateProject() {
 
       setCreating(true);
       try {
-        const result = await createProject(token, { name: "Untitled" });
+        const result = await createProject(token, { name: "未命名项目" });
         const canvasId = result.project.primaryCanvas.id;
 
         const url = opts?.prompt

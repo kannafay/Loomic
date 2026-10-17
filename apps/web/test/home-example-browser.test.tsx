@@ -21,16 +21,16 @@ describe("HomeExampleBrowser", () => {
     );
 
     expect(
-      screen.queryByText("Design a Bauhaus-inspired poster."),
+      screen.queryByText("设计包豪斯风格海报"),
     ).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Design" }));
+    await userEvent.click(screen.getByRole("button", { name: "设计" }));
 
     expect(
-      await screen.findByText("Design a Bauhaus-inspired poster."),
+      await screen.findByText("设计包豪斯风格海报"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Brainstorm beautiful interiors."),
+      screen.getByText("构思理想的室内空间"),
     ).toBeInTheDocument();
   });
 
@@ -44,15 +44,15 @@ describe("HomeExampleBrowser", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Design" }));
+    await userEvent.click(screen.getByRole("button", { name: "设计" }));
 
     expect(onExampleSelect).toHaveBeenCalledWith(
       expect.objectContaining({
         categoryKey: "design",
-        categoryLabel: "Design",
-        title: "Design a Bauhaus-inspired poster.",
+        categoryLabel: "设计",
+        title: "设计包豪斯风格海报",
         prompt:
-          "Make a poster for a music festival in the Bauhaus style. Use a limited color palette of pink, red, and cream. Abstract geometric shapes representing sound waves. Minimalist vertical text.",
+          "为音乐节设计一张包豪斯风格海报。仅使用粉色、红色和奶油色，以抽象几何图形表现声波，并搭配极简的竖排文字。",
         previewImages: expect.arrayContaining([expect.stringContaining("supabase.co")]),
       }),
     );
@@ -68,20 +68,20 @@ describe("HomeExampleBrowser", () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Design" }));
+    await userEvent.click(screen.getByRole("button", { name: "设计" }));
     await userEvent.click(
       await screen.findByRole("button", {
-        name: /Design a ceramic dinnerware set\./i,
+        name: /设计成套陶瓷餐具/,
       }),
     );
 
     expect(onExampleSelect).toHaveBeenLastCalledWith(
       expect.objectContaining({
         categoryKey: "design",
-        categoryLabel: "Design",
-        title: "Design a ceramic dinnerware set.",
+        categoryLabel: "设计",
+        title: "设计成套陶瓷餐具",
         prompt:
-          "Generate a set of 5 images, each a ceramic tableware piece: 1 small bowl, 1 large bowl, 1 small plate, 1 large plate, 1 mug. They belong to the same set, harmoniously blends Scandinavian minimalism and Japanese wabi-sabi aesthetics - soft neutral tones, organic textures, imperfect hand-thrown forms, subtle glaze variations, natural lighting. Each piece is photographed against a seamless white background; even studio production photography lighting.",
+          "生成 5 张陶瓷餐具图片，分别展示小碗、大碗、小盘、大盘和马克杯，每种各一件，组成风格统一的套装。融合北欧极简与日式侘寂美学，采用柔和的中性色、有机纹理、带有手工拉坯痕迹的不规则造型、细微釉色变化和自然光感。每件产品均使用无缝白色背景与均匀的棚拍产品灯光。",
         previewImages: expect.arrayContaining([expect.stringContaining("supabase.co")]),
         inputMentions: [],
       }),

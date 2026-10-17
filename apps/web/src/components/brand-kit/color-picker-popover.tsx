@@ -1,18 +1,24 @@
 "use client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { type ReactElement, useCallback, useEffect, useState } from "react";
 import { HexColorPicker } from "react-colorful";
-
-import { cn } from "../../lib/utils";
 
 interface ColorPickerPopoverProps {
   open: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
+  children: ReactElement;
   onSave: (name: string, hex: string) => void;
   initialName?: string;
   initialHex?: string;
   mode: "create" | "edit";
-  anchorRef: React.RefObject<HTMLElement | null>;
 }
 
 const HEX_RE = /^[0-9A-Fa-f]{6}$/;
@@ -25,17 +31,16 @@ function normalizeHex(raw: string): string | null {
 
 export function ColorPickerPopover({
   open,
-  onClose,
+  onOpenChange,
+  children,
   onSave,
   initialName = "",
   initialHex = "#6366F1",
   mode,
-  anchorRef,
 }: ColorPickerPopoverProps) {
   const [name, setName] = useState(initialName);
   const [hex, setHex] = useState(initialHex);
   const [hexInput, setHexInput] = useState(initialHex.replace("#", ""));
-  const containerRef = useRef<HTMLDivElement>(null);
 
   // Sync initial values when popover opens
   useEffect(() => {
@@ -45,25 +50,6 @@ export function ColorPickerPopover({
       setHexInput(initialHex.replace("#", ""));
     }
   }, [open, initialName, initialHex]);
-
-  // Outside click detection
-  useEffect(() => {
-    if (!open) return;
-
-    function handleMouseDown(e: MouseEvent) {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node) &&
-        anchorRef.current &&
-        !anchorRef.current.contains(e.target as Node)
-      ) {
-        onClose();
-      }
-    }
-
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [open, onClose, anchorRef]);
 
   const handlePickerChange = useCallback((newHex: string) => {
     const upper = newHex.toUpperCase();
@@ -84,68 +70,57 @@ export function ColorPickerPopover({
   const handleSave = useCallback(() => {
     const trimmedName = name.trim() || hex;
     onSave(trimmedName, hex);
-    onClose();
-  }, [name, hex, onSave, onClose]);
-
-  if (!open) return null;
+    onOpenChange(false);
+  }, [name, hex, onSave, onOpenChange]);
 
   return (
-    <div
-      ref={containerRef}
-      className={cn(
-        "absolute z-50 w-[260px] rounded-2xl border bg-popover p-3 shadow-lg",
-        "flex flex-col gap-2.5",
-      )}
-    >
-      {/* Name input */}
-      <input
-        type="text"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Color name"
-        className="w-full rounded-lg border bg-transparent px-2.5 py-1.5 text-sm outline-none focus:border-muted-foreground/60"
-      />
-
-      {/* Color picker */}
-      <div className="[&_.react-colorful]:!w-full [&_.react-colorful]:!h-[160px] [&_.react-colorful]:rounded-lg">
-        <HexColorPicker color={hex} onChange={handlePickerChange} />
-      </div>
-
-      {/* Preview + hex input */}
-      <div className="flex items-center gap-2">
-        <div
-          className="h-8 w-8 shrink-0 rounded-lg border"
-          style={{ backgroundColor: hex }}
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger render={children} />
+      <PopoverContent
+        side="bottom"
+        align="start"
+        sideOffset={8}
+        className="w-[260px] p-3"
+      >
+        <PopoverTitle>
+          {mode === "create" ? "添加颜色" : "编辑颜色"}
+        </PopoverTitle>
+        <Input
+          aria-label="颜色名称"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="颜色名称"
         />
-        <div className="flex items-center gap-0.5 rounded-lg border px-2 py-1 text-sm flex-1">
-          <span className="text-muted-foreground">#</span>
-          <input
-            type="text"
-            value={hexInput}
-            onChange={handleHexInputChange}
-            maxLength={6}
-            className="w-full bg-transparent outline-none uppercase font-mono text-sm"
-          />
+        <div className="[&_.react-colorful]:h-[160px]! [&_.react-colorful]:w-full! [&_.react-colorful]:rounded-lg">
+          <HexColorPicker color={hex} onChange={handlePickerChange} />
         </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex justify-end gap-2 pt-1">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted transition-colors cursor-pointer"
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors cursor-pointer"
-        >
-          {mode === "create" ? "Add" : "Save"}
-        </button>
-      </div>
-    </div>
+        <div className="flex items-center gap-2">
+          <div
+            className="size-8 shrink-0 rounded-lg border"
+            style={{ backgroundColor: hex }}
+          />
+          <div className="relative min-w-0 flex-1">
+            <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              #
+            </span>
+            <Input
+              aria-label="颜色十六进制值"
+              value={hexInput}
+              onChange={handleHexInputChange}
+              maxLength={6}
+              className="pl-6 font-mono uppercase"
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 pt-1">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            取消
+          </Button>
+          <Button onClick={handleSave}>
+            {mode === "create" ? "添加" : "保存"}
+          </Button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

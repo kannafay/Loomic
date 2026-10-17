@@ -1,5 +1,7 @@
 "use client";
 
+import { getPlanLabel, getBillingPeriodLabel, getUserFacingError } from "@/lib/locale";
+
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import {
@@ -28,7 +30,7 @@ export function BillingSection() {
       setCancelConfirmOpen(false);
     } catch (err) {
       setCancelError(
-        err instanceof Error ? err.message : "Failed to cancel subscription",
+        getUserFacingError(err, "取消订阅失败，请重试。"),
       );
     } finally {
       setCancelling(false);
@@ -39,7 +41,7 @@ export function BillingSection() {
     return (
       <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" />
-        Loading billing info...
+        正在加载账单信息…
       </div>
     );
   }
@@ -47,7 +49,7 @@ export function BillingSection() {
   if (error) {
     return (
       <div className="rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-sm text-destructive">
-        Failed to load subscription info. Please try again later.
+        订阅信息加载失败，请稍后重试。
       </div>
     );
   }
@@ -59,9 +61,9 @@ export function BillingSection() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-base font-semibold">Billing</h2>
+        <h2 className="text-base font-semibold">订阅与账单</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Manage your subscription and billing details.
+          管理订阅套餐和账单信息。
         </p>
       </div>
 
@@ -69,22 +71,22 @@ export function BillingSection() {
       <div className="rounded-lg border p-5">
         <div className="flex items-center gap-2 mb-1">
           <Crown className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium">Current Plan</span>
+          <span className="text-sm font-medium">当前套餐</span>
         </div>
-        <p className="text-2xl font-bold capitalize">{plan}</p>
+        <p className="text-2xl font-bold capitalize">{getPlanLabel(plan)}</p>
 
         {subscription?.billingPeriod && (
           <p className="mt-1 text-sm text-muted-foreground capitalize">
-            {subscription.billingPeriod} billing
+            {getBillingPeriodLabel(subscription.billingPeriod)}
           </p>
         )}
 
         {subscription?.currentPeriodEnd && !isFree && (
           <p className="mt-1 text-sm text-muted-foreground">
-            {isCancelled ? "Access until" : "Next billing date"}:{" "}
+            {isCancelled ? "可使用至" : "下次扣款日期"}:{" "}
             <span className="font-medium text-foreground">
               {new Date(subscription.currentPeriodEnd).toLocaleDateString(
-                undefined,
+                "zh-CN",
                 { year: "numeric", month: "long", day: "numeric" },
               )}
             </span>
@@ -94,8 +96,7 @@ export function BillingSection() {
         {isCancelled && (
           <div className="mt-3 flex items-center gap-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            Subscription cancelled. Access continues until the end of the
-            billing period.
+            订阅已取消，当前套餐仍可使用至本计费周期结束。
           </div>
         )}
       </div>
@@ -105,7 +106,7 @@ export function BillingSection() {
         <Link href="/pricing">
           <Button variant="default" size="lg">
             <CreditCard className="mr-1.5 h-4 w-4" />
-            {isFree ? "Upgrade Plan" : "Change Plan"}
+            {isFree ? "升级套餐" : "更换套餐"}
           </Button>
         </Link>
 
@@ -117,7 +118,7 @@ export function BillingSection() {
           >
             <Button variant="outline" size="lg">
               <ExternalLink className="mr-1.5 h-4 w-4" />
-              Manage Billing
+              管理账单
             </Button>
           </a>
         )}
@@ -128,7 +129,7 @@ export function BillingSection() {
             size="lg"
             onClick={() => setCancelConfirmOpen(true)}
           >
-            Cancel Subscription
+            取消订阅
           </Button>
         )}
       </div>
@@ -150,11 +151,9 @@ export function BillingSection() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
             >
-              <h3 className="text-lg font-semibold">Cancel Subscription?</h3>
+              <h3 className="text-lg font-semibold">确认取消订阅？</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Your subscription will remain active until the end of the
-                current billing period. After that, you will be downgraded to
-                the Free plan.
+                当前套餐仍可使用至本计费周期结束，之后将自动切换为免费版。
               </p>
 
               {cancelError && (
@@ -169,7 +168,7 @@ export function BillingSection() {
                   onClick={() => setCancelConfirmOpen(false)}
                   disabled={cancelling}
                 >
-                  Keep Subscription
+                  保留订阅
                 </Button>
                 <Button
                   variant="destructive"
@@ -179,7 +178,7 @@ export function BillingSection() {
                   {cancelling ? (
                     <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
                   ) : null}
-                  Confirm Cancel
+                  确认取消
                 </Button>
               </div>
             </motion.div>

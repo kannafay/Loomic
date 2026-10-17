@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFacingError } from "@/lib/locale";
+
 import { useCallback, useRef, useState } from "react";
 
 import type { ImageArtifact } from "@loomic/shared";
@@ -50,7 +52,7 @@ export function CanvasImageGenPanel({
     } catch (err) {
       const handled = handleGenerationError(err);
       if (!handled) {
-        setError(err instanceof Error ? err.message : "Generation failed");
+        setError(getUserFacingError(err, "生成失败，请重试。"));
       }
     } finally {
       setLoading(false);
@@ -60,7 +62,7 @@ export function CanvasImageGenPanel({
   return (
     <div className="w-80 rounded-xl bg-card shadow-xl border border-border p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-foreground">AI Image</h3>
+        <h3 className="text-sm font-semibold text-foreground">AI 图片</h3>
         <button
           onClick={onClose}
           className="text-muted-foreground hover:text-foreground transition-colors"
@@ -81,7 +83,7 @@ export function CanvasImageGenPanel({
             void handleGenerate();
           }
         }}
-        placeholder="Describe the image you want to create..."
+        placeholder="描述你想生成的图片…"
         className="w-full h-20 resize-none rounded-lg border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         disabled={loading}
       />
@@ -96,10 +98,10 @@ export function CanvasImageGenPanel({
         {loading ? (
           <span className="flex items-center justify-center gap-2">
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-background/30 border-t-background" />
-            Generating...
+            正在生成…
           </span>
         ) : (
-          "Generate"
+          "生成"
         )}
       </button>
     </div>

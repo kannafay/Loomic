@@ -121,7 +121,7 @@ export function SessionSelector({
         >
           <HistoryIcon className="h-3.5 w-3.5" />
           <span className="max-w-[140px] truncate">
-            {activeSession?.title ?? "History"}
+            {activeSession?.title ?? "历史对话"}
           </span>
           <svg
             className={`h-3 w-3 opacity-50 transition-transform ${open ? "rotate-180" : ""}`}
@@ -210,7 +210,7 @@ export function SessionSelector({
                       <span className="truncate flex-1">{s.title}</span>
                       <button
                         type="button"
-                        aria-label={`Delete ${s.title}`}
+                        aria-label={`删除${s.title}`}
                         className="hidden group-hover:flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-destructive transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -233,7 +233,7 @@ export function SessionSelector({
         type="button"
         onClick={onNewChat}
         className="inline-flex items-center justify-center rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-        title="New Chat"
+        title="新建对话"
       >
         <NewChatIcon className="h-5 w-5" />
       </button>

@@ -9,10 +9,10 @@ import { LoadingScreen } from "../../components/loading-screen";
 import { useAuth } from "../../lib/auth-context";
 
 const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
-  auth_callback_missing_code: "The sign-in link is incomplete. Request a new one and try again.",
-  auth_exchange_failed: "This sign-in link could not be verified. Request a new one and try again.",
-  viewer_bootstrap_failed: "Your account was verified, but we could not open your workspace. Please try again.",
-  auth_callback_timeout: "Sign-in took too long to complete. Please try again.",
+  auth_callback_missing_code: "登录链接不完整，请重新获取后再试。",
+  auth_exchange_failed: "登录链接验证失败，请重新获取后再试。",
+  viewer_bootstrap_failed: "账号验证成功，但工作空间加载失败，请重试。",
+  auth_callback_timeout: "登录超时，请重试。",
 };
 
 function LoginPageContent() {
@@ -22,7 +22,7 @@ function LoginPageContent() {
   const callbackError = searchParams.get("error");
   const initialErrorMessage = callbackError
     ? CALLBACK_ERROR_MESSAGES[callbackError] ??
-      "Could not complete sign-in. Please try again."
+      "登录失败，请重试。"
     : null;
 
   useEffect(() => {
@@ -35,12 +35,12 @@ function LoginPageContent() {
 
   return (
     <AuthShell
-      title="Welcome back"
-      description="Sign in to continue where your workspace left off."
+      title="欢迎回来"
+      description="登录后继续你的创作。"
       features={[
-        "Use password, magic link, or Google sign-in",
-        "Keep your canvas and workspace state in one place",
-        "Move from idea to delivery without switching tools",
+        "支持密码、邮件链接或 Google 登录",
+        "统一管理画布和工作空间",
+        "从想法到作品，在这里完成",
       ]}
     >
       <LoginForm initialErrorMessage={initialErrorMessage} />

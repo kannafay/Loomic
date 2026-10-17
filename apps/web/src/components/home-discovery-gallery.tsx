@@ -102,7 +102,7 @@ export function HomeDiscoveryGallery({
           <div>
             <h2 className="text-lg font-medium text-foreground">灵感发现</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              点击卡片后会直接按这条案例思路新建 Loomic 项目，并进入 agent 对话流。
+              点击案例即可开始新项目，与智能助手继续创作。
             </p>
           </div>
         </div>

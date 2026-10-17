@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { WebSocketHandle } from "../src/hooks/use-websocket";
+import type { StreamEvent } from "@loomic/shared";
 import { ChatSidebar } from "../src/components/chat-sidebar";
 
 const {
@@ -31,9 +32,17 @@ vi.mock("../src/lib/server-api", () => ({
   fetchSessions: fetchSessionsMock,
   saveMessage: saveMessageMock,
   updateSessionTitle: updateSessionTitleMock,
+  fetchImageModels: vi.fn(async () => ({ models: [] })),
+  fetchWorkspaceSkills: vi.fn(async () => ({ skills: [] })),
 }));
 
-function createMockWs(): WebSocketHandle {
+vi.mock("../src/hooks/use-breakpoint", () => ({ useBreakpoint: () => "desktop" }));
+vi.mock("../src/components/toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock("../src/components/agent-model-selector", () => ({ AgentModelSelector: () => null }));
+vi.mock("../src/components/image-model-preference", () => ({ ImageModelPreferencePopover: () => null }));
+vi.mock("../src/components/chat-skills", () => ({ ChatSkills: () => null }));
+
+function createMockWs(listeners: Set<(event: StreamEvent) => void>): WebSocketHandle {
   return {
     connected: true,
     startRun: vi.fn((payload, onAck) => {
@@ -45,13 +54,36 @@ function createMockWs(): WebSocketHandle {
       });
     }),
     cancelRun: vi.fn(),
-    onEvent: vi.fn(() => () => {}),
+    onEvent: vi.fn((cb) => {
+      listeners.add(cb);
+      return () => { listeners.delete(cb); };
+    }),
     registerRPC: vi.fn(() => () => {}),
+    resumeCanvas: vi.fn((_canvasId, onAck) => onAck?.({
+      type: "command.ack", action: "canvas.resume", payload: { activeRunId: null },
+    })),
   };
 }
 
 describe("ChatSidebar", () => {
   let mockWs: WebSocketHandle;
+  let listeners: Set<(event: StreamEvent) => void>;
+
+  async function emit(event: StreamEvent) {
+    await act(async () => { for (const cb of listeners) cb(event); });
+  }
+
+  function renderSidebar() {
+    return render(<ChatSidebar accessToken="token_abc" canvasId="canvas-1" open onToggle={() => {}} ws={mockWs} />);
+  }
+
+  async function sendMessage() {
+    const input = await screen.findByPlaceholderText('描述你的想法，或输入“@”引用内容');
+    await waitFor(() => expect(screen.getByRole("button", { name: "发送消息" })).toBeInTheDocument());
+    await userEvent.type(input, "hello loom{Enter}");
+    await screen.findByRole("button", { name: "停止生成" });
+    return input;
+  }
 
   beforeEach(() => {
     Object.defineProperty(Element.prototype, "scrollIntoView", {
@@ -59,7 +91,8 @@ describe("ChatSidebar", () => {
       value: vi.fn(),
       writable: true,
     });
-    mockWs = createMockWs();
+    listeners = new Set();
+    mockWs = createMockWs(listeners);
     createSessionMock.mockReset();
     createSessionMock.mockResolvedValue({
       session: {
@@ -104,10 +137,7 @@ describe("ChatSidebar", () => {
       />,
     );
 
-    const input = await screen.findByPlaceholderText(
-      /start with an idea/i,
-    );
-    await userEvent.type(input, "hello loom{Enter}");
+    await sendMessage();
 
     await waitFor(() =>
       expect(mockWs.startRun).toHaveBeenCalledWith(
@@ -126,5 +156,63 @@ describe("ChatSidebar", () => {
       }),
       expect.anything(),
     );
+  });
+
+  it("cancels the current run and retains its partial reply", async () => {
+    renderSidebar();
+    await sendMessage();
+    await emit({ type: "message.delta", runId: "run_123", messageId: "reply_123", delta: "已经输出的内容", timestamp: new Date().toISOString() });
+    await userEvent.click(screen.getByRole("button", { name: "停止生成" }));
+    expect(mockWs.cancelRun).toHaveBeenCalledExactlyOnceWith("run_123");
+    expect(screen.getByRole("button", { name: "正在停止" })).toBeDisabled();
+    await emit({ type: "run.canceled", runId: "run_123", timestamp: new Date().toISOString() });
+    expect(screen.getByRole("button", { name: "发送消息" })).toBeInTheDocument();
+    expect(screen.getByText("已经输出的内容")).toBeInTheDocument();
+    expect(screen.queryByText("获取回复失败，请重试。")).not.toBeInTheDocument();
+  });
+
+  it("queues a stop clicked before the server acknowledges the run", async () => {
+    vi.mocked(mockWs.startRun).mockImplementation(() => {});
+    renderSidebar();
+    await sendMessage();
+    await userEvent.click(screen.getByRole("button", { name: "停止生成" }));
+    expect(mockWs.cancelRun).not.toHaveBeenCalled();
+    await act(async () => {
+      vi.mocked(mockWs.startRun).mock.calls[0]?.[1]?.({
+        type: "command.ack", action: "agent.run", payload: { runId: "run_late" },
+      });
+    });
+    expect(mockWs.cancelRun).toHaveBeenCalledExactlyOnceWith("run_late");
+    await emit({ type: "run.canceled", runId: "run_late", timestamp: new Date().toISOString() });
+    expect(screen.getByText("已停止生成。")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "发送消息" })).toBeInTheDocument();
+  });
+
+  it("can stop a run restored after reconnecting", async () => {
+    vi.mocked(mockWs.resumeCanvas).mockImplementation((_id, onAck) => onAck?.({
+      type: "command.ack", action: "canvas.resume", payload: { activeRunId: "run_resumed" },
+    }));
+    renderSidebar();
+    await userEvent.click(await screen.findByRole("button", { name: "停止生成" }));
+    expect(mockWs.cancelRun).toHaveBeenCalledExactlyOnceWith("run_resumed");
+    await emit({ type: "run.canceled", runId: "run_resumed", timestamp: new Date().toISOString() });
+    expect(screen.getByRole("button", { name: "发送消息" })).toBeInTheDocument();
+  });
+
+  it("keeps the stop control associated with its session when switching chats", async () => {
+    fetchSessionsMock.mockResolvedValue({ sessions: [
+      { id: "session-real", title: "Existing Chat", updatedAt: "2026-03-24T00:00:00.000Z" },
+      { id: "session-other", title: "Other Chat", updatedAt: "2026-03-23T00:00:00.000Z" },
+    ] });
+    renderSidebar();
+    await sendMessage();
+    await userEvent.click(screen.getByRole("button", { name: "hello loom" }));
+    await userEvent.click(screen.getByText("Other Chat"));
+    expect(screen.queryByRole("button", { name: "停止生成" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Other Chat" }));
+    await userEvent.click(screen.getByText("hello loom"));
+    await userEvent.click(await screen.findByRole("button", { name: "停止生成" }));
+    expect(mockWs.cancelRun).toHaveBeenCalledExactlyOnceWith("run_123");
+    await emit({ type: "run.canceled", runId: "run_123", timestamp: new Date().toISOString() });
   });
 });

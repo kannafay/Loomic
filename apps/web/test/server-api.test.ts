@@ -225,7 +225,7 @@ describe("authenticated server API", () => {
     });
 
     await expect(createProject("token_abc", { name: "Dup" })).rejects.toThrow(
-      "Slug taken.",
+      "项目标识已被使用，请更换项目名称。",
     );
     try {
       await createProject("token_abc", { name: "Dup" });
@@ -243,7 +243,7 @@ describe("authenticated server API", () => {
       }),
     });
 
-    await expect(fetchViewer("expired")).rejects.toThrow("unauthorized");
+    await expect(fetchViewer("expired")).rejects.toThrow("登录状态已失效，请重新登录。");
   });
 
   it("fetchProjects throws ApiAuthError on 401", async () => {
@@ -255,6 +255,6 @@ describe("authenticated server API", () => {
       }),
     });
 
-    await expect(fetchProjects("expired")).rejects.toThrow("unauthorized");
+    await expect(fetchProjects("expired")).rejects.toThrow("登录状态已失效，请重新登录。");
   });
 });

@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AgentSection } from "@/components/agent-section";
-import { BillingSection } from "@/components/billing-section";
-import { CreditUsageHistory } from "@/components/credits/credit-usage-history";
 import { ProfileSection } from "@/components/profile-section";
 import { SettingsSkeleton } from "@/components/skeletons/settings-skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import {
   ApiAuthError,
@@ -18,13 +17,11 @@ import {
   updateWorkspaceSettings,
 } from "@/lib/server-api";
 
-type SettingsTab = "profile" | "agent" | "billing" | "usage";
+type SettingsTab = "profile" | "agent";
 
 const tabs: Array<{ id: SettingsTab; label: string }> = [
-  { id: "profile", label: "Profile" },
-  { id: "agent", label: "Agent" },
-  { id: "billing", label: "Billing" },
-  { id: "usage", label: "Usage" },
+  { id: "profile", label: "个人资料" },
+  { id: "agent", label: "智能助手" },
 ];
 
 export default function SettingsPage() {
@@ -117,49 +114,39 @@ export default function SettingsPage() {
 
   return (
     <div className="px-4 py-6 sm:px-6 md:p-8">
-      <h1 className="mb-4 text-base font-semibold sm:mb-6 sm:text-lg">
-        Settings
-      </h1>
+      <h1 className="mb-4 text-base font-semibold sm:mb-6 sm:text-lg">设置</h1>
 
-      {/* Tab bar -- scrollable on small screens, 44px min touch target */}
-      <div className="mb-6 overflow-x-auto sm:mb-8">
-        <div className="inline-flex gap-1 rounded-lg bg-muted p-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`min-h-[44px] whitespace-nowrap rounded-md px-4 py-1.5 text-sm transition-colors sm:min-h-0 sm:px-3 ${
-                activeTab === tab.id
-                  ? "bg-card font-medium text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as SettingsTab)}
+      >
+        <div className="mb-6 overflow-x-auto sm:mb-8">
+          <TabsList aria-label="设置栏目" className="h-11 sm:h-8">
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id} className="px-4 sm:px-3">
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </div>
 
-      <div className="max-w-xl">
-        {activeTab === "profile" ? (
-          <ProfileSection
-            displayName={profile.displayName}
-            email={profile.email}
-            onSave={handleProfileSave}
-          />
-        ) : activeTab === "agent" ? (
-          <AgentSection
-            defaultModel={defaultModel}
-            onSave={handleAgentSave}
-            fetchModels={stableFetchModels}
-          />
-        ) : activeTab === "usage" ? (
-          <CreditUsageHistory />
-        ) : (
-          <BillingSection />
-        )}
-      </div>
+        <div className="max-w-xl">
+          <TabsContent value="profile">
+            <ProfileSection
+              displayName={profile.displayName}
+              email={profile.email}
+              onSave={handleProfileSave}
+            />
+          </TabsContent>
+          <TabsContent value="agent">
+            <AgentSection
+              defaultModel={defaultModel}
+              onSave={handleAgentSave}
+              fetchModels={stableFetchModels}
+            />
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }

@@ -5,6 +5,13 @@ import { useEffect, useState } from "react";
 
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 
 interface AgentSectionProps {
   defaultModel: string;
@@ -33,9 +40,11 @@ export function AgentSection({
       .then((data) => {
         setModels(data.models);
         const ids = data.models.map((m: ModelInfo) => m.id);
-        if (ids.length > 0 && !ids.includes(selectedModel)) {
-          setSelectedModel(ids[0]);
-        }
+        setSelectedModel((current) =>
+          ids.length > 0 && !ids.includes(current)
+            ? (ids[0] ?? current)
+            : current,
+        );
       })
       .catch(() => setModels([]))
       .finally(() => setModelsLoading(false));
@@ -50,11 +59,11 @@ export function AgentSection({
 
     try {
       await onSave(selectedModel);
-      setFeedback({ type: "success", message: "Agent settings updated." });
+      setFeedback({ type: "success", message: "助手设置已更新。" });
     } catch {
       setFeedback({
         type: "error",
-        message: "Failed to update settings. Please try again.",
+        message: "设置更新失败，请重试。",
       });
     } finally {
       setSaving(false);
@@ -63,32 +72,42 @@ export function AgentSection({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-1">Agent</h2>
+      <h2 className="text-lg font-semibold mb-1">智能助手</h2>
       <p className="text-sm text-muted-foreground mb-6">
-        Configure the default AI model for your workspace.
+        设置工作空间默认使用的 AI 模型。
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
         <div className="space-y-2">
-          <Label htmlFor="defaultModel">Default Model</Label>
+          <Label htmlFor="defaultModel">默认模型</Label>
           {modelsLoading ? (
-            <p className="text-sm text-muted-foreground">Loading models...</p>
+            <p className="text-sm text-muted-foreground">正在加载模型…</p>
           ) : (
-            <select
-              id="defaultModel"
+            <Select
+              items={models.map((model) => ({
+                value: model.id,
+                label: `${model.name} (${model.provider})`,
+              }))}
               value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              onValueChange={(value) => {
+                if (value) setSelectedModel(value);
+              }}
+              disabled={saving || models.length === 0}
             >
-              {models.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name} ({model.provider})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger id="defaultModel" className="w-full">
+                <SelectValue placeholder="暂无可用模型" />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    {model.name} ({model.provider})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           <p className="text-xs text-muted-foreground">
-            This model will be used for all new agent runs in your workspace.
+            工作空间中的新对话将默认使用此模型。
           </p>
         </div>
 
@@ -100,8 +119,12 @@ export function AgentSection({
           </p>
         )}
 
-        <Button type="submit" disabled={saving || !hasChanges} size="sm">
-          {saving ? "Saving..." : "Save"}
+        <Button
+          type="submit"
+          disabled={saving || modelsLoading || !models.length || !hasChanges}
+          size="sm"
+        >
+          {saving ? "正在保存…" : "保存"}
         </Button>
       </form>
     </div>

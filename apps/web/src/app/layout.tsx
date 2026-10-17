@@ -12,27 +12,32 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: "Loomic",
-  description: "AI-powered creative workspace",
+  description: "AI 创意工作空间",
   icons: {
     icon: "/favicon.svg",
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
     title: "Loomic",
-    description: "AI-powered creative workspace",
+    description: "AI 创意工作空间",
     images: [{ url: "/og-image.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Loomic",
-    description: "AI-powered creative workspace",
+    description: "AI 创意工作空间",
     images: ["/og-image.png"],
   },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={cn(geist.variable, "scroll-smooth")} suppressHydrationWarning>
+    <html
+      lang="zh-CN"
+      className={cn(geist.variable, "scroll-smooth")}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <body className="min-h-screen bg-background font-sans antialiased">
         <Providers>{children}</Providers>
         <Script

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 type VideoPlayerPanelProps = {
+  hidden?: boolean;
   elementId: string;
   elementBounds: { x: number; y: number; width: number; height: number };
   videoUrl: string;
@@ -15,6 +16,7 @@ type VideoPlayerPanelProps = {
 };
 
 export function VideoPlayerPanel({
+  hidden = false,
   elementId,
   elementBounds,
   videoUrl,
@@ -40,26 +42,29 @@ export function VideoPlayerPanel({
   // Close on click outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
+      if (hidden) return;
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         onClose();
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, [onClose, hidden]);
 
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (hidden) return;
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [onClose, hidden]);
 
   return createPortal(
     <div
       ref={panelRef}
+      hidden={hidden}
       style={{ left: screenX, top: screenY }}
       className="fixed z-[100] w-[480px] rounded-2xl border border-border bg-card/95 shadow-card backdrop-blur-lg overflow-hidden"
       onKeyDown={(e) => e.stopPropagation()}
@@ -71,7 +76,7 @@ export function VideoPlayerPanel({
           <svg className="h-4 w-4 shrink-0 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polygon points="5 3 19 12 5 21 5 3" />
           </svg>
-          <span className="truncate">{title || "Video"}</span>
+          <span className="truncate">{title || "视频"}</span>
           {durationSeconds != null && (
             <span className="text-xs text-muted-foreground">{durationSeconds}s</span>
           )}

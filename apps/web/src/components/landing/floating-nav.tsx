@@ -49,7 +49,6 @@ function LoomicLogo({ className }: { className?: string }) {
 const NAV_LINKS = [
   { label: "功能", href: "#features" },
   { label: "案例", href: "#showcase" },
-  { label: "定价", href: "#pricing" },
 ] as const;
 
 function handleAnchorClick(
@@ -80,7 +79,7 @@ function ThemeToggle() {
       variant="ghost"
       size="icon"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      aria-label="Toggle theme"
+      aria-label="切换主题"
     >
       {theme === "dark" ? (
         <Sun className="size-4" />
@@ -155,7 +154,7 @@ export function FloatingNav() {
           </Link>
 
           {/* Desktop Nav Links with underline animation */}
-          <nav className="hidden md:flex items-center gap-1" aria-label="Main navigation">
+          <nav className="hidden md:flex items-center gap-1" aria-label="主导航">
             {NAV_LINKS.map(({ label, href }) => (
               <a
                 key={href}
@@ -182,7 +181,7 @@ export function FloatingNav() {
               size="icon"
               className="md:hidden"
               onClick={() => setMobileOpen((v) => !v)}
-              aria-label="Toggle menu"
+              aria-label="展开或收起菜单"
               aria-expanded={mobileOpen}
             >
               {mobileOpen ? (
@@ -205,7 +204,7 @@ export function FloatingNav() {
             transition={{ duration: 0.25, ease: "easeInOut" }}
             className="md:hidden overflow-hidden border-t border-border bg-background/95 backdrop-blur-xl"
           >
-            <nav className="px-4 py-3 flex flex-col gap-1" aria-label="Mobile navigation">
+            <nav className="px-4 py-3 flex flex-col gap-1" aria-label="移动端导航">
               {NAV_LINKS.map(({ label, href }) => (
                 <a
                   key={href}

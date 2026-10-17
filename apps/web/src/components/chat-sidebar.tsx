@@ -15,6 +15,7 @@ import type {
 import { useAgentModel } from "../hooks/use-agent-model";
 import { mapServerMessages, useChatSessions } from "../hooks/use-chat-sessions";
 import { useChatStream } from "../hooks/use-chat-stream";
+import { useChatRuns } from "../hooks/use-chat-runs";
 import {
   INITIAL_AGENT_MODEL_KEY,
   INITIAL_ATTACHMENTS_KEY,
@@ -26,7 +27,6 @@ import { useImageModelPreference } from "../hooks/use-image-model-preference";
 import { useVideoModelPreference } from "../hooks/use-video-model-preference";
 import type { WebSocketHandle } from "../hooks/use-websocket";
 import { fetchBrandKit } from "../lib/brand-kit-api";
-import { claimDailyCredits } from "../lib/credits-api";
 import { fetchImageModels, fetchWorkspaceSkills, saveMessage } from "../lib/server-api";
 import type { CanvasSelectedElement } from "./canvas-editor";
 import {
@@ -40,8 +40,6 @@ import {
 import { ChatInput } from "./chat-input";
 import { ChatMessage } from "./chat-message";
 import { ChatSkills } from "./chat-skills";
-import { CreditInsufficientDialog } from "./credits/credit-insufficient-dialog";
-import { useTierLimitToast } from "./credits/tier-limit-toast";
 import { useToast } from "./toast";
 import { ErrorBoundary } from "./error-boundary";
 import { SessionSelector } from "./session-selector";
@@ -95,8 +93,7 @@ export function ChatSidebar({
     setMessages,
     sessionsLoading,
     messagesLoading,
-    streaming,
-    setStreaming,
+    setStreaming: setSessionStreaming,
     updateSessionMessages,
     handleSelectSession,
     handleNewChat,
@@ -113,6 +110,12 @@ export function ChatSidebar({
 
   // ── Stream event handler (extracted hook, shared between send & reconnect) ──
   const { applyStreamEvent } = useChatStream(updateSessionMessages);
+  const { runs, startRun, acceptRun, resumeRun, stopRun, finishRun } = useChatRuns(ws.cancelRun);
+  const activeRun = activeSessionId ? runs[activeSessionId] : undefined;
+  const streaming = !!activeRun;
+  useEffect(() => {
+    setSessionStreaming(streaming);
+  }, [streaming, setSessionStreaming]);
 
   // ── Mention & attachment state ──
   const [atQuery, setAtQuery] = useState<string | null>(null);
@@ -126,18 +129,10 @@ export function ChatSidebar({
   const [skillMentionItems, setSkillMentionItems] = useState<
     SkillMentionItem[]
   >([]);
-  const [creditDialog, setCreditDialog] = useState<{
-    open: boolean;
-    currentBalance: number;
-    requiredAmount: number;
-    plan: string;
-    dailyClaimed: boolean;
-  } | null>(null);
   const chatInputRef = useRef<import("./chat-input").ChatInputHandle>(null);
 
   const initialPromptSent = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortRef = useRef(false);
   const messageMentionsRef = useRef(messageMentions);
   messageMentionsRef.current = messageMentions;
   const selectedCanvasElementsRef = useRef(selectedCanvasElements);
@@ -171,7 +166,6 @@ export function ChatSidebar({
   const agentModelRef = useRef(agentModel);
   agentModelRef.current = agentModel;
 
-  const { showTierLimit } = useTierLimitToast();
   const { toast: showToast } = useToast();
 
   // ── Sidebar resize ──
@@ -368,6 +362,8 @@ export function ChatSidebar({
     ) => {
       const currentSessionId = activeSessionIdRef.current;
       if (streaming || !currentSessionId) return;
+      const run = startRun(currentSessionId);
+      if (!run) return;
 
       // Merge explicitly-attached images with auto-sensed canvas selection images
       let currentAttachments = attachmentsOverride ?? readyAttachments;
@@ -385,7 +381,7 @@ export function ChatSidebar({
             url: el.storageUrl ?? el.dataUrl!,
             mimeType: "image/png",
             source: "canvas-ref" as const,
-            name: `Canvas selection ${el.id.slice(0, 6)}`,
+            name: `画布选区 ${el.id.slice(0, 6)}`,
           }));
         if (selectionAttachments.length > 0) {
           currentAttachments = [...currentAttachments, ...selectionAttachments];
@@ -462,8 +458,6 @@ export function ChatSidebar({
         ...prev,
         { id: assistantId, role: "assistant" as const, contentBlocks: [] },
       ]);
-      setStreaming(true);
-      abortRef.current = false;
 
       try {
         const perf = {
@@ -477,14 +471,8 @@ export function ChatSidebar({
         const streamDone = new Promise<void>((r) => {
           resolveStream = r;
         });
-        const runIdRef = { current: "" };
-
         const cleanup = ws.onEvent((event) => {
-          if (!runIdRef.current || event.runId !== runIdRef.current) return;
-          if (abortRef.current) {
-            resolveStream();
-            return;
-          }
+          if (!run.runId || event.runId !== run.runId) return;
 
           // Track first token timing
           if (!perf.gotFirstToken && event.type === "message.delta") {
@@ -494,22 +482,6 @@ export function ChatSidebar({
               `[perf] send → first token: ${(perf.tFirstToken - perf.t0Send).toFixed(0)}ms` +
                 ` (ack→token: ${(perf.tFirstToken - perf.tAck).toFixed(0)}ms)`,
             );
-          }
-
-          // Billing error: route to appropriate UI, run.canceled will follow
-          if (event.type === "billing.error") {
-            if (event.code === "insufficient_credits") {
-              setCreditDialog({
-                open: true,
-                currentBalance: event.currentBalance ?? 0,
-                requiredAmount: event.requiredAmount ?? 0,
-                plan: event.plan ?? "free",
-                dailyClaimed: event.dailyClaimed ?? false,
-              });
-            } else {
-              // model_not_accessible, resolution_not_allowed, concurrency_limit
-              showTierLimit({ code: event.code, message: event.message });
-            }
           }
 
           // Apply event to messages (single source of truth — shared with reconnect)
@@ -564,10 +536,10 @@ export function ChatSidebar({
         });
 
         // Start run via WebSocket
-        const runId = await new Promise<string>((resolve, reject) => {
+        await new Promise<string>((resolve, reject) => {
           const timeout = setTimeout(() => {
             cleanup();
-            reject(new Error("WebSocket ack timeout — connection may be down"));
+            reject(new Error("连接响应超时，请检查网络后重试。"));
           }, 10_000);
 
           ws.startRun(
@@ -604,7 +576,7 @@ export function ChatSidebar({
                 `[perf] send → ack: ${(perf.tAck - perf.t0Send).toFixed(0)}ms`,
               );
               const id = ack.payload.runId as string;
-              runIdRef.current = id;
+              acceptRun(run, id);
               resolve(id);
             },
           );
@@ -624,13 +596,13 @@ export function ChatSidebar({
               ...m,
               contentBlocks: [
                 ...m.contentBlocks,
-                { type: "text" as const, text: "Failed to get response." },
+                { type: "text" as const, text: "获取回复失败，请重试。" },
               ],
             };
           }),
         );
       } finally {
-        setStreaming(false);
+        finishRun(run);
       }
     },
     [
@@ -648,6 +620,9 @@ export function ChatSidebar({
       autoTitleSession,
       accessTokenRef,
       activeSessionIdRef,
+      startRun,
+      acceptRun,
+      finishRun,
     ],
   );
 
@@ -803,7 +778,7 @@ export function ChatSidebar({
         const activeRunId = (ack.payload as Record<string, unknown>)
           .activeRunId;
         if (activeRunId && typeof activeRunId === "string") {
-          setStreaming(true);
+          const run = resumeRun(sessionId, activeRunId);
 
           const assistantId = `resumed_${activeRunId}`;
           // Must use updateSessionMessages (not setMessages) so the placeholder
@@ -860,7 +835,7 @@ export function ChatSidebar({
               evt.type === "run.failed" ||
               evt.type === "run.canceled"
             ) {
-              setStreaming(false);
+              finishRun(run);
               unsub();
             }
           });
@@ -880,7 +855,8 @@ export function ChatSidebar({
     activeSessionIdRef,
     reloadMessages,
     updateSessionMessages,
-    setStreaming,
+    resumeRun,
+    finishRun,
     initialPrompt,
   ]);
 
@@ -926,7 +902,7 @@ export function ChatSidebar({
       <div className="flex min-h-[48px] items-center justify-between pl-4 pr-2">
         <div className="flex items-center gap-1 min-w-0">
           <h2 className="text-sm font-semibold text-foreground shrink-0">
-            Loomic Agent
+            Loomic 智能助手
           </h2>
           {!sessionsLoading && (
             <SessionSelector
@@ -942,7 +918,7 @@ export function ChatSidebar({
           type="button"
           onClick={onToggle}
           className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors shrink-0"
-          title="Collapse panel"
+          title="收起面板"
         >
           <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none">
             <path
@@ -1011,6 +987,11 @@ export function ChatSidebar({
         <ChatInput
           ref={chatInputRef}
           onSend={handleSend}
+          onStop={() => {
+            if (activeSessionId) stopRun(activeSessionId);
+          }}
+          isStreaming={streaming}
+          isStopping={activeRun?.stopping ?? false}
           disabled={streaming || sessionsLoading}
           attachments={imageAttachments}
           onAddFiles={addFiles}
@@ -1024,20 +1005,6 @@ export function ChatSidebar({
         />
       </div>
     </>
-  );
-
-  const creditDialogEl = creditDialog && (
-    <CreditInsufficientDialog
-      open={creditDialog.open}
-      onClose={() => setCreditDialog(null)}
-      currentBalance={creditDialog.currentBalance}
-      requiredAmount={creditDialog.requiredAmount}
-      plan={creditDialog.plan}
-      dailyClaimed={creditDialog.dailyClaimed}
-      onClaimDaily={async () => {
-        await claimDailyCredits(accessTokenRef.current);
-      }}
-    />
   );
 
   // ── Mobile / Tablet: full-screen overlay with backdrop ──
@@ -1061,7 +1028,6 @@ export function ChatSidebar({
         >
           {panelContent}
         </div>
-        {creditDialogEl}
       </>
     );
   }
@@ -1077,7 +1043,7 @@ export function ChatSidebar({
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label="Resize chat panel"
+        aria-label="调整对话面板宽度"
         aria-valuenow={sidebarWidth}
         aria-valuemin={SIDEBAR_MIN}
         aria-valuemax={SIDEBAR_MAX}
@@ -1090,7 +1056,6 @@ export function ChatSidebar({
       <div className="flex flex-1 flex-col bg-card min-w-0">
         {panelContent}
       </div>
-      {creditDialogEl}
     </div>
   );
 }

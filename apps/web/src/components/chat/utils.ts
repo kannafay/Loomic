@@ -64,6 +64,18 @@ export function formatModelDisplayName(model: string): string {
 
 /** Convert camelCase/snake_case param name to readable lowercase */
 export function formatParamName(name: string): string {
+  const labels: Record<string, string> = {
+    prompt: "提示词", model: "模型", aspect_ratio: "宽高比", aspectRatio: "宽高比",
+    quality: "画质", resolution: "分辨率", duration: "时长", images: "图片",
+    image_url: "图片地址", imageUrl: "图片地址", video_url: "视频地址",
+    videoUrl: "视频地址", status: "状态", error: "错误", message: "消息",
+    result: "结果", results: "结果", count: "数量", total: "总数",
+    width: "宽度", height: "高度", text: "文本", title: "标题", name: "名称",
+    elements: "元素", element_id: "元素标识", operations: "操作", action: "操作",
+    query: "查询内容", description: "说明", url: "地址", path: "路径",
+    file_path: "文件路径", success: "是否成功", output: "输出", content: "内容",
+  };
+  if (labels[name]) return labels[name];
   return name
     .replace(/([A-Z])/g, " $1")
     .replace(/_/g, " ")
@@ -76,7 +88,7 @@ export function formatParamValue(value: unknown): string {
   if (value === null || value === undefined) return "\u2014";
   if (typeof value === "string")
     return value.length > 200 ? `${value.slice(0, 197)}...` : value;
-  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "boolean") return value ? "是" : "否";
   if (typeof value === "number") return String(value);
   if (Array.isArray(value))
     return value.length === 0 ? "[]" : JSON.stringify(value);
@@ -105,11 +117,11 @@ export function formatOutputPreview(
       formattedValue =
         value.length > 80 ? `${value.slice(0, 77)}...` : value;
     } else if (typeof value === "boolean") {
-      formattedValue = value ? "Yes" : "No";
+      formattedValue = value ? "是" : "否";
     } else if (typeof value === "number") {
       formattedValue = String(value);
     } else if (Array.isArray(value)) {
-      formattedValue = `[${value.length} items]`;
+      formattedValue = `[${value.length} 项]`;
     } else {
       formattedValue = "{...}";
     }

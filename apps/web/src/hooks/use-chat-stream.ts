@@ -173,21 +173,19 @@ export function useChatStream(updateSessionMessages: MessageUpdater) {
           break;
 
         case "run.canceled":
-          // Clean up running tool blocks when run is aborted (e.g. billing error)
           update((prev) =>
             prev.map((m) => {
               if (m.id !== assistantId) return m;
-              const hasRunning = m.contentBlocks.some(
-                (b) => b.type === "tool" && b.status === "running",
+              const blocks = m.contentBlocks.map((block) =>
+                block.type === "tool" && block.status === "running"
+                  ? { ...block, status: "completed" as const, outputSummary: "已停止" }
+                  : block,
               );
-              if (!hasRunning) return m;
               return {
                 ...m,
-                contentBlocks: m.contentBlocks.map((block) =>
-                  block.type === "tool" && block.status === "running"
-                    ? { ...block, status: "completed" as const }
-                    : block,
-                ),
+                contentBlocks: blocks.length > 0
+                  ? blocks
+                  : [{ type: "text" as const, text: "已停止生成。" }],
               };
             }),
           );

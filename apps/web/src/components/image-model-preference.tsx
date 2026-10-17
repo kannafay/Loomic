@@ -1,213 +1,174 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import { Lock, Zap } from "lucide-react";
-
-import type { ImageModelInfo } from "../lib/server-api";
-import type { VideoModelInfo } from "../lib/server-api";
-import { fetchImageModels, fetchVideoModels } from "../lib/server-api";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { type ReactElement, useEffect, useId, useState } from "react";
 import { useImageModelPreference } from "../hooks/use-image-model-preference";
 import { useVideoModelPreference } from "../hooks/use-video-model-preference";
+import type { ImageModelInfo, VideoModelInfo } from "../lib/server-api";
+import { fetchImageModels, fetchVideoModels } from "../lib/server-api";
 
 export function ImageModelPreferencePopover({
   open,
-  onClose,
-  anchorRef,
+  onOpenChange,
+  children,
 }: {
   open: boolean;
-  onClose: () => void;
-  anchorRef: React.RefObject<HTMLElement | null>;
+  onOpenChange: (open: boolean) => void;
+  children: ReactElement;
 }) {
-  const { preference, setMode, toggleModel } = useImageModelPreference();
+  const { preference, setMode, setPreference } = useImageModelPreference();
   const [models, setModels] = useState<ImageModelInfo[]>([]);
   const [activeTab, setActiveTab] = useState<"image" | "video">("image");
   const videoPreference = useVideoModelPreference();
   const [videoModels, setVideoModels] = useState<VideoModelInfo[]>([]);
-  const popoverRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ top: number; left: number; above: boolean } | null>(null);
 
+  const controlId = useId();
   useEffect(() => {
     if (!open) return;
+    let canceled = false;
     fetchImageModels()
-      .then((data) => setModels(data.models))
+      .then((data) => {
+        if (!canceled) setModels(data.models);
+      })
       .catch(() => {});
     fetchVideoModels()
-      .then((data) => setVideoModels(data.models))
+      .then((data) => {
+        if (!canceled) setVideoModels(data.models);
+      })
       .catch(() => {});
+    return () => {
+      canceled = true;
+    };
   }, [open]);
 
-  // Calculate position — auto-detect direction based on available space
-  useLayoutEffect(() => {
-    if (!open || !anchorRef.current) return;
-    const rect = anchorRef.current.getBoundingClientRect();
-    const popoverHeight = 400; // approximate max height
-    const spaceBelow = window.innerHeight - rect.bottom;
-    const openAbove = spaceBelow < popoverHeight && rect.top > spaceBelow;
-
-    setPos({
-      top: openAbove ? rect.top - 8 : rect.bottom + 8,
-      left: Math.max(8, rect.right - 380),
-      above: openAbove,
-    });
-  }, [open, anchorRef]);
-
-  // Close on outside click
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node) &&
-        anchorRef.current &&
-        !anchorRef.current.contains(e.target as Node)
-      ) {
-        onClose();
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open, onClose, anchorRef]);
-
-  // Close on Escape
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [open, onClose]);
-
-  const currentPreference = activeTab === "image" ? preference : videoPreference.preference;
+  const currentPreference =
+    activeTab === "image" ? preference : videoPreference.preference;
   const currentModels = activeTab === "image" ? models : videoModels;
-  const currentSetMode = activeTab === "image" ? setMode : videoPreference.setMode;
-  const currentToggleModel = activeTab === "image" ? toggleModel : videoPreference.toggleModel;
+  const currentSetMode =
+    activeTab === "image" ? setMode : videoPreference.setMode;
+  const currentSetPreference =
+    activeTab === "image" ? setPreference : videoPreference.setPreference;
+  const unavailableSelection =
+    currentPreference.mode === "manual" &&
+    currentPreference.models.some(
+      (id) => !currentModels.some((model) => model.id === id),
+    );
+  const currentToggleModel = (id: string) => {
+    // A new explicit choice replaces stale selections hidden by admin disablement.
+    const liveSelection = currentPreference.models.filter((key) =>
+      currentModels.some((model) => model.id === key),
+    );
+    if (liveSelection.includes(id) && liveSelection.length === 1) return;
+    currentSetPreference({
+      mode: "manual",
+      models: liveSelection.includes(id)
+        ? liveSelection.filter((key) => key !== id)
+        : [...liveSelection, id],
+    });
+  };
 
-  if (!open || !pos) return null;
-
-  return createPortal(
-    <div
-      ref={popoverRef}
-      style={{
-        top: pos.above ? undefined : pos.top,
-        bottom: pos.above ? window.innerHeight - pos.top : undefined,
-        left: pos.left,
-      }}
-      className="fixed z-[9999] w-[380px] rounded-xl border-[0.5px] border-border bg-card p-1 shadow-card"
-    >
-      <div className="flex flex-col gap-3 py-2">
-        {/* Tab switcher */}
-        <div className="px-3">
-          <div className="flex rounded-lg bg-muted p-0.5">
-            {(["image", "video"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                  activeTab === tab
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+  return (
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger render={children} />
+      <PopoverContent
+        side="top"
+        align="end"
+        sideOffset={8}
+        aria-label="生成模型偏好"
+        className="w-[380px] max-w-[calc(100vw-1rem)] p-3"
+      >
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as "image" | "video")}
+        >
+          <TabsList aria-label="生成模型类型" className="w-full">
+            <TabsTrigger value="image">图片</TabsTrigger>
+            <TabsTrigger value="video">视频</TabsTrigger>
+          </TabsList>
+          <TabsContent value={activeTab} className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">
+                {activeTab === "image" ? "图片模型" : "视频模型"}
+              </span>
+              <Label
+                className="gap-2 pr-3 text-xs"
+                htmlFor={`${controlId}-auto`}
               >
-                {tab === "image" ? "Image" : "Video"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Header */}
-        <div className="flex flex-col gap-2 px-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-foreground">
-              {activeTab === "image" ? "Image Model" : "Video Model"}
-            </span>
-            <button
-              type="button"
-              onClick={() =>
-                currentSetMode(currentPreference.mode === "auto" ? "manual" : "auto")
-              }
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                currentPreference.mode === "auto"
-                  ? "bg-accent/15 text-accent-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  currentPreference.mode === "auto" ? "bg-accent" : "bg-muted-foreground"
-                }`}
-              />
-              {currentPreference.mode === "auto" ? "Auto" : "Manual"}
-            </button>
-          </div>
-          <span className="text-[11px] text-muted-foreground">
-            {currentPreference.mode === "auto"
-              ? `Agent automatically selects the best model for each ${activeTab} task`
-              : `Agent chooses from your selected models for each ${activeTab} task`}
-          </span>
-        </div>
-
-        {/* Model list */}
-        <div className="scrollbar-hidden max-h-[300px] space-y-0.5 overflow-y-auto px-1">
-          {currentModels.map((m) => {
-            const selected = currentPreference.models.includes(m.id);
-            return (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => currentToggleModel(m.id)}
-                className={`group flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors ${
-                  selected ? "bg-accent/10 hover:bg-accent/15" : "hover:bg-muted"
-                }`}
-              >
-                {m.iconUrl && (
-                  <img
-                    src={m.iconUrl}
-                    alt={m.displayName}
-                    className="h-5 w-5 shrink-0 rounded-full object-cover"
-                  />
-                )}
-                <div className="flex flex-1 flex-col">
-                  <span className="flex items-center gap-1.5 text-[13px] font-medium text-foreground">
-                    {m.displayName}
-                    {m.accessible === false && (
-                      <span className="inline-flex items-center gap-0.5 rounded px-1 py-px text-[9px] font-semibold uppercase leading-tight tracking-wider bg-muted text-muted-foreground">
-                        <Lock className="h-2.5 w-2.5" />
-                        {m.minTier ?? "PRO"}
-                      </span>
-                    )}
-                  </span>
-                  <span className="flex items-center gap-1.5 text-[11px] leading-tight text-muted-foreground">
-                    {m.description}
-                    {typeof m.creditCost === "number" && (
-                      <span className="inline-flex items-center gap-0.5 tabular-nums text-muted-foreground">
-                        <Zap className="h-2.5 w-2.5" />
-                        {m.creditCost}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                {selected && (
-                  <svg
-                    className="h-3.5 w-3.5 shrink-0 text-accent-foreground"
-                    viewBox="0 0 14 14"
-                    fill="currentColor"
+                {currentPreference.mode === "auto" ? "自动" : "手动"}
+                <Switch
+                  id={`${controlId}-auto`}
+                  aria-label="自动选择模型"
+                  size="sm"
+                  checked={currentPreference.mode === "auto"}
+                  onCheckedChange={(checked) =>
+                    currentSetMode(checked ? "auto" : "manual")
+                  }
+                />
+              </Label>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {currentPreference.mode === "auto"
+                ? `智能助手会为每次${activeTab === "image" ? "图片" : "视频"}任务自动选择合适的模型`
+                : `智能助手会从你选择的模型中执行${activeTab === "image" ? "图片" : "视频"}任务`}
+            </p>
+            {unavailableSelection && (
+              <p className="text-xs text-muted-foreground">
+                之前选择的模型已停用，请重新选择。
+              </p>
+            )}
+            <div className="max-h-[300px] space-y-1 overflow-x-hidden overflow-y-auto">
+              {currentModels.length === 0 && (
+                <p className="px-2 py-4 text-xs text-muted-foreground">
+                  暂无可用模型，请管理员先启用。
+                </p>
+              )}
+              {currentModels.map((candidate) => {
+                const selected = currentPreference.models.includes(
+                  candidate.id,
+                );
+                const id = `${controlId}-${candidate.id}`;
+                return (
+                  <Label
+                    key={candidate.id}
+                    htmlFor={id}
+                    className={`flex w-full cursor-pointer gap-3 rounded-lg p-2 pr-4 hover:bg-muted ${selected ? "bg-accent/10" : ""}`}
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M12.08 3.087a.583.583 0 0 1 0 .825L5.661 10.33a.583.583 0 0 1-.824 0L1.92 7.412a.583.583 0 0 1 .825-.825L5.25 9.092l6.004-6.005a.583.583 0 0 1 .825 0"
-                      clipRule="evenodd"
+                    {candidate.iconUrl && (
+                      <img
+                        src={candidate.iconUrl}
+                        alt=""
+                        className="size-5 shrink-0 rounded-full object-cover"
+                      />
+                    )}
+                    <span className="flex min-w-0 flex-1 flex-col gap-1">
+                      <span className="text-[13px] font-medium">
+                        {candidate.displayName}
+                      </span>
+                      <span className="text-xs font-normal leading-relaxed text-muted-foreground">
+                        {candidate.description}
+                      </span>
+                    </span>
+                    <Checkbox
+                      id={id}
+                      aria-label={candidate.displayName}
+                      checked={selected}
+                      onCheckedChange={() => currentToggleModel(candidate.id)}
                     />
-                  </svg>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>,
-    document.body,
+                  </Label>
+                );
+              })}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </PopoverContent>
+    </Popover>
   );
 }

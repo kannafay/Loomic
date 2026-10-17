@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 // ---------------------------------------------------------------------------
 
 function formatNumber(n: number): string {
-  return Math.round(n).toLocaleString("en-US");
+  return Math.round(n).toLocaleString("zh-CN");
 }
 
 // ---------------------------------------------------------------------------

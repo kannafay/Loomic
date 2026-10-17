@@ -36,11 +36,11 @@ export function ProfileSection({
 
     try {
       await onSave(trimmed);
-      setFeedback({ type: "success", message: "Profile updated." });
+      setFeedback({ type: "success", message: "个人资料已更新。" });
     } catch {
       setFeedback({
         type: "error",
-        message: "Failed to update profile. Please try again.",
+        message: "个人资料更新失败，请重试。",
       });
     } finally {
       setSaving(false);
@@ -49,27 +49,27 @@ export function ProfileSection({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-1">Profile</h2>
+      <h2 className="text-lg font-semibold mb-1">个人资料</h2>
       <p className="text-sm text-muted-foreground mb-6">
-        Manage your personal information.
+        管理你的个人信息。
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
         <div className="space-y-2">
-          <Label htmlFor="displayName">Display Name</Label>
+          <Label htmlFor="displayName">显示名称</Label>
           <Input
             id="displayName"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            placeholder="Your name"
+            placeholder="请输入你的名称"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">邮箱</Label>
           <Input id="email" value={email} disabled className="opacity-60" />
           <p className="text-xs text-muted-foreground">
-            Email cannot be changed.
+            邮箱地址暂不支持修改。
           </p>
         </div>
 
@@ -82,7 +82,7 @@ export function ProfileSection({
         )}
 
         <Button type="submit" disabled={saving || !hasChanges} size="sm">
-          {saving ? "Saving..." : "Save"}
+          {saving ? "正在保存…" : "保存"}
         </Button>
       </form>
     </div>

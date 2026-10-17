@@ -1,5 +1,11 @@
 "use client";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
+import type {
+  ImageGenerationPreference,
+  VideoGenerationPreference,
+} from "@loomic/shared";
 import {
   forwardRef,
   useCallback,
@@ -7,16 +13,18 @@ import {
   useRef,
   useState,
 } from "react";
-import type { ImageGenerationPreference, VideoGenerationPreference } from "@loomic/shared";
 
-import type { ImageAttachmentState, ReadyAttachment } from "../hooks/use-image-attachments";
 import type { HomeExampleSelection } from "@/lib/home-example-seeds";
+import { useAgentModel } from "../hooks/use-agent-model";
+import type {
+  ImageAttachmentState,
+  ReadyAttachment,
+} from "../hooks/use-image-attachments";
+import { useImageModelPreference } from "../hooks/use-image-model-preference";
+import { useVideoModelPreference } from "../hooks/use-video-model-preference";
 import { AgentModelSelector } from "./agent-model-selector";
 import { ImageAttachmentBar } from "./image-attachment-bar";
 import { ImageModelPreferencePopover } from "./image-model-preference";
-import { useAgentModel } from "../hooks/use-agent-model";
-import { useImageModelPreference } from "../hooks/use-image-model-preference";
-import { useVideoModelPreference } from "../hooks/use-video-model-preference";
 
 export type HomePromptHandle = {
   /** Programmatically set the textarea value (e.g. from an example pill). */
@@ -44,11 +52,13 @@ type HomePromptProps = {
 const toolbarButtons = [
   {
     name: "Attach",
+    label: "添加附件",
     viewBox: "0 0 24 24",
     path: "M16 1.1A4.9 4.9 0 0 1 20.9 6a4.9 4.9 0 0 1-1.429 3.457h.001l-8.414 8.587-.007.006a2.9 2.9 0 0 1-3.887.193l-.213-.192a2.9 2.9 0 0 1-.007-4.095l8.414-8.586a.9.9 0 0 1 1.286 1.26L8.23 15.216l-.007.006a1.1 1.1 0 0 0 1.556 1.555l8.407-8.579.007-.007a3.1 3.1 0 0 0 .105-4.271l-.105-.112a3.1 3.1 0 0 0-4.384 0L5.4 12.387l-.007.006a5.1 5.1 0 0 0 7.214 7.213l7.749-7.934a.9.9 0 0 1 1.288 1.256l-7.753 7.938q-.005.007-.012.014a6.9 6.9 0 0 1-9.758-9.76l8.408-8.578.007-.007A4.9 4.9 0 0 1 16 1.1",
   },
   {
     name: "Agent",
+    label: "智能助手",
     viewBox: "0 0 24 24",
     path: "M10.8 1.307a2.33 2.33 0 0 1 2.4 0l7.67 4.602A2.33 2.33 0 0 1 22 7.907v8.361a2.33 2.33 0 0 1-1.13 1.998l-7.67 4.602-.141.078a2.33 2.33 0 0 1-2.258-.078l-7.67-4.602A2.33 2.33 0 0 1 2 16.268V7.907a2.33 2.33 0 0 1 1.003-1.915l.128-.083z",
   },
@@ -78,7 +88,6 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
-    const agentBtnRef = useRef<HTMLButtonElement>(null);
     const { preference } = useImageModelPreference();
     const { preference: videoPreference } = useVideoModelPreference();
     const { model: agentModel } = useAgentModel();
@@ -104,7 +113,9 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
     const handleSubmit = useCallback(() => {
       const trimmed = value.trim();
       if (
-        (!trimmed && (!attachments || attachments.length === 0) && !selectedSeed) ||
+        (!trimmed &&
+          (!attachments || attachments.length === 0) &&
+          !selectedSeed) ||
         disabled ||
         isUploading
       )
@@ -121,7 +132,7 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
       if (seedImageMentions.length > 0) {
         const seedAttachments: ReadyAttachment[] = seedImageMentions.map(
           (mention, i) => ({
-            assetId: `seed-${selectedSeed!.categoryKey}-${i}`,
+            assetId: `seed-${selectedSeed?.categoryKey}-${i}`,
             url: mention.imgSrc,
             mimeType: "image/webp",
             source: "upload" as const,
@@ -148,7 +159,18 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
-    }, [value, disabled, isUploading, onSubmit, attachments, readyAttachments, preference, videoPreference, agentModel, selectedSeed]);
+    }, [
+      value,
+      disabled,
+      isUploading,
+      onSubmit,
+      attachments,
+      readyAttachments,
+      preference,
+      videoPreference,
+      agentModel,
+      selectedSeed,
+    ]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
@@ -204,13 +226,14 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
               </div>
 
               {onClearSelectedSeed ? (
-                <button
+                <Button
+                  variant="outline"
                   type="button"
                   onClick={onClearSelectedSeed}
                   className="shrink-0 rounded-full border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
                 >
                   清除
-                </button>
+                </Button>
               ) : null}
             </div>
 
@@ -232,7 +255,7 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
             </div>
           </div>
         ) : null}
-        <textarea
+        <Textarea
           ref={textareaRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
@@ -242,7 +265,7 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
           placeholder="让 Loomic 帮你设计..."
           disabled={disabled}
           rows={2}
-          className="w-full resize-none bg-transparent px-3 pt-3 pb-2 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 sm:px-4 sm:pt-4"
+          className="field-sizing-fixed border-0 shadow-none focus-visible:ring-0 w-full resize-none bg-transparent px-3 pt-3 pb-2 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 sm:px-4 sm:pt-4"
         />
 
         <div className="flex items-center justify-between px-2 pb-2 sm:px-3 sm:pb-3">
@@ -263,10 +286,12 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                     e.target.value = "";
                   }}
                 />
-                <button
+                <Button
+                  size="icon"
+                  variant="outline"
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  title="Attach"
+                  title="添加附件"
                   className="flex h-10 w-10 items-center justify-center rounded-full border-[0.5px] border-border text-foreground transition-colors hover:bg-muted sm:h-8 sm:w-8"
                 >
                   <svg
@@ -274,17 +299,19 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                     viewBox={toolbarButtons[0].viewBox}
                     fill="currentColor"
                     role="img"
-                    aria-label="Attach"
+                    aria-label="添加附件"
                   >
                     <path d={toolbarButtons[0].path} />
                   </svg>
-                </button>
+                </Button>
               </>
             ) : (
-              <button
+              <Button
+                size="icon"
+                variant="outline"
                 type="button"
                 disabled
-                title="Attach"
+                title="添加附件"
                 className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full border-[0.5px] border-border text-foreground opacity-30 transition-colors sm:h-8 sm:w-8"
               >
                 <svg
@@ -292,11 +319,11 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                   viewBox={toolbarButtons[0].viewBox}
                   fill="currentColor"
                   role="img"
-                  aria-label="Attach"
+                  aria-label="添加附件"
                 >
                   <path d={toolbarButtons[0].path} />
                 </svg>
-              </button>
+              </Button>
             )}
           </div>
 
@@ -307,41 +334,44 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                 if (btn.name === "Agent") {
                   return (
                     <div key={btn.name} className="relative">
-                      <button
-                        ref={agentBtnRef}
-                        type="button"
-                        onClick={() => setModelPopoverOpen((prev) => !prev)}
-                        title={btn.name}
-                        className={`flex h-10 w-10 items-center justify-center rounded-full border-[0.5px] transition-colors sm:h-8 sm:w-8 ${
-                          preference.mode === "manual"
-                            ? "border-accent bg-accent/30 text-accent-foreground"
-                            : "border-border text-foreground hover:bg-muted"
-                        }`}
-                      >
-                        <svg
-                          className="h-[14px] w-[14px]"
-                          viewBox={btn.viewBox}
-                          fill="currentColor"
-                          role="img"
-                          aria-label={btn.name}
-                        >
-                          <path d={btn.path} />
-                        </svg>
-                      </button>
                       <ImageModelPreferencePopover
                         open={modelPopoverOpen}
-                        onClose={() => setModelPopoverOpen(false)}
-                        anchorRef={agentBtnRef}
-                      />
+                        onOpenChange={setModelPopoverOpen}
+                      >
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          type="button"
+                          title="生成模型偏好"
+                          aria-label="生成模型偏好"
+                          className={`flex h-10 w-10 items-center justify-center rounded-full border-[0.5px] transition-colors sm:h-8 sm:w-8 ${
+                            preference.mode === "manual"
+                              ? "border-accent bg-accent/30 text-accent-foreground"
+                              : "border-border text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          <svg
+                            className="h-[14px] w-[14px]"
+                            viewBox={btn.viewBox}
+                            fill="currentColor"
+                            role="img"
+                            aria-label={btn.label}
+                          >
+                            <path d={btn.path} />
+                          </svg>
+                        </Button>
+                      </ImageModelPreferencePopover>
                     </div>
                   );
                 }
                 return (
-                  <button
+                  <Button
+                    size="icon"
+                    variant="outline"
                     key={btn.name}
                     type="button"
                     disabled
-                    title={btn.name}
+                    title={btn.label}
                     className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-full border-[0.5px] border-border text-foreground opacity-30 transition-colors sm:h-8 sm:w-8"
                   >
                     <svg
@@ -349,15 +379,17 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                       viewBox={btn.viewBox}
                       fill="currentColor"
                       role="img"
-                      aria-label={btn.name}
+                      aria-label={btn.label}
                     >
                       <path d={btn.path} />
                     </svg>
-                  </button>
+                  </Button>
                 );
               })}
             </div>
-            <button
+            <Button
+              size="icon"
+              variant="default"
               type="button"
               onClick={handleSubmit}
               disabled={disabled || isUploading || !hasContent}
@@ -372,11 +404,11 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                 viewBox={submitIcon.viewBox}
                 fill="currentColor"
                 role="img"
-                aria-label="Submit"
+                aria-label="发送"
               >
                 <path d={submitIcon.path} />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
       </div>

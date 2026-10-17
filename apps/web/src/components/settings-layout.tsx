@@ -1,11 +1,13 @@
 "use client";
+import { Button } from "@/components/ui/button";
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Separator } from "./ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
-type SettingsSection = "profile" | "agent" | "billing";
+type SettingsSection = "profile" | "agent";
 
 interface SettingsLayoutProps {
   children: (activeSection: SettingsSection) => React.ReactNode;
@@ -17,51 +19,57 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
     useState<SettingsSection>("profile");
 
   const sections: Array<{ id: SettingsSection; label: string }> = [
-    { id: "profile", label: "Profile" },
-    { id: "agent", label: "Agent" },
-    { id: "billing", label: "Billing" },
+    { id: "profile", label: "个人资料" },
+    { id: "agent", label: "智能助手" },
   ];
 
   return (
-    <div className="flex min-h-screen">
+    <Tabs
+      value={activeSection}
+      onValueChange={(value) => setActiveSection(value as SettingsSection)}
+      orientation="vertical"
+      className="min-h-screen flex-row gap-0"
+    >
       {/* Sidebar */}
       <aside className="w-52 shrink-0 border-r bg-secondary p-4">
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={() => router.push("/projects")}
           className="text-sm text-muted-foreground hover:text-foreground mb-6 flex items-center gap-1"
         >
-          <span aria-hidden>&larr;</span> Back to Projects
-        </button>
+          <span aria-hidden>&larr;</span> 返回项目列表
+        </Button>
 
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-          Settings
+          设置
         </div>
 
-        <div className="space-y-0.5">
+        <TabsList
+          aria-label="设置栏目"
+          variant="line"
+          className="w-full items-stretch gap-0.5"
+        >
           {sections.map((section) => (
-            <button
+            <TabsTrigger
               key={section.id}
-              type="button"
-              onClick={() => setActiveSection(section.id)}
-              className={`block w-full text-left text-sm px-2 py-1.5 rounded ${
-                activeSection === section.id
-                  ? "font-medium bg-muted"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
+              value={section.id}
+              className="h-8 flex-none justify-start px-2 after:hidden data-active:bg-muted"
             >
               {section.label}
-            </button>
+            </TabsTrigger>
           ))}
-        </div>
+        </TabsList>
 
         <Separator className="my-4" />
       </aside>
 
       {/* Content */}
       <main className="flex-1 p-8">
-        <div className="max-w-xl">{children(activeSection)}</div>
+        <TabsContent value={activeSection} className="max-w-xl">
+          {children(activeSection)}
+        </TabsContent>
       </main>
-    </div>
+    </Tabs>
   );
 }

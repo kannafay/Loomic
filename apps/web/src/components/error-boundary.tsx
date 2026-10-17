@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { getUserFacingError } from "@/lib/locale";
 
 type ErrorBoundaryProps = {
   children: React.ReactNode;
@@ -86,7 +87,7 @@ export class ErrorBoundary extends React.Component<
             <h3 className="text-sm font-medium text-foreground">出错了</h3>
             <p className="text-xs text-muted-foreground">
               {process.env.NODE_ENV === "development"
-                ? error.message
+                ? getUserFacingError(error, "页面组件发生异常，请重试或刷新页面")
                 : "页面组件发生异常，请重试或刷新页面"}
             </p>
           </div>

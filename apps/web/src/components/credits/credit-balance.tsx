@@ -1,6 +1,8 @@
 // @credits-system — Sidebar credit balance widget with popover, animated counter, and daily claim
 "use client";
 
+import { getPlanLabel } from "@/lib/locale";
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -39,7 +41,7 @@ function AnimatedBalance({ value }: { value: number }) {
     return () => clearInterval(timer);
   }, [value]);
 
-  return <span>{displayed.toLocaleString()}</span>;
+  return <span>{displayed.toLocaleString("zh-CN")}</span>;
 }
 
 // ── Plan badge color map ─────────────────────────────────────
@@ -126,7 +128,7 @@ export function CreditBalance() {
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        title={`${balance} credits`}
+        title={`${balance} 积分`}
         className="relative flex h-9 w-9 flex-col items-center justify-center gap-0.5 rounded-full transition-colors hover:bg-muted"
       >
         <Sparkles className="h-4 w-4 text-muted-foreground" />
@@ -168,7 +170,7 @@ export function CreditBalance() {
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  Available credits
+                  可用积分
                 </p>
               </div>
 
@@ -177,13 +179,13 @@ export function CreditBalance() {
                 <span
                   className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${PLAN_COLORS[plan] ?? PLAN_COLORS.free}`}
                 >
-                  {plan}
+                  {getPlanLabel(plan)}
                 </span>
                 {limits && (
                   <span className="text-xs text-muted-foreground">
                     {isFree
-                      ? `${limits.dailyCredits}/day`
-                      : `${limits.monthlyCredits.toLocaleString()}/mo`}
+                      ? `${limits.dailyCredits}/天`
+                      : `${limits.monthlyCredits.toLocaleString("zh-CN")}/月`}
                   </span>
                 )}
               </div>
@@ -212,7 +214,7 @@ export function CreditBalance() {
                   ) : (
                     <Gift className="h-4 w-4" />
                   )}
-                  {claiming ? "Claiming..." : "Claim Daily Credits"}
+                  {claiming ? "正在领取…" : "领取每日积分"}
                 </button>
               )}
 
@@ -220,7 +222,7 @@ export function CreditBalance() {
               {isFree && dailyClaimed && (
                 <div className="mb-3 flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground/70">
                   <Zap className="h-3.5 w-3.5 text-muted-foreground" />
-                  Daily credits claimed
+                  今日积分已领取
                 </div>
               )}
 
@@ -233,7 +235,7 @@ export function CreditBalance() {
                 >
                   <span className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-muted-foreground" />
-                    Upgrade Plan
+                    升级套餐
                   </span>
                   <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 </Link>

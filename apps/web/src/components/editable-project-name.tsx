@@ -27,7 +27,7 @@ export function EditableProjectName({
 
   const save = useCallback(
     async (newName: string) => {
-      const trimmed = newName.trim() || "Untitled";
+      const trimmed = newName.trim() || "未命名项目";
       setName(trimmed);
       setEditing(false);
       if (trimmed !== prevName.current) {

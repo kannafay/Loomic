@@ -1,6 +1,8 @@
 // @credits-system — React hook for credit balance, daily claim, and auto-refresh on focus
 "use client";
 
+import { getUserFacingError } from "@/lib/locale";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CreditBalanceResponse } from "@loomic/shared";
 import { useAuth } from "@/lib/auth-context";
@@ -34,7 +36,7 @@ export function useCredits(): UseCreditsReturn {
       setData(result);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch credits");
+      setError(getUserFacingError(err, "积分信息加载失败。"));
     } finally {
       setLoading(false);
     }
@@ -69,11 +71,11 @@ export function useCredits(): UseCreditsReturn {
         await refresh();
         return true;
       }
-      setError(result.message ?? "Claim failed");
+      setError(getUserFacingError(result, "积分领取失败。"));
       return false;
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to claim daily credits",
+        getUserFacingError(err, "每日积分领取失败，请重试。"),
       );
       return false;
     }

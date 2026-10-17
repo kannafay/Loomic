@@ -63,10 +63,10 @@ function itemKeywords(item: MessageMentionPickerItem): string[] {
 }
 
 function groupTitle(kind: MessageMentionPickerItem["kind"]): string {
-  if (kind === "canvas-image") return "This Project";
-  if (kind === "brand-kit-asset") return "Brand Kit";
-  if (kind === "skill") return "Skills";
-  return "Model";
+  if (kind === "canvas-image") return "当前项目";
+  if (kind === "brand-kit-asset") return "品牌套件";
+  if (kind === "skill") return "技能";
+  return "模型";
 }
 
 export function MessageMentionPicker({
@@ -127,7 +127,7 @@ export function MessageMentionPicker({
         className="absolute bottom-full left-2 mb-2 w-56 rounded-xl border border-border bg-popover p-3 shadow-lg"
       >
         <p className="text-xs text-muted-foreground">
-          {items.length === 0 ? "No items available to mention" : `No match for "${query}"`}
+          {items.length === 0 ? "暂无可引用的内容" : `没有找到与“${query}”匹配的内容`}
         </p>
       </div>
     );

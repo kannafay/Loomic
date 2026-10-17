@@ -64,7 +64,7 @@ describe("mapHomeExampleRows", () => {
     expect(mapHomeExampleRows(categories, examples)).toEqual([
       {
         key: "design",
-        label: "Design",
+        label: "设计",
         dataType: "Poster",
         examples: [
           {
@@ -83,7 +83,7 @@ describe("mapHomeExampleRows", () => {
       },
       {
         key: "video",
-        label: "Video",
+        label: "视频",
         dataType: "Video",
         examples: [],
       },

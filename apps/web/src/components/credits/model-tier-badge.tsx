@@ -1,6 +1,8 @@
 // @credits-system — Model tier badge: displays credit cost, plan tier, and lock for inaccessible models
 "use client";
 
+import { getPlanLabel } from "@/lib/locale";
+
 import { Lock } from "lucide-react";
 import type { SubscriptionPlan } from "@loomic/shared";
 
@@ -29,7 +31,7 @@ export function ModelTierBadge({
     <span className="inline-flex items-center gap-1.5">
       {/* Credit cost */}
       <span className="text-[11px] tabular-nums text-muted-foreground">
-        {creditCost} cr
+        {creditCost} 积分
       </span>
 
       {/* Tier badge (if not free) */}
@@ -37,7 +39,7 @@ export function ModelTierBadge({
         <span
           className={`inline-flex items-center rounded px-1 py-px text-[9px] font-semibold uppercase leading-tight tracking-wider ${TIER_BADGE_STYLES[minTier] ?? ""}`}
         >
-          {minTier}
+          {getPlanLabel(minTier)}
         </span>
       )}
 

@@ -1,23 +1,34 @@
 "use client";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-import { ImageUp, Lock, Zap } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+
+import { ImageUp } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
-import type { ImageModelInfo } from "../../lib/server-api";
-import { fetchImageModels, generateImageDirect } from "../../lib/server-api";
 import { useGenerationErrorHandler } from "../../hooks/use-generation-error-handler";
-import {
-  updateImageGeneratorElement,
-  resizeImageGeneratorElement,
-  type ImageGeneratorData,
-} from "../../lib/canvas-image-generator";
 import {
   createExcalidrawImageElement,
   fetchAsDataURL,
 } from "../../lib/canvas-elements";
+import {
+  type ImageGeneratorData,
+  resizeImageGeneratorElement,
+  updateImageGeneratorElement,
+} from "../../lib/canvas-image-generator";
+import type { ImageModelInfo } from "../../lib/server-api";
+import { fetchImageModels, generateImageDirect } from "../../lib/server-api";
 
 type ImageGeneratorPanelProps = {
+  hidden?: boolean;
   elementId: string;
   elementBounds: { x: number; y: number; width: number; height: number };
   data: ImageGeneratorData;
@@ -41,6 +52,7 @@ function generateId(): string {
 }
 
 export function ImageGeneratorPanel({
+  hidden = false,
   elementId,
   elementBounds,
   data,
@@ -56,10 +68,9 @@ export function ImageGeneratorPanel({
   const [loading, setLoading] = useState(data.status === "generating");
   const [error, setError] = useState<string | null>(data.errorMessage ?? null);
   const [models, setModels] = useState<ImageModelInfo[]>([]);
-  const [showModelDropdown, setShowModelDropdown] = useState(false);
-  const [showRatioDropdown, setShowRatioDropdown] = useState(false);
-  const [showQualityDropdown, setShowQualityDropdown] = useState(false);
-  const [refImages, setRefImages] = useState<Array<{ id: string; dataUrl: string; file: File }>>([]);
+  const [refImages, setRefImages] = useState<
+    Array<{ id: string; dataUrl: string; file: File }>
+  >([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const refInputRef = useRef<HTMLInputElement>(null);
@@ -79,20 +90,9 @@ export function ImageGeneratorPanel({
       .catch((err) => {
         console.warn("[image-gen] Failed to fetch models:", err);
       });
-    return () => { cancelled = true; };
-  }, []);
-
-  // Close dropdowns when clicking outside the panel
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setShowModelDropdown(false);
-        setShowRatioDropdown(false);
-        setShowQualityDropdown(false);
-      }
+    return () => {
+      cancelled = true;
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Cancel in-flight generation on unmount to prevent memory leaks
@@ -113,15 +113,13 @@ export function ImageGeneratorPanel({
   // Calculate panel screen position from canvas coordinates
   const { scrollX, scrollY, zoom } = canvasScrollZoom;
   const screenX = (elementBounds.x + scrollX) * zoom;
-  const screenY =
-    (elementBounds.y + elementBounds.height + scrollY) * zoom + 8;
+  const screenY = (elementBounds.y + elementBounds.height + scrollY) * zoom + 8;
 
   const currentModel = models.find((m) => m.id === model);
 
   const handleAspectRatioChange = useCallback(
     (ratio: string) => {
       setAspectRatio(ratio);
-      setShowRatioDropdown(false);
       resizeImageGeneratorElement(excalidrawApi, elementId, ratio);
       updateImageGeneratorElement(excalidrawApi, elementId, {
         aspectRatio: ratio,
@@ -133,7 +131,6 @@ export function ImageGeneratorPanel({
   const handleQualityChange = useCallback(
     (q: string) => {
       setQuality(q);
-      setShowQualityDropdown(false);
       updateImageGeneratorElement(excalidrawApi, elementId, { quality: q });
     },
     [excalidrawApi, elementId],
@@ -142,7 +139,6 @@ export function ImageGeneratorPanel({
   const handleModelChange = useCallback(
     (m: string) => {
       setModel(m);
-      setShowModelDropdown(false);
       updateImageGeneratorElement(excalidrawApi, elementId, { model: m });
     },
     [excalidrawApi, elementId],
@@ -200,12 +196,10 @@ export function ImageGeneratorPanel({
       });
 
       // Replace: delete placeholder, add image
-      const elements = excalidrawApi
-        .getSceneElements()
-        .map((el: any) => {
-          if (el.id === elementId) return { ...el, isDeleted: true };
-          return el;
-        });
+      const elements = excalidrawApi.getSceneElements().map((el: any) => {
+        if (el.id === elementId) return { ...el, isDeleted: true };
+        return el;
+      });
       excalidrawApi.updateScene({
         elements: [...elements, imageElement],
         captureUpdate: "IMMEDIATELY",
@@ -243,13 +237,14 @@ export function ImageGeneratorPanel({
   return createPortal(
     <div
       ref={panelRef}
+      hidden={hidden}
       style={{ left: screenX, top: screenY }}
-      className="fixed z-[100] w-[450px] rounded-xl border-[0.5px] border-border bg-card/95 p-2 shadow-card backdrop-blur-lg"
+      className="fixed z-[100] w-[450px] max-w-[calc(100vw-16px)] rounded-xl border-[0.5px] border-border bg-card/95 p-2 shadow-card backdrop-blur-lg"
       onKeyDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
       {/* Prompt textarea */}
-      <textarea
+      <Textarea
         ref={textareaRef}
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
@@ -262,7 +257,7 @@ export function ImageGeneratorPanel({
         placeholder="今天我们要创作什么"
         disabled={loading}
         style={{ scrollbarWidth: "none" }}
-        className="min-h-[74px] max-h-[140px] w-full resize-none border-none bg-transparent p-1 text-[14px] leading-[18px] text-foreground placeholder:text-muted-foreground focus:outline-none [&::-webkit-scrollbar]:hidden"
+        className="field-sizing-fixed border-0 shadow-none focus-visible:ring-0 min-h-[74px] max-h-[140px] w-full resize-none border-none bg-transparent p-1 text-[14px] leading-[18px] text-foreground placeholder:text-muted-foreground focus:outline-none [&::-webkit-scrollbar]:hidden"
       />
 
       {error && (
@@ -275,77 +270,52 @@ export function ImageGeneratorPanel({
       <div className="mt-1 flex items-center justify-between">
         {/* Left: model + ref image */}
         <div className="flex items-center">
-          {/* Model selector */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowModelDropdown((v) => !v)}
-              className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted"
+          <Select
+            value={model}
+            onValueChange={(value) => {
+              if (value) handleModelChange(value);
+            }}
+            disabled={loading || !models.length}
+            items={models.map((candidate) => ({
+              value: candidate.id,
+              label: candidate.displayName,
+            }))}
+          >
+            <SelectTrigger
+              aria-label="图片模型"
+              className="max-w-[180px] border-transparent px-2 text-xs"
             >
               {currentModel?.iconUrl && (
                 <img
                   src={currentModel.iconUrl}
                   alt=""
-                  className="h-3.5 w-3.5 rounded-full"
+                  className="size-3.5 rounded-full"
                 />
               )}
-              <span className="text-foreground">
+              <SelectValue>
                 {currentModel?.displayName ?? model.split("/").pop()}
-              </span>
-              <svg
-                className="h-3 w-3 text-muted-foreground"
-                viewBox="0 0 12 24"
-                fill="currentColor"
-              >
-                <path d="M8.546 10.33a.4.4 0 0 1 .566 0l.424.424a.4.4 0 0 1 0 .566l-3.041 3.041a.7.7 0 0 1-.99 0l-3.04-3.04a.4.4 0 0 1 0-.567l.423-.424a.4.4 0 0 1 .567 0L6 12.876z" />
-              </svg>
-            </button>
-            {showModelDropdown && (
-              <div className="absolute bottom-full left-0 z-50 mb-1 max-h-[280px] w-[260px] overflow-y-auto rounded-xl border-[0.5px] border-border bg-card py-1 shadow-card">
-                {models.map((m) => (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => handleModelChange(m.id)}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition-colors hover:bg-muted ${m.id === model ? "bg-muted" : ""} ${m.accessible === false ? "opacity-60" : ""}`}
-                  >
-                    {m.iconUrl && (
-                      <img
-                        src={m.iconUrl}
-                        alt=""
-                        className="h-3.5 w-3.5 rounded-full"
-                      />
-                    )}
-                    <span className="flex-1 text-foreground">
-                      {m.displayName}
-                      {m.accessible === false && (
-                        <Lock className="ml-1 inline h-2.5 w-2.5 text-muted-foreground" />
-                      )}
-                    </span>
-                    {typeof m.creditCost === "number" && (
-                      <span className="inline-flex items-center gap-0.5 text-[10px] tabular-nums text-muted-foreground">
-                        <Zap className="h-2.5 w-2.5" />
-                        {m.creditCost}
-                      </span>
-                    )}
-                    {m.id === model && (
-                      <svg
-                        className="h-3 w-3 text-foreground"
-                        viewBox="0 0 14 14"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M12.08 3.087a.583.583 0 0 1 0 .825L5.661 10.33a.583.583 0 0 1-.824 0L1.92 7.412a.583.583 0 0 1 .825-.825L5.25 9.092l6.004-6.005a.583.583 0 0 1 .825 0"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent
+              side="top"
+              align="start"
+              alignItemWithTrigger={false}
+              className="w-64 p-1"
+            >
+              {models.map((candidate) => (
+                <SelectItem key={candidate.id} value={candidate.id}>
+                  {candidate.iconUrl && (
+                    <img
+                      src={candidate.iconUrl}
+                      alt=""
+                      className="size-3.5 rounded-full"
+                    />
+                  )}
+                  {candidate.displayName}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Reference image upload */}
           <input
@@ -362,7 +332,11 @@ export function ImageGeneratorPanel({
                 reader.onload = () => {
                   setRefImages((prev) => [
                     ...prev,
-                    { id: generateId(), dataUrl: reader.result as string, file },
+                    {
+                      id: generateId(),
+                      dataUrl: reader.result as string,
+                      file,
+                    },
                   ]);
                 };
                 reader.readAsDataURL(file);
@@ -370,16 +344,20 @@ export function ImageGeneratorPanel({
               e.target.value = "";
             }}
           />
-          <button
+          <Button
+            size="icon"
+            variant="ghost"
             type="button"
             onClick={() => refInputRef.current?.click()}
             className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted ${
-              refImages.length > 0 ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+              refImages.length > 0
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
             }`}
-            title="Add reference image"
+            title="添加参考图片"
           >
             <ImageUp className="h-3.5 w-3.5" />
-          </button>
+          </Button>
           {/* Ref image thumbnails */}
           {refImages.length > 0 && (
             <div className="flex items-center gap-1 ml-1">
@@ -387,16 +365,22 @@ export function ImageGeneratorPanel({
                 <div key={img.id} className="relative group">
                   <img
                     src={img.dataUrl}
-                    alt="ref"
+                    alt="参考图片"
                     className="h-7 w-7 rounded object-cover border border-border"
                   />
-                  <button
+                  <Button
+                    size="icon"
+                    variant="default"
                     type="button"
-                    onClick={() => setRefImages((prev) => prev.filter((r) => r.id !== img.id))}
+                    onClick={() =>
+                      setRefImages((prev) =>
+                        prev.filter((r) => r.id !== img.id),
+                      )
+                    }
                     className="absolute -top-1 -right-1 hidden group-hover:flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-primary-foreground text-[8px]"
                   >
                     x
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -405,76 +389,66 @@ export function ImageGeneratorPanel({
 
         {/* Right: quality + ratio + generate */}
         <div className="flex items-center gap-1">
-          {/* Quality (1K/2K/4K) */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowQualityDropdown((v) => !v)}
-              className="flex h-8 items-center gap-0.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted"
+          <Select
+            value={quality}
+            items={QUALITIES}
+            disabled={loading}
+            onValueChange={(value) => {
+              if (value) handleQualityChange(value);
+            }}
+          >
+            <SelectTrigger
+              aria-label="图片清晰度"
+              className="border-transparent px-2 text-xs"
             >
-              <span className="text-foreground">
-                {QUALITIES.find((q) => q.value === quality)?.label ?? "2K"}
-              </span>
-              <svg
-                className="h-3 w-3 text-muted-foreground"
-                viewBox="0 0 12 24"
-                fill="currentColor"
-              >
-                <path d="M8.546 10.33a.4.4 0 0 1 .566 0l.424.424a.4.4 0 0 1 0 .566l-3.041 3.041a.7.7 0 0 1-.99 0l-3.04-3.04a.4.4 0 0 1 0-.567l.423-.424a.4.4 0 0 1 .567 0L6 12.876z" />
-              </svg>
-            </button>
-            {showQualityDropdown && (
-              <div className="absolute bottom-full right-0 z-50 mb-1 rounded-lg border-[0.5px] border-border bg-card py-1 shadow-card">
-                {QUALITIES.map((q) => (
-                  <button
-                    key={q.value}
-                    type="button"
-                    onClick={() => handleQualityChange(q.value)}
-                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-xs transition-colors hover:bg-muted ${q.value === quality ? "bg-muted text-foreground" : "text-muted-foreground"}`}
-                  >
-                    {q.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Aspect ratio */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowRatioDropdown((v) => !v)}
-              className="flex h-8 items-center gap-0.5 rounded-lg px-2 text-xs text-muted-foreground transition-colors hover:bg-muted"
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              side="top"
+              alignItemWithTrigger={false}
+              className="min-w-24 p-1"
             >
-              <span className="text-foreground">{aspectRatio}</span>
-              <svg
-                className="h-3 w-3 text-muted-foreground"
-                viewBox="0 0 12 24"
-                fill="currentColor"
-              >
-                <path d="M8.546 10.33a.4.4 0 0 1 .566 0l.424.424a.4.4 0 0 1 0 .566l-3.041 3.041a.7.7 0 0 1-.99 0l-3.04-3.04a.4.4 0 0 1 0-.567l.423-.424a.4.4 0 0 1 .567 0L6 12.876z" />
-              </svg>
-            </button>
-            {showRatioDropdown && (
-              <div className="absolute bottom-full right-0 z-50 mb-1 rounded-lg border-[0.5px] border-border bg-card py-1 shadow-card">
-                {ASPECT_RATIOS.map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => handleAspectRatioChange(r)}
-                    className={`flex w-full items-center px-3 py-1.5 text-xs transition-colors hover:bg-muted ${r === aspectRatio ? "bg-muted text-foreground" : "text-muted-foreground"}`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              {QUALITIES.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={aspectRatio}
+            items={ASPECT_RATIOS.map((value) => ({ value, label: value }))}
+            disabled={loading}
+            onValueChange={(value) => {
+              if (value) handleAspectRatioChange(value);
+            }}
+          >
+            <SelectTrigger
+              aria-label="图片比例"
+              className="border-transparent px-2 text-xs"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent
+              side="top"
+              alignItemWithTrigger={false}
+              className="min-w-24 p-1"
+            >
+              {ASPECT_RATIOS.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Generate button */}
-          <button
+          <Button
+            size="icon"
+            variant="default"
             type="button"
             onClick={() => void handleGenerate()}
+            aria-label={loading ? "正在生成图片" : "生成图片"}
             disabled={!prompt.trim() || loading}
             className="flex h-8 min-w-12 items-center justify-center gap-1 rounded-full bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/80 hover:accent-glow disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
           >
@@ -489,7 +463,7 @@ export function ImageGeneratorPanel({
                 <path d="M6.9 4.36H5.385V.76c0-.84-.447-1.01-.991-.38L4 .835.677 4.685c-.457.525-.265.955.422.955h1.517v3.6c0 .84.446 1.01.991.38L4 9.165l3.323-3.85c.456-.525.265-.955-.422-.955" />
               </svg>
             )}
-          </button>
+          </Button>
         </div>
       </div>
     </div>,

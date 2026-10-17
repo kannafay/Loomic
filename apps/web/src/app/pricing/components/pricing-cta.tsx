@@ -54,7 +54,7 @@ export function PricingCTA() {
 
       {/* Footer */}
       <footer className="mt-16 mb-8 text-center text-sm text-muted-foreground">
-        <p>&copy; 2026 Loomic. All rights reserved.</p>
+        <p>© 2026 Loomic。保留所有权利。</p>
         <div className="mt-2 flex items-center justify-center gap-3">
           <Link
             href="/privacy"

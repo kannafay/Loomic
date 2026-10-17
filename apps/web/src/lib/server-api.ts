@@ -1,3 +1,6 @@
+import { getUserFacingError, localizeSystemSkill } from "./locale";
+import { getModelDescription } from "./model-locale";
+
 import type {
   AssetSignedUrlResponse,
   CanvasDetail,
@@ -33,7 +36,7 @@ import { getServerBaseUrl } from "./env";
 // --- Error types ---
 
 export class ApiAuthError extends Error {
-  constructor(message = "unauthorized") {
+  constructor(message = "登录状态已失效，请重新登录。") {
     super(message);
     this.name = "ApiAuthError";
   }
@@ -68,7 +71,7 @@ export async function createRun(
   });
 
   if (!response.ok) {
-    throw new Error(`Run creation failed with status ${response.status}`);
+    throw new Error(`创建对话失败，状态码：${response.status}`);
   }
 
   return (await response.json()) as RunCreateResponse;
@@ -93,7 +96,7 @@ async function handleErrorResponse(response: Response): Promise<never> {
   }
   const body = await response.json().catch(() => null);
   const code = body?.error?.code ?? "application_error";
-  const message = body?.error?.message ?? "Request failed";
+  const message = getUserFacingError({ code, message: body?.error?.message ?? body?.message }, "请求失败，请重试。");
   throw new ApiApplicationError(code, message);
 }
 
@@ -269,7 +272,7 @@ export async function updateWorkspaceSettings(
 export async function fetchModels(): Promise<ModelListResponse> {
   const response = await fetch(`${getServerBaseUrl()}/api/models`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch models: ${response.status}`);
+    throw new Error(`模型加载失败：${response.status}`);
   }
   return (await response.json()) as ModelListResponse;
 }
@@ -437,9 +440,12 @@ export async function fetchImageModels(): Promise<{
 }> {
   const response = await fetch(`${getServerBaseUrl()}/api/image-models`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch image models: ${response.status}`);
+    throw new Error(`图片模型加载失败：${response.status}`);
   }
-  return (await response.json()) as { models: ImageModelInfo[] };
+  const result = (await response.json()) as { models: ImageModelInfo[] };
+  return { ...result, models: result.models.map((model) => ({
+    ...model, description: getModelDescription(model.id, model.description),
+  })) };
 }
 
 export type VideoModelInfo = {
@@ -455,6 +461,9 @@ export type VideoModelInfo = {
     textToVideo: boolean;
     imageToVideo: boolean;
     videoToVideo: boolean;
+    lastFrame?: boolean;
+    referenceImages?: boolean;
+    videoExtension?: boolean;
     audio: boolean;
   };
   limits?: {
@@ -482,9 +491,12 @@ export async function fetchVideoModels(): Promise<{
 }> {
   const response = await fetch(`${getServerBaseUrl()}/api/video-models`);
   if (!response.ok) {
-    throw new Error(`Failed to fetch video models: ${response.status}`);
+    throw new Error(`视频模型加载失败：${response.status}`);
   }
-  return (await response.json()) as { models: VideoModelInfo[] };
+  const result = (await response.json()) as { models: VideoModelInfo[] };
+  return { ...result, models: result.models.map((model) => ({
+    ...model, description: getModelDescription(model.id, model.description),
+  })) };
 }
 
 export async function generateImageDirect(
@@ -519,6 +531,14 @@ export type GenerateVideoResponse = {
   durationSeconds: number;
 };
 
+export type VideoExtensionSource = { jobId: string; prompt: string; url: string; duration: number; aspectRatio: string };
+
+export async function fetchVideoSources(accessToken: string): Promise<{ sources: VideoExtensionSource[] }> {
+  const response = await fetch(`${getServerBaseUrl()}/api/agent/video-sources`, { headers: authHeaders(accessToken) });
+  if (!response.ok) return handleErrorResponse(response);
+  return response.json();
+}
+
 export async function generateVideoDirect(
   accessToken: string,
   prompt: string,
@@ -528,6 +548,12 @@ export async function generateVideoDirect(
     resolution?: string;
     aspectRatio?: string;
     inputImages?: string[];
+    firstFrame?: string;
+    lastFrame?: string;
+    referenceImages?: string[];
+    referenceAudios?: string[];
+    inputVideo?: string;
+    sourceVideoJobId?: string;
   },
 ): Promise<GenerateVideoResponse> {
   const response = await fetch(
@@ -544,6 +570,10 @@ export async function generateVideoDirect(
         ...(options?.inputImages?.length
           ? { inputImages: options.inputImages }
           : {}),
+        ...(options?.firstFrame ? { firstFrame: options.firstFrame } : {}),
+        ...(options?.lastFrame ? { lastFrame: options.lastFrame } : {}),
+        ...(options?.referenceImages?.length ? { referenceImages: options.referenceImages } : {}),
+        ...(options?.sourceVideoJobId ? { sourceVideoJobId: options.sourceVideoJobId } : {}),
       }),
     },
   );
@@ -573,7 +603,8 @@ export async function fetchSkills(
     headers: authHeaders(accessToken),
   });
   if (!response.ok) return handleErrorResponse(response);
-  return (await response.json()) as SkillListResponse;
+  const result = (await response.json()) as SkillListResponse;
+  return { ...result, skills: result.skills.map(localizeSystemSkill) };
 }
 
 export async function fetchSkillDetail(
@@ -584,7 +615,8 @@ export async function fetchSkillDetail(
     headers: authHeaders(accessToken),
   });
   if (!response.ok) return handleErrorResponse(response);
-  return (await response.json()) as SkillDetailResponse;
+  const result = (await response.json()) as SkillDetailResponse;
+  return { ...result, skill: localizeSystemSkill(result.skill) };
 }
 
 export async function createSkill(
@@ -655,7 +687,8 @@ export async function fetchWorkspaceSkills(
     headers: authHeaders(accessToken),
   });
   if (!response.ok) return handleErrorResponse(response);
-  return (await response.json()) as WorkspaceSkillListResponse;
+  const result = (await response.json()) as WorkspaceSkillListResponse;
+  return { ...result, skills: result.skills.map(localizeSystemSkill) };
 }
 
 export async function installSkill(

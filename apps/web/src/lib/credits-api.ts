@@ -1,4 +1,6 @@
 // @credits-system — Frontend API client for credit balance, transactions, daily claim, admin ops
+import { getUserFacingError } from "./locale";
+
 import type {
   CreditBalanceResponse,
   CreditTransactionsResponse,
@@ -28,7 +30,7 @@ async function handleErrorResponse(response: Response): Promise<never> {
   }
   const body = await response.json().catch(() => null);
   const code = body?.error?.code ?? "application_error";
-  const message = body?.error?.message ?? "Request failed";
+  const message = getUserFacingError({ code, message: body?.error?.message ?? body?.message }, "请求失败，请重试。");
   throw new ApiApplicationError(code, message);
 }
 

@@ -49,7 +49,7 @@ const PLANS: PricingPlan[] = [
       "优先支持",
       "高清导出",
     ],
-    cta: "升级 Pro",
+    cta: "升级专业版",
     highlighted: true,
   },
   {
@@ -57,7 +57,7 @@ const PLANS: PricingPlan[] = [
     price: "¥299",
     period: "每月 / 每人",
     features: [
-      "Pro 全部功能",
+      "专业版全部功能",
       "团队协作空间",
       "共享资源库",
       "管理控制台",

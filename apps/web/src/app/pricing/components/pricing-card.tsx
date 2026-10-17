@@ -49,7 +49,7 @@ export function PricingCard({
           disabled
         >
           <Crown className="mr-1.5 h-4 w-4" />
-          Current Plan
+          当前套餐
         </Button>
       );
     }
@@ -141,11 +141,11 @@ export function PricingCard({
             <span className="text-foreground text-4xl font-bold">
               ${price}
             </span>
-            <span className="text-muted-foreground text-sm">/month</span>
+            <span className="text-muted-foreground text-sm">/月</span>
           </motion.div>
         </AnimatePresence>
         {billingPeriod === "yearly" && tier.yearlyPrice > 0 && (
-          <p className="text-muted-foreground mt-1 text-xs">Billed annually</p>
+          <p className="text-muted-foreground mt-1 text-xs">按年付费</p>
         )}
       </div>
 

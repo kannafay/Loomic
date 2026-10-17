@@ -52,12 +52,12 @@ const TABS: SkillsTab[] = ["installed", "marketplace", "import"];
 // ---------------------------------------------------------------------------
 
 const CATEGORIES: Array<{ value: SkillCategory; label: string }> = [
-  { value: "design", label: "Design" },
-  { value: "generation", label: "Generation" },
-  { value: "code", label: "Code" },
-  { value: "data", label: "Data" },
-  { value: "writing", label: "Writing" },
-  { value: "custom", label: "Custom" },
+  { value: "design", label: "设计" },
+  { value: "generation", label: "生成" },
+  { value: "code", label: "代码" },
+  { value: "data", label: "数据" },
+  { value: "writing", label: "写作" },
+  { value: "custom", label: "自定义" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -345,7 +345,7 @@ export default function SkillsPage() {
   return (
     <div className="px-4 py-6 sm:px-6 md:p-8">
       {/* Header */}
-      <h1 className="text-base font-semibold sm:text-lg">Skills</h1>
+      <h1 className="text-base font-semibold sm:text-lg">技能</h1>
       <p className="mt-1 mb-4 text-xs text-muted-foreground sm:mb-6 sm:text-sm">
         为您的智能体提供预封装且可重复的最佳实践与工具
       </p>

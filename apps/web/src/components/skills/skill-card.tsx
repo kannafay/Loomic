@@ -1,12 +1,15 @@
 "use client";
+import { Switch } from "@/components/ui/switch";
+
+import { Button } from "@/components/ui/button";
 
 import { motion } from "framer-motion";
 import {
   MoreHorizontal,
   ShieldCheck,
   Sparkles,
-  Users,
   UserPen,
+  Users,
 } from "lucide-react";
 import { useCallback } from "react";
 
@@ -34,12 +37,12 @@ const CATEGORY_STYLES: Record<SkillCategory, string> = {
 };
 
 const CATEGORY_LABELS: Record<SkillCategory, string> = {
-  design: "Design",
-  generation: "Generation",
-  code: "Code",
-  data: "Data",
-  writing: "Writing",
-  custom: "Custom",
+  design: "设计",
+  generation: "生成",
+  code: "代码",
+  data: "数据",
+  writing: "写作",
+  custom: "自定义",
 };
 
 // ---------------------------------------------------------------------------
@@ -57,40 +60,6 @@ const SOURCE_CONFIG: Record<
 
 // ---------------------------------------------------------------------------
 // Toggle switch
-// ---------------------------------------------------------------------------
-
-function ToggleSwitch({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={(e) => {
-        e.stopPropagation();
-        onChange(!checked);
-      }}
-      className={cn(
-        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 sm:h-5 sm:w-9",
-        checked ? "bg-primary" : "bg-muted",
-      )}
-    >
-      <motion.span
-        className="pointer-events-none block h-4 w-4 rounded-full bg-white shadow-sm sm:h-3.5 sm:w-3.5"
-        animate={{ x: checked ? 22 : 4 }}
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-      />
-    </button>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// SkillCard
 // ---------------------------------------------------------------------------
 
 const cardVariants = {
@@ -114,8 +83,9 @@ export function SkillCard({
   // SOURCE_CONFIG exhaustively covers all SkillSource values ("system" | "community" | "user")
   // Non-null assertion is safe: every possible SkillSource key is present in SOURCE_CONFIG.
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const sourceEntry =
-    (SOURCE_CONFIG[skill.source as keyof typeof SOURCE_CONFIG] ?? SOURCE_CONFIG.system)!;
+  const sourceEntry = (SOURCE_CONFIG[
+    skill.source as keyof typeof SOURCE_CONFIG
+  ] ?? SOURCE_CONFIG.system)!;
   const { label: sourceLabel, icon: SourceIcon } = sourceEntry;
 
   const handleToggle = useCallback(
@@ -159,9 +129,11 @@ export function SkillCard({
           )}
         </div>
 
-        <ToggleSwitch
+        <Switch
+          aria-label={`启用 ${skill.name}`}
+          onClick={(event) => event.stopPropagation()}
           checked={skill.enabled ?? false}
-          onChange={handleToggle}
+          onCheckedChange={handleToggle}
         />
       </div>
 
@@ -188,7 +160,8 @@ export function SkillCard({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   className="rounded-md p-0.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted group-hover:opacity-100"
                   onClick={(e) => e.stopPropagation()}

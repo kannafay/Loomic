@@ -1,8 +1,25 @@
 "use client";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 import type { BrandKitAsset } from "@loomic/shared";
 import { Plus, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { cn } from "../../lib/utils";
 import { FontPickerDialog } from "./font-picker-dialog";
@@ -27,20 +44,8 @@ export function FontSection({
   onUpdateLabel,
 }: FontSectionProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close menu on outside click
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleMouseDown(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleMouseDown);
-    return () => document.removeEventListener("mousedown", handleMouseDown);
-  }, [menuOpen]);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualName, setManualName] = useState("");
 
   // Load Google Fonts CSS for each font card
   useEffect(() => {
@@ -61,13 +66,6 @@ export function FontSection({
     }
   }, [fonts]);
 
-  const handleManualInput = useCallback(() => {
-    setMenuOpen(false);
-    const name = window.prompt("输入字体名称");
-    if (!name?.trim()) return;
-    onAddFont({ family: name.trim(), variant: "regular", category: "sans-serif" });
-  }, [onAddFont]);
-
   const handlePickerSelect = useCallback(
     (font: { family: string; variant: string; category: string }) => {
       onAddFont(font);
@@ -77,7 +75,7 @@ export function FontSection({
 
   return (
     <section>
-      <SectionHeader title="Fonts" count={fonts.length} />
+      <SectionHeader title="字体" count={fonts.length} />
       <div className="flex flex-wrap gap-3">
         {fonts.map((font) => (
           <div key={font.id} className="flex flex-col items-center gap-1.5">
@@ -94,7 +92,9 @@ export function FontSection({
                   Ag
                 </span>
               </div>
-              <button
+              <Button
+                size="icon"
+                variant="ghost"
                 type="button"
                 onClick={() => onDeleteFont(font.id)}
                 className={cn(
@@ -102,10 +102,10 @@ export function FontSection({
                   "flex items-center justify-center",
                   "opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer",
                 )}
-                aria-label={`Delete font ${font.display_name}`}
+                aria-label={`删除字体${font.display_name}`}
               >
                 <X className="h-3 w-3 text-muted-foreground" />
-              </button>
+              </Button>
             </div>
             <InlineInput
               value={font.display_name}
@@ -118,39 +118,34 @@ export function FontSection({
 
         {/* Add button with dropdown menu */}
         <div className="flex flex-col items-center gap-1.5">
-          <div ref={menuRef} className="relative">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((prev) => !prev)}
-              className="w-[150px] h-[113px] rounded-xl border-2 border-dashed border-muted-foreground/30 flex items-center justify-center hover:border-muted-foreground/50 transition-colors cursor-pointer"
-              aria-label="Add font"
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-[113px] w-[150px] rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50"
+                  aria-label="添加字体"
+                />
+              }
             >
-              <Plus className="h-5 w-5 text-muted-foreground/60" />
-            </button>
-
-            {menuOpen && (
-              <div className="absolute left-0 top-full mt-1 z-50 w-[180px] rounded-xl border bg-popover p-1.5 shadow-lg">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setPickerOpen(true);
-                  }}
-                  className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
-                >
-                  从字体库选择
-                </button>
-                <button
-                  type="button"
-                  onClick={handleManualInput}
-                  className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors cursor-pointer"
-                >
-                  手动输入字体名称
-                </button>
-              </div>
-            )}
-          </div>
-          <span className="text-xs text-muted-foreground/60">Add</span>
+              <Plus className="size-5 text-muted-foreground/60" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-48">
+              <DropdownMenuItem onClick={() => setPickerOpen(true)}>
+                从字体库选择
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setManualName("");
+                  setManualOpen(true);
+                }}
+              >
+                手动输入字体名称
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <span className="text-xs text-muted-foreground/60">添加</span>
         </div>
       </div>
 
@@ -161,6 +156,52 @@ export function FontSection({
           onSelect={handlePickerSelect}
         />
       )}
+      <Dialog open={manualOpen} onOpenChange={setManualOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>添加字体</DialogTitle>
+            <DialogDescription>
+              输入本机已安装或页面已加载的字体名称。
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!manualName.trim()) return;
+              onAddFont({
+                family: manualName.trim(),
+                variant: "regular",
+                category: "sans-serif",
+              });
+              setManualOpen(false);
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="brand-manual-font">字体名称</Label>
+              <Input
+                id="brand-manual-font"
+                value={manualName}
+                onChange={(event) => setManualName(event.target.value)}
+                placeholder="例如：思源黑体"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setManualOpen(false)}
+              >
+                取消
+              </Button>
+              <Button type="submit" disabled={!manualName.trim()}>
+                添加
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

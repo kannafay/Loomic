@@ -1,6 +1,8 @@
 // @credits-system — React hook for subscription status, cancellation, and plan changes
 "use client";
 
+import { getUserFacingError } from "@/lib/locale";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -39,7 +41,7 @@ export function useSubscription(): UseSubscriptionReturn {
       setError(null);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to fetch subscription",
+        getUserFacingError(err, "订阅信息加载失败。"),
       );
     } finally {
       setLoading(false);
@@ -56,7 +58,7 @@ export function useSubscription(): UseSubscriptionReturn {
 
   const cancel = useCallback(async () => {
     const token = accessTokenRef.current;
-    if (!token) throw new Error("Not authenticated");
+    if (!token) throw new Error("请先登录。");
     await apiCancelSubscription(token);
     await refresh();
   }, [refresh]);
@@ -64,7 +66,7 @@ export function useSubscription(): UseSubscriptionReturn {
   const changePlan = useCallback(
     async (plan: string, billingPeriod: string) => {
       const token = accessTokenRef.current;
-      if (!token) throw new Error("Not authenticated");
+      if (!token) throw new Error("请先登录。");
       await apiChangePlan(token, plan, billingPeriod);
       await refresh();
     },

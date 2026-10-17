@@ -1,5 +1,7 @@
 "use client";
 
+import { getUserFacingError } from "@/lib/locale";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { uploadFile } from "../lib/server-api";
 
@@ -73,7 +75,7 @@ export function useImageAttachments(accessToken: string, projectId?: string) {
             file,
             preview: "",
             uploading: false,
-            error: "File exceeds 10MB limit",
+            error: "文件大小不能超过 10 MB。",
             mimeType: file.type,
             source: "upload",
           });
@@ -108,7 +110,7 @@ export function useImageAttachments(accessToken: string, projectId?: string) {
             setAttachments((prev) =>
               prev.map((a) =>
                 a.id === id
-                  ? { ...a, uploading: false, error: err instanceof Error ? err.message : "Upload failed" }
+                  ? { ...a, uploading: false, error: getUserFacingError(err, "上传失败，请重试。") }
                   : a,
               ),
             );
@@ -171,7 +173,7 @@ export function useImageAttachments(accessToken: string, projectId?: string) {
           setAttachments((prev) =>
             prev.map((a) =>
               a.id === id
-                ? { ...a, uploading: false, error: err instanceof Error ? err.message : "Upload failed" }
+                ? { ...a, uploading: false, error: getUserFacingError(err, "上传失败，请重试。") }
                 : a,
             ),
           );

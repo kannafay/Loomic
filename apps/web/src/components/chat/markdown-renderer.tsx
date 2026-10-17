@@ -20,7 +20,7 @@ const markdownComponents: Components = {
       return (
         <ChatImage
           src={href}
-          alt={typeof children === "string" ? children : "Image"}
+          alt={typeof children === "string" ? children : "图片"}
           className="my-2 max-w-[280px] rounded-lg border border-border"
         />
       );
@@ -40,7 +40,7 @@ const markdownComponents: Components = {
     return (
       <ChatImage
         src={typeof src === "string" ? src : ""}
-        alt={alt ?? "Image"}
+        alt={alt ?? "图片"}
         className="my-2 max-w-[280px] rounded-lg border border-border"
       />
     );

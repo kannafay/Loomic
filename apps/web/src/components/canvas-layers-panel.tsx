@@ -1,5 +1,7 @@
 "use client";
 
+import { getCanvasElementLabel } from "@/lib/locale";
+
 import { useCallback, useEffect, useRef, useState, memo } from "react";
 
 /* -- Types -- */
@@ -58,13 +60,13 @@ const CloseIcon = ({ className }: { className?: string }) => (
 /* -- Element helpers -- */
 function elLabel(el: ExcalidrawEl): string {
   if (el.customData?.type === "image-generator") {
-    return el.customData?.title?.slice(0, 20) || "Image Generator";
+    return el.customData?.title?.slice(0, 20) || "图片生成器";
   }
-  if (el.type === "text") return (el.text as string)?.slice(0, 20) || "Text";
+  if (el.type === "text") return (el.text as string)?.slice(0, 20) || "文本";
   if (el.type === "image") {
-    return el.customData?.title?.slice(0, 20) || "Image";
+    return el.customData?.title?.slice(0, 20) || "图片";
   }
-  return el.type.charAt(0).toUpperCase() + el.type.slice(1);
+  return getCanvasElementLabel(el.type);
 }
 
 function elThumbnailIcon(el: ExcalidrawEl): string {
@@ -146,7 +148,7 @@ const LayerRow = memo(function LayerRow({
           <button
             type="button"
             className="invisible flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground group-hover/layer:visible cursor-pointer outline-none focus-visible:visible focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-            aria-label="Lock layer"
+            aria-label="锁定图层"
             onClick={(e) => e.stopPropagation()}
           >
             <LockIcon className="h-4 w-4" />
@@ -154,7 +156,7 @@ const LayerRow = memo(function LayerRow({
           <button
             type="button"
             className="invisible flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground group-hover/layer:visible cursor-pointer outline-none focus-visible:visible focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-            aria-label="Toggle layer visibility"
+            aria-label="显示或隐藏图层"
             onClick={(e) => e.stopPropagation()}
           >
             <EyeIcon className="h-4 w-4" />
@@ -244,7 +246,7 @@ export function CanvasLayersPanel({
           type="button"
           className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
           onClick={onClose}
-          aria-label="Close layers panel"
+          aria-label="关闭图层面板"
         >
           <CloseIcon className="h-4 w-4" />
         </button>

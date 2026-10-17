@@ -1,4 +1,5 @@
 "use client";
+import { Textarea } from "@/components/ui/textarea";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -63,15 +64,15 @@ export function GuidanceSection({ value, onSave }: GuidanceSectionProps) {
 
   return (
     <section>
-      <SectionHeader title="Brand Guidance" />
-      <textarea
+      <SectionHeader title="品牌规范" />
+      <Textarea
         ref={textareaRef}
         value={draft}
         onChange={handleChange}
         onBlur={handleBlur}
-        placeholder="Describe your brand voice, personality, and style guidelines..."
+        placeholder="描述品牌的表达方式、个性和视觉风格规范…"
         rows={3}
-        className="w-full resize-none rounded-xl border bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground/60 focus:border-muted-foreground/60 transition-colors"
+        className="field-sizing-fixed w-full resize-none rounded-xl border bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground/60 focus:border-muted-foreground/60 transition-colors"
       />
     </section>
   );

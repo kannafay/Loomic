@@ -1,6 +1,6 @@
 "use client";
+import { Input } from "@/components/ui/input";
 
-import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -9,9 +9,10 @@ import {
   Link2,
   Loader2,
 } from "lucide-react";
+import { useCallback, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/toast";
+import { Button } from "@/components/ui/button";
 import { ApiApplicationError, importSkillFromUrl } from "@/lib/server-api";
 import { cn } from "@/lib/utils";
 
@@ -139,7 +140,7 @@ export function ImportPanel({
         <div className="flex gap-2">
           <div className="relative flex-1">
             <ExternalLink className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <input
+            <Input
               type="url"
               placeholder="https://github.com/user/repo/tree/main/skills/my-skill"
               value={url}
