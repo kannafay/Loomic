@@ -1,3 +1,8 @@
+# Git 提交
+
+- 每次完成改动并进行必要验证后，主动创建本地 Git 提交。
+- 每次提交必须有简明标题；除较小且简单的改动外，还需提供描述，说明改动内容和原因。
+
 # langchain框架使用指南
 
 关于langchain，langgraph，deepagents相关开发查看官方llm.txt 作为索引 看对应网址文档 获取最佳实践，https://docs.langchain.com/llms.txt
