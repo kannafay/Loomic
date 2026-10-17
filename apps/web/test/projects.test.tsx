@@ -4,232 +4,261 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const mockPush = vi.fn();
-const mockReplace = vi.fn();
+const { mockPush, mockReplace, mockSignOut } = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockReplace: vi.fn(),
+  mockSignOut: vi.fn(),
+}));
 const mockRouter = { push: mockPush, replace: mockReplace };
-vi.mock("next/navigation", () => ({
-  useRouter: vi.fn(() => mockRouter),
-}));
-
-const mockSignOut = vi.fn();
-const mockUser = { id: "u1", email: "test@test.com" };
-const mockSession = { access_token: "token_123" };
-const mockAuthValue = {
-  user: mockUser,
-  session: mockSession,
-  loading: false,
-  signOut: mockSignOut,
-};
+vi.mock("next/navigation", () => ({ useRouter: () => mockRouter }));
 vi.mock("../src/lib/auth-context", () => ({
-  useAuth: vi.fn(() => mockAuthValue),
+  useAuth: () => ({
+    user: { id: "u1", email: "test@test.com" },
+    session: { access_token: "token_123" },
+    loading: false,
+    signOut: mockSignOut,
+  }),
 }));
-
-const mockFetch = vi.fn();
-globalThis.fetch = mockFetch;
 
 import ProjectsPage from "../src/app/(workspace)/projects/page";
+import { ToastProvider } from "../src/components/toast";
 
+const mockFetch = vi.fn<typeof fetch>();
+const workspace = {
+  id: "w1",
+  name: "My Workspace",
+  type: "personal",
+  ownerUserId: "u1",
+};
 const viewerResponse = {
-  profile: { id: "u1", email: "test@test.com", displayName: "Test", avatarUrl: null },
-  workspace: { id: "w1", name: "My Workspace", type: "personal", ownerUserId: "u1" },
+  profile: {
+    id: "u1",
+    email: "test@test.com",
+    displayName: "Test",
+    avatarUrl: null,
+  },
+  workspace,
   membership: { workspaceId: "w1", userId: "u1", role: "owner" },
 };
-
-const workspace = { id: "w1", name: "My Workspace", type: "personal", ownerUserId: "u1" };
-
 const projectsResponse = {
   projects: [
     {
-      id: "p1", name: "Brand System", slug: "brand-system",
+      id: "p1",
+      name: "Brand System",
+      slug: "brand-system",
       description: "Primary brand project",
-      workspace, primaryCanvas: { id: "c1", name: "Main Canvas", isPrimary: true },
-      createdAt: "2026-03-23T00:00:00Z", updatedAt: "2026-03-23T10:00:00Z",
+      workspace,
+      primaryCanvas: { id: "c1", name: "Main Canvas", isPrimary: true },
+      createdAt: "2026-03-23T00:00:00Z",
+      updatedAt: "2026-03-23T10:00:00Z",
     },
     {
-      id: "p2", name: "App Redesign", slug: "app-redesign",
+      id: "p2",
+      name: "App Redesign",
+      slug: "app-redesign",
       description: null,
-      workspace, primaryCanvas: { id: "c2", name: "Main Canvas", isPrimary: true },
-      createdAt: "2026-03-22T00:00:00Z", updatedAt: "2026-03-22T00:00:00Z",
+      workspace,
+      primaryCanvas: { id: "c2", name: "Main Canvas", isPrimary: true },
+      createdAt: "2026-03-22T00:00:00Z",
+      updatedAt: "2026-03-22T00:00:00Z",
     },
   ],
 };
 
-/**
- * URL-based mock that always returns success for viewer/projects.
- * Handles React 19 double-effect invocation in tests.
- */
-function mockSuccessfulLoad(projectsOverride?: unknown) {
-  mockFetch.mockImplementation((url: string) => {
-    if (url.includes("/api/viewer")) {
-      return Promise.resolve({ ok: true, status: 200, json: async () => viewerResponse });
-    }
-    if (url.includes("/api/projects")) {
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => (projectsOverride ?? projectsResponse),
-      });
-    }
-    return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
   });
 }
 
-describe("Projects page", () => {
-  afterEach(() => {
-    cleanup();
+function mockRequests(
+  options: {
+    projects?: typeof projectsResponse;
+    loadError?: "viewer" | "projects";
+    createStatus?: number;
+  } = {},
+) {
+  mockFetch.mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (init?.method === "POST" && url.endsWith("/api/projects")) {
+      return options.createStatus
+        ? jsonResponse(
+            {
+              error: {
+                code: "project_create_failed",
+                message: "Create failed",
+              },
+            },
+            options.createStatus,
+          )
+        : jsonResponse({ project: projectsResponse.projects[0] });
+    }
+    if (options.loadError && url.endsWith(`/api/${options.loadError}`)) {
+      return jsonResponse(
+        { error: { code: "unauthorized", message: "Bad token" } },
+        401,
+      );
+    }
+    if (url.endsWith("/api/viewer")) return jsonResponse(viewerResponse);
+    if (url.endsWith("/api/projects"))
+      return jsonResponse(options.projects ?? projectsResponse);
+    throw new Error(`Unexpected request: ${init?.method ?? "GET"} ${url}`);
   });
+}
 
+function renderPage() {
+  return render(
+    <ToastProvider>
+      <ProjectsPage />
+    </ToastProvider>,
+  );
+}
+
+function mockPreviewTab() {
+  const previewTab = { location: { href: "/loading-preview" }, close: vi.fn() };
+  vi.mocked(window.open).mockReturnValue(previewTab as unknown as Window);
+  return previewTab;
+}
+
+describe("Projects page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
+    vi.stubGlobal("fetch", mockFetch);
     vi.stubEnv("NEXT_PUBLIC_SERVER_BASE_URL", "http://localhost:3001");
+    vi.spyOn(window, "open").mockReturnValue(null);
+    sessionStorage.clear();
   });
 
-  it("renders sidebar with workspace name and project list", async () => {
-    mockSuccessfulLoad();
-    render(<ProjectsPage />);
-
-    expect(await screen.findByText("My Workspace")).toBeInTheDocument();
-    // Project names appear in both sidebar (recent) and project list
-    const brandItems = await screen.findAllByText("Brand System");
-    expect(brandItems.length).toBeGreaterThanOrEqual(1);
-    const redesignItems = await screen.findAllByText("App Redesign");
-    expect(redesignItems.length).toBeGreaterThanOrEqual(1);
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
   });
 
-  it("shows empty state when no projects", async () => {
-    mockSuccessfulLoad({ projects: [] });
-    render(<ProjectsPage />);
+  it("lists projects with links to their primary canvas", async () => {
+    mockRequests();
+    renderPage();
 
-    expect(await screen.findByText(/暂无项目/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("link", { name: /Brand System/ }),
+    ).toHaveAttribute("href", "/canvas?id=c1");
+    expect(screen.getByRole("link", { name: /App Redesign/ })).toHaveAttribute(
+      "href",
+      "/canvas?id=c2",
+    );
+    expect(screen.getByRole("heading", { name: "项目" })).toBeInTheDocument();
   });
 
-  it("opens create dialog on + New Project click", async () => {
-    mockSuccessfulLoad();
-    render(<ProjectsPage />);
+  it("allows creating the first project from an empty list", async () => {
+    mockRequests({ projects: { projects: [] } });
+    renderPage();
 
-    const button = await screen.findByRole("button", { name: /新建项目/i });
-    await userEvent.click(button);
-    expect(await screen.findByLabelText(/名称/i)).toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "新建项目" }),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByRole("link")).toHaveLength(0);
   });
 
-  it("calls signOut and redirects on 401 from fetchViewer", async () => {
-    mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/api/viewer")) {
-        return Promise.resolve({
-          ok: false, status: 401,
-          json: async () => ({ error: { code: "unauthorized", message: "Bad token" } }),
-        });
-      }
-      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
-    });
+  it("creates an unnamed project and navigates the synchronously opened preview tab", async () => {
+    mockRequests();
+    const previewTab = mockPreviewTab();
+    renderPage();
 
-    render(<ProjectsPage />);
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
-      expect(mockReplace).toHaveBeenCalledWith("/login");
-    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "新建项目" }),
+    );
+
+    expect(window.open).toHaveBeenCalledExactlyOnceWith(
+      "/loading-preview",
+      "_blank",
+    );
+    await waitFor(() => expect(previewTab.location.href).toBe("/canvas?id=c1"));
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:3001/api/projects",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ name: "未命名项目" }),
+        headers: expect.objectContaining({ Authorization: "Bearer token_123" }),
+      }),
+    );
+    expect(previewTab.close).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("shows error banner with retry on 500 from fetchViewer — does NOT redirect", async () => {
-    mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/api/viewer")) {
-        return Promise.resolve({
-          ok: false, status: 500,
-          json: async () => ({ error: { code: "bootstrap_failed", message: "Server error" } }),
-        });
-      }
-      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
-    });
+  it("opens the new canvas in the current tab when popups are blocked", async () => {
+    mockRequests();
+    renderPage();
 
-    render(<ProjectsPage />);
-    expect(await screen.findByText(/failed to load/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /重试/i })).toBeInTheDocument();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "新建项目" }),
+    );
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/canvas?id=c1"));
+  });
+
+  it.each(["viewer", "projects"] as const)(
+    "signs out and redirects on a 401 from %s",
+    async (resource) => {
+      mockRequests({ loadError: resource });
+      renderPage();
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/login"));
+      expect(mockSignOut).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("shows a recoverable load error and reloads on retry", async () => {
+    mockFetch.mockImplementation(async () =>
+      jsonResponse(
+        { error: { code: "bootstrap_failed", message: "Server error" } },
+        500,
+      ),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByText("数据加载失败，请重试。"),
+    ).toBeInTheDocument();
+    expect(mockSignOut).not.toHaveBeenCalled();
     expect(mockReplace).not.toHaveBeenCalled();
+
+    mockRequests();
+    await userEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(
+      await screen.findByRole("link", { name: /Brand System/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("数据加载失败，请重试。"),
+    ).not.toBeInTheDocument();
   });
 
-  it("calls signOut and redirects on 401 from fetchProjects", async () => {
-    mockFetch.mockImplementation((url: string) => {
-      if (url.includes("/api/viewer")) {
-        return Promise.resolve({ ok: true, status: 200, json: async () => viewerResponse });
+  it.each([409, 500, 401])(
+    "closes the preview tab and handles a %i during project creation",
+    async (status) => {
+      mockRequests({ createStatus: status });
+      const previewTab = mockPreviewTab();
+      renderPage();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "新建项目" }),
+      );
+
+      await waitFor(() => expect(previewTab.close).toHaveBeenCalledOnce());
+      expect(mockPush).not.toHaveBeenCalled();
+      if (status === 401) {
+        await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/login"));
+        expect(mockSignOut).toHaveBeenCalledOnce();
+      } else {
+        expect(await screen.findByText("项目创建失败")).toBeInTheDocument();
+        expect(
+          screen.getByRole("button", { name: "新建项目" }),
+        ).toBeInTheDocument();
+        expect(mockSignOut).not.toHaveBeenCalled();
+        expect(mockReplace).not.toHaveBeenCalled();
       }
-      if (url.includes("/api/projects")) {
-        return Promise.resolve({
-          ok: false, status: 401,
-          json: async () => ({ error: { code: "unauthorized", message: "Bad token" } }),
-        });
-      }
-      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
-    });
-
-    render(<ProjectsPage />);
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
-      expect(mockReplace).toHaveBeenCalledWith("/login");
-    });
-  });
-
-  it("shows inline error on 409 project_slug_taken during create", async () => {
-    mockSuccessfulLoad();
-    render(<ProjectsPage />);
-
-    const newBtn = await screen.findByRole("button", { name: /新建项目/i });
-    await userEvent.click(newBtn);
-
-    const nameInput = await screen.findByLabelText(/名称/i);
-    await userEvent.type(nameInput, "Duplicate");
-
-    // Override fetch for the create call
-    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/api/projects") && init?.method === "POST") {
-        return Promise.resolve({
-          ok: false, status: 409,
-          json: async () => ({ error: { code: "project_slug_taken", message: "Slug taken." } }),
-        });
-      }
-      // Keep returning success for any background refetch
-      if (url.includes("/api/viewer")) {
-        return Promise.resolve({ ok: true, status: 200, json: async () => viewerResponse });
-      }
-      if (url.includes("/api/projects")) {
-        return Promise.resolve({ ok: true, status: 200, json: async () => projectsResponse });
-      }
-      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
-    });
-
-    const submitBtn = screen.getByRole("button", { name: /创建/i });
-    await userEvent.click(submitBtn);
-    expect(await screen.findByText(/already exists/i)).toBeInTheDocument();
-  });
-
-  it("shows inline error on 500 project_create_failed during create", async () => {
-    mockSuccessfulLoad();
-    render(<ProjectsPage />);
-
-    const newBtn = await screen.findByRole("button", { name: /新建项目/i });
-    await userEvent.click(newBtn);
-
-    const nameInput = await screen.findByLabelText(/名称/i);
-    await userEvent.type(nameInput, "Failing");
-
-    // Override fetch for the create call
-    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
-      if (url.includes("/api/projects") && init?.method === "POST") {
-        return Promise.resolve({
-          ok: false, status: 500,
-          json: async () => ({ error: { code: "project_create_failed", message: "Create failed." } }),
-        });
-      }
-      if (url.includes("/api/viewer")) {
-        return Promise.resolve({ ok: true, status: 200, json: async () => viewerResponse });
-      }
-      if (url.includes("/api/projects")) {
-        return Promise.resolve({ ok: true, status: 200, json: async () => projectsResponse });
-      }
-      return Promise.resolve({ ok: false, status: 404, json: async () => ({}) });
-    });
-
-    const submitBtn = screen.getByRole("button", { name: /创建/i });
-    await userEvent.click(submitBtn);
-    expect(await screen.findByText(/failed to create/i)).toBeInTheDocument();
-  });
+    },
+  );
 });

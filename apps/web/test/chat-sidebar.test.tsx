@@ -14,6 +14,8 @@ const {
   deleteSessionMock,
   fetchMessagesMock,
   fetchSessionsMock,
+  fetchBrandKitMock,
+  fetchWorkspaceSkillsMock,
   saveMessageMock,
   updateSessionTitleMock,
 } = vi.hoisted(() => ({
@@ -21,6 +23,8 @@ const {
   deleteSessionMock: vi.fn(),
   fetchMessagesMock: vi.fn(),
   fetchSessionsMock: vi.fn(),
+  fetchBrandKitMock: vi.fn(),
+  fetchWorkspaceSkillsMock: vi.fn(),
   saveMessageMock: vi.fn(),
   updateSessionTitleMock: vi.fn(),
 }));
@@ -33,8 +37,10 @@ vi.mock("../src/lib/server-api", () => ({
   saveMessage: saveMessageMock,
   updateSessionTitle: updateSessionTitleMock,
   fetchImageModels: vi.fn(async () => ({ models: [] })),
-  fetchWorkspaceSkills: vi.fn(async () => ({ skills: [] })),
+  fetchWorkspaceSkills: fetchWorkspaceSkillsMock,
 }));
+
+vi.mock("../src/lib/brand-kit-api", () => ({ fetchBrandKit: fetchBrandKitMock }));
 
 vi.mock("../src/hooks/use-breakpoint", () => ({ useBreakpoint: () => "desktop" }));
 vi.mock("../src/components/toast", () => ({ useToast: () => ({ toast: vi.fn() }) }));
@@ -73,8 +79,8 @@ describe("ChatSidebar", () => {
     await act(async () => { for (const cb of listeners) cb(event); });
   }
 
-  function renderSidebar() {
-    return render(<ChatSidebar accessToken="token_abc" canvasId="canvas-1" open onToggle={() => {}} ws={mockWs} />);
+  function renderSidebar(currentBrandKitId: string | null = null) {
+    return render(<ChatSidebar accessToken="token_abc" canvasId="canvas-1" open onToggle={() => {}} ws={mockWs} currentBrandKitId={currentBrandKitId} />);
   }
 
   async function sendMessage() {
@@ -93,6 +99,9 @@ describe("ChatSidebar", () => {
     });
     listeners = new Set();
     mockWs = createMockWs(listeners);
+    fetchBrandKitMock.mockReset();
+    fetchWorkspaceSkillsMock.mockReset();
+    fetchWorkspaceSkillsMock.mockResolvedValue({ skills: [] });
     createSessionMock.mockReset();
     createSessionMock.mockResolvedValue({
       session: {
@@ -169,6 +178,46 @@ describe("ChatSidebar", () => {
     expect(screen.getByRole("button", { name: "发送消息" })).toBeInTheDocument();
     expect(screen.getByText("已经输出的内容")).toBeInTheDocument();
     expect(screen.queryByText("获取回复失败，请重试。")).not.toBeInTheDocument();
+  });
+
+  it("preserves a skill mention and its slug when saving and starting a run", async () => {
+    fetchWorkspaceSkillsMock.mockResolvedValue({ skills: [{
+      id: "skill-1", name: "分镜设计", slug: "storyboard", description: "规划分镜", enabled: true,
+    }] });
+    renderSidebar();
+    const input = await screen.findByPlaceholderText('描述你的想法，或输入“@”引用内容');
+    await userEvent.type(input, "@");
+    await userEvent.click(await screen.findByRole("button", { name: /分镜设计.*规划分镜/ }));
+    await userEvent.type(input, "帮我设计分镜{Enter}");
+
+    const mention = { mentionType: "skill", id: "skill-1", label: "分镜设计", slug: "storyboard" };
+    await waitFor(() => expect(mockWs.startRun).toHaveBeenCalledWith(
+      expect.objectContaining({ mentions: [mention] }), expect.any(Function),
+    ));
+    expect(saveMessageMock).toHaveBeenCalledWith("token_abc", "session-real", expect.objectContaining({
+      role: "user", contentBlocks: expect.arrayContaining([{ type: "mention", ...mention }]),
+    }));
+    await emit({ type: "run.completed", runId: "run_123", timestamp: new Date().toISOString() });
+  });
+
+  it("accepts brand assets with nullable content and file URL without losing their type", async () => {
+    fetchBrandKitMock.mockResolvedValue({ assets: [{
+      id: "asset-1", display_name: "品牌标志", asset_type: "logo", text_content: null, file_url: null,
+    }] });
+    renderSidebar("kit-1");
+    const input = await screen.findByPlaceholderText('描述你的想法，或输入“@”引用内容');
+    await userEvent.type(input, "@");
+    await userEvent.click(await screen.findByRole("button", { name: /品牌标志.*logo/ }));
+    await userEvent.type(input, "使用这个素材{Enter}");
+
+    const mention = { mentionType: "brand-kit-asset", id: "asset-1", label: "品牌标志", assetType: "logo", textContent: null, fileUrl: null };
+    await waitFor(() => expect(mockWs.startRun).toHaveBeenCalledWith(
+      expect.objectContaining({ mentions: [mention] }), expect.any(Function),
+    ));
+    expect(saveMessageMock).toHaveBeenCalledWith("token_abc", "session-real", expect.objectContaining({
+      role: "user", contentBlocks: expect.arrayContaining([{ type: "mention", ...mention }]),
+    }));
+    await emit({ type: "run.completed", runId: "run_123", timestamp: new Date().toISOString() });
   });
 
   it("queues a stop clicked before the server acknowledges the run", async () => {

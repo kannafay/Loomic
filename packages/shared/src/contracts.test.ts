@@ -18,6 +18,13 @@ const databaseTypeSource = readFileSync(
   new URL("./supabase/database.ts", import.meta.url),
   "utf8",
 );
+const persistenceMigration = readFileSync(
+  new URL(
+    "../../../supabase/migrations/20260324000007_agent_thread_persistence.sql",
+    import.meta.url,
+  ),
+  "utf8",
+);
 
 describe("@loomic/shared contracts", () => {
   it("shares the health response schema for server and web", () => {
@@ -514,13 +521,25 @@ describe("@loomic/shared contracts", () => {
     expect(databaseTypeSource).toMatch(/thread_id:\s*string/);
   });
 
-  it("tracks official langgraph persistence schema typings", () => {
-    expect(databaseTypeSource).toMatch(/langgraph:\s*{/);
-    expect(databaseTypeSource).toMatch(/checkpoint_migrations:\s*{/);
-    expect(databaseTypeSource).toMatch(/checkpoints:\s*{/);
-    expect(databaseTypeSource).toMatch(/checkpoint_blobs:\s*{/);
-    expect(databaseTypeSource).toMatch(/checkpoint_writes:\s*{/);
-    expect(databaseTypeSource).toMatch(/store:\s*{/);
+  it("keeps server-only LangGraph persistence in its own schema", () => {
+    expect(databaseTypeSource).not.toMatch(/langgraph:\s*{/);
+    expect(persistenceMigration).toMatch(/CREATE SCHEMA IF NOT EXISTS langgraph;/);
+    for (const table of [
+      "checkpoint_migrations",
+      "checkpoints",
+      "checkpoint_blobs",
+      "checkpoint_writes",
+      "store_migrations",
+      "store",
+    ]) {
+      expect(persistenceMigration).toContain(`CREATE TABLE langgraph.${table} (`);
+      expect(persistenceMigration).toContain(
+        `ALTER TABLE langgraph.${table} ENABLE ROW LEVEL SECURITY;`,
+      );
+    }
+    expect(persistenceMigration).toMatch(
+      /PRIMARY KEY \(thread_id, checkpoint_ns, checkpoint_id\)/,
+    );
   });
 });
 
@@ -552,20 +571,11 @@ const agentRunsRowTracksSessionAndThread: AssertTrue<
 void chatSessionRowSupportsServerOwnedThreadId;
 void agentRunsRowTracksSessionAndThread;
 
-const langgraphCheckpointsRowMatchesOfficialSchema: AssertTrue<
-  Extends<
-    Database["langgraph"]["Tables"]["checkpoints"]["Row"],
-    {
-      thread_id: string;
-      checkpoint_ns: string;
-      checkpoint_id: string;
-      checkpoint: unknown;
-      metadata: unknown;
-    }
-  >
+const databaseOnlyExposesPublicSchema: AssertTrue<
+  Extends<keyof Database, "public" | "__InternalSupabase">
 > = true;
 
-void langgraphCheckpointsRowMatchesOfficialSchema;
+void databaseOnlyExposesPublicSchema;
 
 function getExportedSchema(name: string): ZodType {
   const candidate = (sharedExports as Record<string, unknown>)[name];
