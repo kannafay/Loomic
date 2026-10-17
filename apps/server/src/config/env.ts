@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 export const DEFAULT_AGENT_BACKEND_MODE = "state";
 export const DEFAULT_AGENT_MODEL = "gpt-4.1";
 export const DEFAULT_GOOGLE_AGENT_MODEL = "gemini-2.5-flash";
+export const DEFAULT_AGNES_AGENT_MODEL = "agnes:agnes-3.0-flash";
 export const DEFAULT_SERVER_PORT = 3001;
 export const DEFAULT_WEB_ORIGIN = "http://localhost:3000";
 
@@ -11,6 +12,7 @@ export const DEFAULT_WEB_ORIGIN = "http://localhost:3000";
  * When Google/Vertex is configured but OpenAI is not, defaults to Gemini 2.5 Flash.
  */
 export function resolveDefaultAgentModel(env: {
+  agnesApiKey?: string | undefined;
   googleApiKey?: string | undefined;
   googleVertexProject?: string | undefined;
   openAIApiKey?: string | undefined;
@@ -19,12 +21,16 @@ export function resolveDefaultAgentModel(env: {
   const hasGoogle = !!(env.googleApiKey || env.googleVertexProject);
 
   if (!hasOpenAI && hasGoogle) return DEFAULT_GOOGLE_AGENT_MODEL;
+  if (!hasOpenAI && env.agnesApiKey) return DEFAULT_AGNES_AGENT_MODEL;
   return DEFAULT_AGENT_MODEL;
 }
 
 export type AgentBackendMode = "filesystem" | "state";
 
 export type ServerEnv = {
+  modelConfigSecret?: string;
+  agnesApiKey?: string;
+  agnesApiBase?: string;
   agentBackendMode: AgentBackendMode;
   agentFilesRoot?: string;
   agentModel: string;
@@ -74,6 +80,10 @@ export function loadServerEnv(
   overrides: Partial<ServerEnv> = {},
   source: NodeJS.ProcessEnv = process.env,
 ): ServerEnv {
+  const agnesApiKey =
+    overrides.agnesApiKey ?? normalizeOptionalString(source.AGNES_API_KEY);
+  const agnesApiBase =
+    overrides.agnesApiBase ?? normalizeOptionalString(source.AGNES_API_BASE);
   const agentFilesRoot =
     overrides.agentFilesRoot ??
     parseAgentFilesRoot(source.LOOMIC_AGENT_FILES_ROOT);
@@ -196,12 +206,17 @@ export function loadServerEnv(
   const resolvedAgentModel =
     explicitModel ??
     resolveDefaultAgentModel({
+      agnesApiKey,
       googleApiKey,
       googleVertexProject,
       openAIApiKey,
     });
 
   return {
+    ...((overrides.modelConfigSecret ?? source.LOOMIC_CONFIG_SECRET)?.trim()
+      ? { modelConfigSecret: (overrides.modelConfigSecret ?? source.LOOMIC_CONFIG_SECRET)!.trim() } : {}),
+    ...(agnesApiKey ? { agnesApiKey } : {}),
+    ...(agnesApiBase ? { agnesApiBase } : {}),
     agentBackendMode:
       overrides.agentBackendMode ??
       parseAgentBackendMode(source.LOOMIC_AGENT_BACKEND_MODE),

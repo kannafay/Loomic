@@ -6,7 +6,8 @@ import type {
   VideoModelInfo,
   VideoProvider,
 } from "../types.js";
-import { fetchAsBase64, GenerationError } from "../utils.js";
+import { GenerationError } from "../utils.js";
+import { buildGoogleVideoInput, googleVideoCapabilities } from "./google-video-input.js";
 
 // ── Constants ────────────────────────────────────────────────────────────
 
@@ -113,12 +114,13 @@ function buildVideoModelInfo(
       imageToVideo: true,
       videoToVideo: false,
       audio: caps.supportsAudio,
+      ...googleVideoCapabilities(apiModelName),
     },
     limits: {
       maxDuration: Math.max(...caps.allowedDurations),
       allowedDurations: caps.allowedDurations,
       maxResolution: deriveMaxResolution(caps.allowedResolutions),
-      maxInputImages: 7,
+      maxInputImages: googleVideoCapabilities(apiModelName).referenceImages ? 3 : 1,
     },
   };
 }
@@ -206,18 +208,26 @@ function sleep(ms: number): Promise<void> {
 
 export class GoogleVideoProvider implements VideoProvider {
   readonly name = PROVIDER_NAME;
-  readonly models = GOOGLE_VIDEO_MODELS;
+  readonly models: readonly VideoModelInfo[];
+  private readonly modelMap: Record<string, string>;
+  private readonly capabilities: Record<string, ModelCapabilities>;
 
   private client: GoogleGenAI;
   private apiKey: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, options?: {
+    baseUrl?: string; models?: readonly VideoModelInfo[]; modelMap?: Record<string, string>;
+    capabilities?: Record<string, ModelCapabilities>;
+  }) {
     this.apiKey = apiKey;
-    this.client = new GoogleGenAI({ apiKey });
+    this.models = options?.models ?? GOOGLE_VIDEO_MODELS;
+    this.modelMap = options?.modelMap ?? MODEL_MAP;
+    this.capabilities = options?.capabilities ?? MODEL_CAPABILITIES;
+    this.client = new GoogleGenAI({ apiKey, ...(options?.baseUrl ? { httpOptions: { baseUrl: options.baseUrl } } : {}) });
   }
 
   async generate(params: VideoGenerateParams): Promise<GeneratedVideo> {
-    const apiModel = MODEL_MAP[params.model];
+    const apiModel = this.modelMap[params.model];
     if (!apiModel) {
       throw new GenerationError(
         PROVIDER_NAME,
@@ -226,7 +236,7 @@ export class GoogleVideoProvider implements VideoProvider {
       );
     }
 
-    const caps = MODEL_CAPABILITIES[apiModel];
+    const caps = this.capabilities[apiModel];
     if (!caps) {
       throw new GenerationError(
         PROVIDER_NAME,
@@ -245,24 +255,14 @@ export class GoogleVideoProvider implements VideoProvider {
       );
     }
 
-    // Validate & clamp resolution
-    let resolution = params.resolution ?? "720p";
+    const resolution = params.resolution ?? "720p";
     if (!caps.allowedResolutions.includes(resolution)) {
-      // Fall back to best available
-      resolution = caps.allowedResolutions.includes("1080p") ? "1080p" : "720p";
+      throw new GenerationError(PROVIDER_NAME, "invalid_input", "当前模型不支持所选分辨率。");
     }
 
-    const durationSeconds = clampToNearest(
-      params.duration ?? caps.defaultDuration,
-      caps.allowedDurations,
-    );
+    const durationSeconds = params.duration ?? caps.defaultDuration;
 
-    // Build image input for image-to-video.
-    let image: { imageBytes: string; mimeType: string } | undefined;
-    if (params.inputImages?.length) {
-      const first = await fetchAsBase64(PROVIDER_NAME, params.inputImages[0]!);
-      image = { imageBytes: first.data, mimeType: first.mimeType };
-    }
+    const inputs = await buildGoogleVideoInput({ ...params, duration: durationSeconds, resolution: resolution as NonNullable<VideoGenerateParams["resolution"]> }, apiModel);
 
     // Start the asynchronous generation operation.
     let operation;
@@ -270,8 +270,10 @@ export class GoogleVideoProvider implements VideoProvider {
       operation = await this.client.models.generateVideos({
         model: apiModel,
         prompt: params.prompt,
-        ...(image ? { image } : {}),
+        ...(inputs.image ? { image: inputs.image } : {}),
+        ...(inputs.video ? { video: inputs.video } : {}),
         config: {
+          ...inputs.config,
           aspectRatio,
           durationSeconds,
           resolution,
@@ -380,23 +382,7 @@ export class GoogleVideoProvider implements VideoProvider {
       mimeType: video.mimeType ?? "video/mp4",
       width,
       height,
-      durationSeconds,
+      durationSeconds: params.inputVideo ? params.inputVideoDuration! + 7 : durationSeconds,
     };
   }
-}
-
-// ── Helpers ──────────────────────────────────────────────────────────────
-
-/** Clamps a value to the nearest allowed value in the list. */
-function clampToNearest(requested: number, allowed: number[]): number {
-  let closest = allowed[0]!;
-  let minDiff = Math.abs(requested - closest);
-  for (const v of allowed) {
-    const diff = Math.abs(requested - v);
-    if (diff < minDiff) {
-      closest = v;
-      minDiff = diff;
-    }
-  }
-  return closest;
 }

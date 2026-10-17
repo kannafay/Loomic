@@ -1,10 +1,8 @@
-// @credits-system — Image generation executor: applies watermark for free-tier users
+// Internal image generation is identical for administrators and ordinary users.
 import { registerExecutor, type ExecutorContext } from "../job-executor.js";
 import { generateImage } from "../../../generation/image-generation.js";
 import { resolveImageProviderName } from "../../../generation/providers/registry.js";
-import { applyWatermark } from "../../credits/watermark.js";
-
-import type { ImageQualityLevel, SubscriptionPlan } from "@loomic/shared";
+import type { ImageQualityLevel } from "@loomic/shared";
 
 registerExecutor("image_generation", async (jobId, _rawPayload, ctx: ExecutorContext) => {
   const t0 = Date.now();
@@ -43,6 +41,7 @@ registerExecutor("image_generation", async (jobId, _rawPayload, ctx: ExecutorCon
 
   // Resolve provider dynamically from model ID via registry
   const model = payload.model ?? "black-forest-labs/flux-kontext-pro";
+  if (ctx.modelConfigService) await ctx.modelConfigService.resolve("image", model);
   const providerName = resolveImageProviderName(model);
 
   // Renew VT every 60s (half of the 120s image queue VT) to prevent
@@ -87,28 +86,8 @@ registerExecutor("image_generation", async (jobId, _rawPayload, ctx: ExecutorCon
       throw new Error(`Failed to download generated image from ${model}: ${response.status} ${response.statusText}`);
     }
     const arrayBuffer = await response.arrayBuffer();
-    let buffer: Buffer = Buffer.from(arrayBuffer);
+    const buffer: Buffer = Buffer.from(arrayBuffer);
     lap("image_download_done");
-
-    // Apply watermark for free-plan users
-    if (workspaceId) {
-      try {
-        const { data: sub } = await admin
-          .from("subscriptions")
-          .select("plan")
-          .eq("workspace_id", workspaceId)
-          .maybeSingle();
-
-        const plan: SubscriptionPlan = (sub?.plan as SubscriptionPlan) ?? "free";
-        if (plan === "free") {
-          buffer = await applyWatermark(buffer, generated.mimeType ?? "image/png");
-          lap("watermark_applied");
-        }
-      } catch (wmErr) {
-        // Non-fatal: log and continue without watermark rather than failing the job
-        console.warn(`${tag} Watermark failed, continuing without:`, wmErr);
-      }
-    }
 
     // Upload to Supabase Storage under the project-assets bucket
     const timestamp = Date.now();

@@ -1,4 +1,5 @@
 import type {
+  Database,
   ProjectCreateRequest,
   ProjectSummary,
   ProjectUpdateRequest,
@@ -161,7 +162,7 @@ export function createProjectService(options: {
           p_name: normalizedName,
           p_slug: slug,
           p_description: (normalizeDescription(input.description) ?? "") as string,
-          p_canvas_name: "Main Canvas",
+          p_canvas_name: "主画布",
         },
       );
 
@@ -328,7 +329,7 @@ export function createProjectService(options: {
     async updateProject(user, projectId, input) {
       const client = options.createUserClient(user.accessToken);
 
-      const payload: Record<string, unknown> = {};
+      const payload: Database["public"]["Tables"]["projects"]["Update"] = {};
       if (input.brand_kit_id !== undefined) payload.brand_kit_id = input.brand_kit_id;
       if (input.name !== undefined) payload.name = input.name;
 

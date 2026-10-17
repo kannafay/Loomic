@@ -27,7 +27,12 @@ registerExecutor("video_generation", async (jobId, _rawPayload, ctx: ExecutorCon
     resolution?: string;
     aspect_ratio?: string;
     input_images?: string[];
+    first_frame?: string;
+    last_frame?: string;
+    reference_images?: string[];
+    reference_audios?: string[];
     input_video?: string;
+    input_video_duration?: number;
     enable_audio?: boolean;
   };
 
@@ -37,6 +42,7 @@ registerExecutor("video_generation", async (jobId, _rawPayload, ctx: ExecutorCon
   const workspaceId: string = jobRow.workspace_id ?? jobId;
 
   const model = payload.model ?? "wan-video/wan-2.6";
+  if (ctx.modelConfigService) await ctx.modelConfigService.resolve("video", model);
   const providerName = resolveVideoProviderName(model);
 
   // Renew VT every 120s (roughly half of the 300s video queue VT) to prevent
@@ -52,10 +58,15 @@ registerExecutor("video_generation", async (jobId, _rawPayload, ctx: ExecutorCon
       prompt: payload.prompt,
       model,
       ...(payload.duration != null ? { duration: payload.duration } : {}),
-      ...(payload.resolution ? { resolution: payload.resolution as "480p" | "720p" | "1080p" } : {}),
+      ...(payload.resolution ? { resolution: payload.resolution as "480p" | "720p" | "1080p" | "4k" } : {}),
       ...(payload.aspect_ratio ? { aspectRatio: payload.aspect_ratio } : {}),
       ...(payload.input_images?.length ? { inputImages: payload.input_images } : {}),
+      ...(payload.first_frame ? { firstFrame: payload.first_frame } : {}),
+      ...(payload.last_frame ? { lastFrame: payload.last_frame } : {}),
+      ...(payload.reference_images?.length ? { referenceImages: payload.reference_images } : {}),
+      ...(payload.reference_audios?.length ? { referenceAudios: payload.reference_audios } : {}),
       ...(payload.input_video ? { inputVideo: payload.input_video } : {}),
+      ...(payload.input_video_duration != null ? { inputVideoDuration: payload.input_video_duration } : {}),
       ...(payload.enable_audio != null ? { enableAudio: payload.enable_audio } : {}),
     });
     lap("replicate_call_done");
@@ -130,7 +141,9 @@ registerExecutor("video_generation", async (jobId, _rawPayload, ctx: ExecutorCon
     // Preserve the original error code so the worker can distinguish
     // non-retryable errors (e.g. invalid_input) from transient failures.
     (wrapped as Error & { code?: string }).code =
-      (err as { code?: string })?.code ?? "executor_error";
+      // Agnes creates asynchronous tasks without a documented idempotency key.
+      // Polls retry inside the provider; replaying the whole job could create a second paid video.
+      providerName === "agnes" ? "agnes_video_error" : (err as { code?: string })?.code ?? "executor_error";
     throw wrapped;
   } finally {
     clearInterval(heartbeatTimer);

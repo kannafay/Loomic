@@ -41,6 +41,7 @@ export function createSettingsService(options: {
   createUserClient: (accessToken: string) => UserSupabaseClient;
   /** Override the fallback model when no workspace setting exists. */
   defaultModel?: string;
+  resolveModel?: (key?: string) => Promise<string>;
 }): SettingsService {
   const defaultModel = options.defaultModel ?? FALLBACK_MODEL;
 
@@ -61,12 +62,16 @@ export function createSettingsService(options: {
         );
       }
 
-      return {
-        defaultModel: data?.default_model ?? defaultModel,
-      };
+      const saved = data?.default_model;
+      if (options.resolveModel) {
+        try { return { defaultModel: await options.resolveModel(saved ?? undefined) }; }
+        catch { return { defaultModel: await options.resolveModel() }; }
+      }
+      return { defaultModel: saved ?? defaultModel };
     },
 
     async updateWorkspaceSettings(user, workspaceId, settings) {
+      if (options.resolveModel) await options.resolveModel(settings.defaultModel);
       const client = options.createUserClient(user.accessToken);
       const { error } = await client
         .from("workspace_settings")

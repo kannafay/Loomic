@@ -11,6 +11,11 @@ import {
 
 import { generateImage } from "../generation/image-generation.js";
 import { resolveImageProviderName } from "../generation/providers/registry.js";
+import { getAvailableVideoModels } from "../generation/providers/registry.js";
+import { getVideoExtensionSource } from "../generation/video-source.js";
+import { GenerationError } from "../generation/utils.js";
+import { validateGoogleVideoInput } from "../generation/providers/google-video-input.js";
+import { buildAgnesVideoRequest } from "../generation/providers/agnes-video.js";
 import type { CreditService } from "../features/credits/credit-service.js";
 import { CreditServiceError } from "../features/credits/credit-service.js";
 import type { TierGuard } from "../features/credits/tier-guard.js";
@@ -20,6 +25,7 @@ import { JobServiceError } from "../features/jobs/job-service.js";
 import type { ViewerService } from "../features/bootstrap/ensure-user-foundation.js";
 import type { UploadService } from "../features/uploads/upload-service.js";
 import type { AuthenticatedUser, RequestAuthenticator } from "../supabase/user.js";
+import type { ModelConfigService } from "../features/model-config/model-config-service.js";
 
 const generateImageRequestSchema = z.object({
   prompt: z.string().min(1),
@@ -33,13 +39,20 @@ const generateVideoRequestSchema = z.object({
   model: z.string().optional(),
   duration: z.number().int().min(3).max(16).optional(),
   resolution: z.enum(["720p", "1080p", "4k"]).optional(),
-  aspectRatio: z.enum(["16:9", "9:16"]).optional(),
+  aspectRatio: z.enum(["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"]).optional(),
   inputImages: z.array(z.string()).max(3).optional(),
+  firstFrame: z.string().optional(),
+  lastFrame: z.string().optional(),
+  referenceImages: z.array(z.string()).min(1).max(8).optional(),
+  referenceAudios: z.array(z.string()).max(3).optional(),
+  inputVideo: z.string().optional(),
+  sourceVideoJobId: z.string().uuid().optional(),
 });
 
 export async function registerGenerateRoutes(
   app: FastifyInstance,
   options: {
+    modelConfigService?: ModelConfigService;
     auth: RequestAuthenticator;
     creditService?: CreditService;
     jobService?: JobService;
@@ -75,7 +88,9 @@ export async function registerGenerateRoutes(
       );
     }
 
-    const model = payload.model ?? "black-forest-labs/flux-kontext-pro";
+    const model = options.modelConfigService
+      ? (await options.modelConfigService.resolve("image", payload.model)).model.key
+      : payload.model ?? "black-forest-labs/flux-kontext-pro";
 
     try {
       // ── Tier guard + credit checks ──
@@ -167,8 +182,17 @@ export async function registerGenerateRoutes(
     }
   });
 
-  // ── POST /api/agent/generate-video ──────────────────────────
-  app.post("/api/agent/generate-video", async (request, reply) => {
+  app.get("/api/agent/video-sources", async (request, reply) => {
+    const user = await options.auth.authenticate(request);
+    if (!user) return reply.code(401).send({ error: { code: "unauthorized", message: "请先登录。" } });
+    if (!options.jobService) return reply.code(200).send({ sources: [] });
+    const viewer = await options.viewerService.ensureViewer(user);
+    const jobs = await options.jobService.listJobs(user, { status: "succeeded", jobType: "video_generation" });
+    return { sources: jobs.filter((job) => job.workspace_id === viewer.workspace.id).map((job) => getVideoExtensionSource(job)).filter(Boolean) };
+  });
+
+  // Inline image references include Base64 overhead; providers enforce their own count/size limits.
+  app.post("/api/agent/generate-video", { bodyLimit: 50 * 1024 * 1024 }, async (request, reply) => {
     const user = await options.auth.authenticate(request);
     if (!user) {
       return reply.code(401).send(
@@ -206,12 +230,50 @@ export async function registerGenerateRoutes(
       );
     }
 
-    const model = payload.model ?? "google-official/veo-3.1-generate-preview";
+    const model = options.modelConfigService
+      ? (await options.modelConfigService.resolve("video", payload.model)).model.key
+      : payload.model ?? "google-official/veo-3.1-generate-preview";
 
     try {
       // ── Tier guard + credit checks ──
       const viewer = await options.viewerService.ensureViewer(user);
       const workspaceId = viewer.workspace.id;
+      const videoModel = getAvailableVideoModels().find((item) => item.id === model);
+      if (!videoModel) throw new GenerationError("video", "invalid_input", "所选视频模型当前不可用。");
+      if (payload.lastFrame && !videoModel.capabilities.lastFrame) throw new GenerationError("video", "invalid_input", "所选模型不支持尾帧控制。");
+      if (payload.referenceImages?.length && !videoModel.capabilities.referenceImages) throw new GenerationError("video", "invalid_input", "所选模型不支持参考图模式。");
+      if (payload.referenceAudios?.length && videoModel.provider !== "agnes") throw new GenerationError("video", "invalid_input", "所选模型不支持参考音频。");
+      if (payload.inputVideo && (videoModel.provider !== "agnes" || payload.sourceVideoJobId)) throw new GenerationError("video", "invalid_input", "该视频输入方式仅用于 Agnes 参考视频。");
+      let source: ReturnType<typeof getVideoExtensionSource> = null;
+      if (payload.sourceVideoJobId) {
+        if (!videoModel.capabilities.videoExtension) throw new GenerationError("video", "invalid_input", "所选模型不支持视频延长。");
+        const sourceJob = await options.jobService.getJob(user, payload.sourceVideoJobId);
+        source = sourceJob.workspace_id === workspaceId ? getVideoExtensionSource(sourceJob) : null;
+        if (!source) throw new GenerationError("video", "invalid_input", "该视频不能延长：请选择最近两天内生成、不超过 141 秒的 Veo 720p 视频。");
+        if (payload.aspectRatio && payload.aspectRatio !== source.aspectRatio) throw new GenerationError("video", "invalid_input", "延长视频需要保持原画面比例。");
+      }
+      if (videoModel.provider === "google") validateGoogleVideoInput({
+        prompt: payload.prompt, model,
+        ...(payload.duration != null ? { duration: payload.duration } : {}),
+        ...(payload.resolution ? { resolution: payload.resolution } : {}),
+        ...(payload.inputImages ? { inputImages: payload.inputImages } : {}),
+        ...(payload.firstFrame ? { firstFrame: payload.firstFrame } : {}),
+        ...(payload.lastFrame ? { lastFrame: payload.lastFrame } : {}),
+        ...(payload.referenceImages ? { referenceImages: payload.referenceImages } : {}),
+        ...(source ? { inputVideo: source.url, inputVideoDuration: source.duration } : {}),
+      }, model.replace("google-official/", ""));
+      if (videoModel.provider === "agnes") buildAgnesVideoRequest({
+        prompt: payload.prompt, model,
+        ...(payload.duration != null ? { duration: payload.duration } : {}),
+        ...(payload.resolution ? { resolution: payload.resolution } : {}),
+        ...(payload.aspectRatio ? { aspectRatio: payload.aspectRatio } : {}),
+        ...(payload.inputImages ? { inputImages: payload.inputImages } : {}),
+        ...(payload.firstFrame ? { firstFrame: payload.firstFrame } : {}),
+        ...(payload.lastFrame ? { lastFrame: payload.lastFrame } : {}),
+        ...(payload.referenceImages ? { referenceImages: payload.referenceImages } : {}),
+        ...(payload.referenceAudios ? { referenceAudios: payload.referenceAudios } : {}),
+        ...(payload.inputVideo ? { inputVideo: payload.inputVideo } : {}),
+      });
       let creditsCost = 0;
 
       if (options.creditService && options.tierGuard) {
@@ -251,6 +313,12 @@ export async function registerGenerateRoutes(
           ...(payload.inputImages?.length
             ? { input_images: payload.inputImages }
             : {}),
+          ...(payload.firstFrame ? { first_frame: payload.firstFrame } : {}),
+          ...(payload.lastFrame ? { last_frame: payload.lastFrame } : {}),
+          ...(payload.referenceImages?.length ? { reference_images: payload.referenceImages } : {}),
+          ...(payload.referenceAudios?.length ? { reference_audios: payload.referenceAudios } : {}),
+          ...(payload.inputVideo ? { input_video: payload.inputVideo } : {}),
+          ...(source ? { input_video: source.url, input_video_duration: source.duration, aspect_ratio: source.aspectRatio } : {}),
         },
       });
 
@@ -303,6 +371,9 @@ export async function registerGenerateRoutes(
         durationSeconds: result.duration_seconds,
       });
     } catch (error) {
+      if (error instanceof GenerationError && error.code === "invalid_input") {
+        return reply.code(400).send({ error: { code: "invalid_request", message: error.message } });
+      }
       if (error instanceof TierGuardError) {
         return reply.code(error.statusCode).send(
           applicationErrorResponseSchema.parse({

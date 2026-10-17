@@ -27,6 +27,7 @@ type LangChainStreamEvent = {
 };
 
 type AdaptDeepAgentStreamOptions = {
+  modelNames?: Record<string, string>;
   conversationId: string;
   now?: () => string;
   runId: string;
@@ -213,7 +214,11 @@ export async function* adaptDeepAgentStream(
           timestamp: now(),
           toolCallId,
           toolName,
-          ...(toolInput ? { input: toolInput } : {}),
+          ...(toolInput ? { input: {
+            ...toolInput,
+            ...(typeof toolInput.model === "string" && options.modelNames?.[toolInput.model]
+              ? { modelDisplayName: options.modelNames[toolInput.model] } : {}),
+          } } : {}),
           type: "tool.started",
         };
         continue;
@@ -283,6 +288,11 @@ export async function* adaptDeepAgentStream(
       timestamp: now(),
       type: "run.failed",
     };
+    return;
+  }
+
+  if (options.signal?.aborted) {
+    yield canceledEvent(options.runId, now);
     return;
   }
 

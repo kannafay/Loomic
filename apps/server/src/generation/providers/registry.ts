@@ -53,14 +53,14 @@ export interface AvailableVideoModel extends VideoModelInfo {
 /** Returns all image models from all registered providers. */
 export function getAvailableImageModels(): AvailableModel[] {
   return [...imageProviders.values()].flatMap((p) =>
-    p.models.map((m) => ({ ...m, provider: p.name })),
+    p.models.map((m) => ({ ...m, provider: p.catalogProvider ?? p.name })),
   );
 }
 
 /** Returns all video models from all registered providers. */
 export function getAvailableVideoModels(): AvailableVideoModel[] {
   return [...videoProviders.values()].flatMap((p) =>
-    p.models.map((m) => ({ ...m, provider: p.name })),
+    p.models.map((m) => ({ ...m, provider: p.catalogProvider ?? p.name })),
   );
 }
 

@@ -41,6 +41,7 @@ export interface GeneratedImage {
 
 export interface ImageProvider {
   readonly name: string;
+  readonly catalogProvider?: string;
   readonly models: readonly ModelInfo[];
   generate(params: ImageGenerateParams): Promise<GeneratedImage>;
 }
@@ -48,11 +49,16 @@ export interface ImageProvider {
 export interface VideoGenerateParams {
   prompt: string;
   model: string;
-  resolution?: "480p" | "720p" | "1080p";
+  resolution?: "480p" | "720p" | "1080p" | "4k";
   duration?: number;
   aspectRatio?: string;
   inputImages?: string[];
+  firstFrame?: string;
+  lastFrame?: string;
+  referenceImages?: string[];
+  referenceAudios?: string[];
   inputVideo?: string;
+  inputVideoDuration?: number;
   /** Enable audio generation (only supported by some providers). */
   enableAudio?: boolean;
 }
@@ -67,6 +73,7 @@ export interface GeneratedVideo {
 
 export interface VideoProvider {
   readonly name: string;
+  readonly catalogProvider?: string;
   readonly models: readonly VideoModelInfo[];
   generate(params: VideoGenerateParams): Promise<GeneratedVideo>;
 }
@@ -97,6 +104,9 @@ export interface VideoModelInfo extends ModelInfo {
     textToVideo: boolean;
     imageToVideo: boolean;
     videoToVideo: boolean;
+    lastFrame?: boolean;
+    referenceImages?: boolean;
+    videoExtension?: boolean;
     audio: boolean;
   };
   limits: {

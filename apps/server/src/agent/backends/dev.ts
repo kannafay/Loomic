@@ -1,7 +1,6 @@
 import { mkdirSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
-  type BackendFactory,
   type StateAndStore,
   CompositeBackend,
   FilesystemBackend,
@@ -10,7 +9,7 @@ import {
 } from "deepagents";
 
 import type { ServerEnv } from "../../config/env.js";
-import type { AgentBackendResult } from "./index.js";
+import type { AgentBackendFactory, AgentBackendResult } from "./index.js";
 
 type AgentBackendEnv = Pick<ServerEnv, "agentFilesRoot" | "skillsRoot">;
 
@@ -62,7 +61,7 @@ export function createDevelopmentBackend(
     virtualMode: true,
   });
 
-  const factory: BackendFactory = (stateAndStore: StateAndStore) => {
+  const factory: AgentBackendFactory = (stateAndStore: StateAndStore) => {
     const routes: Record<string, FilesystemBackend | StoreBackend> = {
       "/workspace/": workspaceBackend,
       "/skills/": skillsBackend,

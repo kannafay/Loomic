@@ -1,19 +1,21 @@
 import type { BaseCheckpointSaver, BaseStore } from "@langchain/langgraph-checkpoint";
 import type { BaseLanguageModel } from "@langchain/core/language_models/base";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatVertexAI } from "@langchain/google-vertexai";
 import { ChatOpenAI } from "@langchain/openai";
 import { createDeepAgent } from "deepagents";
 
 import { DEFAULT_AGENT_MODEL, DEFAULT_GOOGLE_AGENT_MODEL, type ServerEnv } from "../config/env.js";
+import { normalizeAgnesApiBase } from "../config/agnes.js";
 import type { ConnectionManager } from "../ws/connection-manager.js";
 import { createAgentBackend, type AgentBackendResult } from "./backends/index.js";
 import { LOOMIC_SYSTEM_PROMPT } from "./prompts/loomic-main.js";
 import { createVideoSubAgent } from "./sub-agents.js";
+import { LoomicGoogleChatModel } from "./google-chat-model.js";
 import { createMainAgentTools } from "./tools/index.js";
 import type { PersistImageFn, SubmitImageJobFn } from "./tools/image-generate.js";
 import type { SubmitVideoJobFn } from "./tools/video-generate.js";
 import type { WorkspaceSkillEntry } from "./workspace-skills.js";
+import type { AvailableModel, AvailableVideoModel } from "../generation/providers/registry.js";
 
 export type LoomicAgent = Pick<
   ReturnType<typeof createDeepAgent>,
@@ -21,6 +23,8 @@ export type LoomicAgent = Pick<
 >;
 
 export type LoomicAgentFactory = (options: {
+  availableImageModels?: AvailableModel[];
+  availableVideoModels?: AvailableVideoModel[];
   backendResult?: AgentBackendResult;
   brandKitId?: string | null;
   canvasId?: string;
@@ -38,6 +42,8 @@ export type LoomicAgentFactory = (options: {
 }) => LoomicAgent;
 
 export function createLoomicDeepAgent(options: {
+  availableImageModels?: AvailableModel[];
+  availableVideoModels?: AvailableVideoModel[];
   backendResult?: AgentBackendResult;
   brandKitId?: string | null;
   canvasId?: string;
@@ -61,7 +67,7 @@ export function createLoomicDeepAgent(options: {
   const modelSpec = options.model ?? createDefaultModelSpecifier(options.env);
   const resolvedModel =
     typeof modelSpec === "string"
-      ? createStreamingChatModel(modelSpec)
+      ? createStreamingChatModel(modelSpec, options.env)
       : modelSpec;
 
   const createUserClient =
@@ -107,9 +113,14 @@ export function createLoomicDeepAgent(options: {
     model: resolvedModel,
     name: "loomic",
     ...(options.store ? { store: options.store } : {}),
-    subagents: [createVideoSubAgent()],
+    subagents: options.availableVideoModels?.length === 0 ? [] : [createVideoSubAgent({
+      ...(options.availableVideoModels ? { availableModels: options.availableVideoModels } : {}),
+      ...(options.submitVideoJob ? { submitVideoJob: options.submitVideoJob } : {}),
+    })],
     systemPrompt,
     tools: createMainAgentTools(backendResult.factory, {
+      ...(options.availableImageModels ? { availableImageModels: options.availableImageModels } : {}),
+      ...(options.availableVideoModels ? { availableVideoModels: options.availableVideoModels } : {}),
       createUserClient,
       ...(options.brandKitId != null ? { brandKitId: options.brandKitId } : {}),
       ...(options.connectionManager ? { connectionManager: options.connectionManager } : {}),
@@ -131,7 +142,10 @@ export function createLoomicDeepAgent(options: {
  * - `google` — uses ChatGoogleGenerativeAI (Google AI Studio, API Key) or
  *   ChatVertexAI (Vertex AI, service account) depending on available config.
  */
-function createStreamingChatModel(specifier: string): BaseLanguageModel {
+export function createStreamingChatModel(
+  specifier: string,
+  env: Pick<ServerEnv, "agnesApiKey" | "agnesApiBase"> = {},
+): BaseLanguageModel {
   const colonIdx = specifier.indexOf(":");
   let provider = colonIdx > 0 ? specifier.slice(0, colonIdx) : "openai";
   let modelName = colonIdx > 0 ? specifier.slice(colonIdx + 1) : specifier;
@@ -153,6 +167,16 @@ function createStreamingChatModel(specifier: string): BaseLanguageModel {
   }
 
   switch (provider) {
+    case "agnes":
+      if (!env.agnesApiKey) throw new Error("请在服务端配置 AGNES_API_KEY 后使用 Agnes 模型。");
+      return new ChatOpenAI({
+        model: modelName,
+        apiKey: env.agnesApiKey,
+        streaming: true,
+        streamUsage: false,
+        useResponsesApi: false,
+        configuration: { baseURL: normalizeAgnesApiBase(env.agnesApiBase) },
+      });
     case "google":
       // Prefer Vertex AI (service account) when configured; fall back to Developer API key
       if (hasVertexAI) {
@@ -166,13 +190,15 @@ function createStreamingChatModel(specifier: string): BaseLanguageModel {
           streaming: true,
         });
       }
-      return new ChatGoogleGenerativeAI({
+      return new LoomicGoogleChatModel({
         model: modelName,
         apiKey: process.env.GOOGLE_API_KEY!,
         streaming: true,
         thinkingConfig: {
           includeThoughts: true,
-          thinkingBudget: -1, // dynamic — let the model decide
+          // Gemini 3 uses the service's default thinking level; token budgets
+          // are only configured for the Gemini 2.5 family.
+          ...(modelName.startsWith("gemini-2.5-") ? { thinkingBudget: -1 } : {}),
         },
       });
     case "openai":
@@ -201,6 +227,7 @@ export function createDefaultModelSpecifier(
   // Auto-detect Google models by name prefix.
   if (GOOGLE_MODEL_PREFIXES.some((p) => model.startsWith(p)))
     return `google:${model}`;
+  if (model.startsWith("agnes-")) return `agnes:${model}`;
   return `openai:${model}`;
 }
 

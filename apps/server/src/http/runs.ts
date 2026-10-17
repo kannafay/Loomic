@@ -20,11 +20,13 @@ import {
 } from "../features/chat/thread-service.js";
 import type { SettingsService } from "../features/settings/settings-service.js";
 import type { RequestAuthenticator } from "../supabase/user.js";
+import { ModelConfigError, type ModelConfigService } from "../features/model-config/model-config-service.js";
 
 export async function registerRunRoutes(
   app: FastifyInstance,
   agentRuns: AgentRunService,
   options: {
+    modelConfigService?: ModelConfigService;
     agentRunMetadataService?: AgentRunMetadataService;
     auth?: RequestAuthenticator;
     settingsService?: SettingsService;
@@ -46,6 +48,7 @@ export async function registerRunRoutes(
       if (hasAuthorization && !authenticatedUser) {
         return sendUnauthorized(reply);
       }
+      if (options.modelConfigService && !authenticatedUser) return sendUnauthorized(reply);
 
       const sessionThread =
         authenticatedUser && options?.threadService
@@ -75,6 +78,12 @@ export async function registerRunRoutes(
         }
       }
 
+      if (options.modelConfigService) {
+        const catalog = await options.modelConfigService.catalog();
+        const preferred = payload.model ?? (catalog.models.some(m => m.kind === "text" && m.key === model) ? model : undefined);
+        model = (await options.modelConfigService.resolve("text", preferred)).model.key;
+      } else if (payload.model) model = payload.model;
+
       const response = runCreateResponseSchema.parse(
         agentRuns.createRun(payload, {
           ...(authenticatedUser ? { accessToken: authenticatedUser.accessToken, userId: authenticatedUser.id } : {}),
@@ -94,6 +103,7 @@ export async function registerRunRoutes(
 
       return reply.code(202).send(response);
     } catch (error) {
+      if (error instanceof ModelConfigError) return reply.code(error.statusCode).send({ error: { code: error.code, message: error.message } });
       if (error instanceof ThreadServiceError) {
         return reply.code(error.statusCode).send(
           applicationErrorResponseSchema.parse({

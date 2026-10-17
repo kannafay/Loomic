@@ -1,10 +1,17 @@
 import type { GeneratedVideo, VideoGenerateParams } from "./types.js";
 import { getVideoProvider } from "./providers/registry.js";
+import { GenerationError } from "./utils.js";
 
 export async function generateVideo(
   providerName: string,
   params: VideoGenerateParams,
 ): Promise<GeneratedVideo> {
   const provider = getVideoProvider(providerName);
+  const model = provider.models.find((item) => item.id === params.model);
+  if (params.lastFrame && !model?.capabilities.lastFrame) throw new GenerationError(providerName, "invalid_input", "当前模型不支持尾帧控制。");
+  if (params.referenceImages?.length && !model?.capabilities.referenceImages) throw new GenerationError(providerName, "invalid_input", "当前模型不支持参考图模式。");
+  if (params.inputVideo && !model?.capabilities.videoExtension && !model?.capabilities.videoToVideo) throw new GenerationError(providerName, "invalid_input", "当前模型不支持视频输入。");
+  if (params.referenceAudios?.length && providerName !== "agnes") throw new GenerationError(providerName, "invalid_input", "当前模型不支持参考音频输入。");
+  if (params.firstFrame && providerName !== "google" && providerName !== "agnes") params = { ...params, inputImages: [params.firstFrame] };
   return provider.generate(params);
 }

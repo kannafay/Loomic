@@ -13,6 +13,7 @@ import {
   type SettingsService,
 } from "../features/settings/settings-service.js";
 import type { RequestAuthenticator } from "../supabase/user.js";
+import { ModelConfigError } from "../features/model-config/model-config-service.js";
 
 export async function registerSettingsRoutes(
   app: FastifyInstance,
@@ -75,6 +76,7 @@ function sendUnauthorized(reply: FastifyReply) {
 }
 
 function sendSettingsError(error: unknown, reply: FastifyReply) {
+  if (error instanceof ModelConfigError) return reply.code(error.statusCode).send({ error: { code: error.code, message: error.message } });
   if (error instanceof SettingsServiceError) {
     return reply.code(error.statusCode).send(
       applicationErrorResponseSchema.parse({

@@ -72,16 +72,19 @@ const SAFETY_FINISH_REASONS = new Set([
 
 export class GoogleImageProvider implements ImageProvider {
   readonly name = PROVIDER_NAME;
-  readonly models = GOOGLE_IMAGE_MODELS;
+  readonly models: readonly ModelInfo[];
+  private readonly modelMap: Record<string, string>;
 
   private client: GoogleGenAI;
 
-  constructor(apiKey: string) {
-    this.client = new GoogleGenAI({ apiKey });
+  constructor(apiKey: string, options?: { baseUrl?: string; models?: readonly ModelInfo[]; modelMap?: Record<string, string> }) {
+    this.models = options?.models ?? GOOGLE_IMAGE_MODELS;
+    this.modelMap = options?.modelMap ?? MODEL_MAP;
+    this.client = new GoogleGenAI({ apiKey, ...(options?.baseUrl ? { httpOptions: { baseUrl: options.baseUrl } } : {}) });
   }
 
   async generate(params: ImageGenerateParams): Promise<GeneratedImage> {
-    const apiModel = MODEL_MAP[params.model];
+    const apiModel = this.modelMap[params.model];
     if (!apiModel) {
       throw new GenerationError(
         PROVIDER_NAME,

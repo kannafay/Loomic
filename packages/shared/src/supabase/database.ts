@@ -6,6 +6,22 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+type ConfigTable<Row, Required extends keyof Row> = {
+  Row: Row
+  Insert: Partial<Row> & Pick<Row, Required>
+  Update: Partial<Row>
+  Relationships: []
+}
+type ProviderRow = {
+  id: string; created_by: string; name: string; category: string; preset: string;
+  protocol: string; base_url: string; api_key_ciphertext: string; enabled: boolean;
+  created_at: string; updated_at: string;
+}
+type ModelRow = {
+  id: string; provider_id: string; model_key: string; kind: string; api_model: string;
+  name: string; description: string; adapter: string; enabled: boolean;
+  is_default: boolean; options: Json; created_at: string; updated_at: string;
+}
 export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
@@ -14,6 +30,10 @@ export type Database = {
   }
   public: {
     Tables: {
+      system_user_roles: ConfigTable<{ user_id: string; role: string; updated_at: string }, "user_id">
+      system_network_settings: ConfigTable<{ id: number; enabled: boolean; proxy_url: string; no_proxy: string; updated_by: string | null; updated_at: string }, "id">
+      model_providers: ConfigTable<ProviderRow, "created_by" | "name" | "category" | "protocol" | "base_url" | "api_key_ciphertext">
+      configured_models: ConfigTable<ModelRow, "provider_id" | "model_key" | "kind" | "api_model" | "name">
       agent_runs: {
         Row: {
           completed_at: string | null
@@ -927,6 +947,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_model_provider_with_models: { Args: { p_provider: Json; p_models: Json }; Returns: string }
+      set_default_configured_model: { Args: { p_model_id: string }; Returns: undefined }
+      set_system_user_role: { Args: { p_user_id: string; p_role: string }; Returns: undefined }
       bootstrap_viewer: {
         Args: { p_email: string; p_user_id: string; p_user_meta: Json }
         Returns: string

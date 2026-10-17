@@ -1,13 +1,14 @@
 import { mkdirSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
 import {
-  type BackendFactory,
-  type BackendProtocol,
+  type AnyBackendProtocol,
   CompositeBackend,
   FilesystemBackend,
   LocalShellBackend,
   StoreBackend,
 } from "deepagents";
+
+import type { AgentBackendFactory } from "./index.js";
 
 const DEFAULT_SANDBOX_ROOT = "/tmp/loomic-sandbox";
 const DEFAULT_SKILLS_ROOT = "/opt/loomic/skills";
@@ -35,7 +36,7 @@ export function createProductionBackendFactory(
     skillsRoot?: string;
     hasWorkspaceSkills?: boolean;
   },
-): { factory: BackendFactory; sandboxDir: string } {
+): { factory: AgentBackendFactory; sandboxDir: string } {
   const sandboxRoot = resolve(options?.sandboxRoot ?? DEFAULT_SANDBOX_ROOT);
   const skillsRoot = resolve(options?.skillsRoot ?? DEFAULT_SKILLS_ROOT);
 
@@ -65,8 +66,8 @@ export function createProductionBackendFactory(
 
   const skillsBackend = new FilesystemBackend({ rootDir: skillsRoot, virtualMode: true });
 
-  const factory: BackendFactory = (stateAndStore) => {
-    const routes: Record<string, BackendProtocol> = {
+  const factory: AgentBackendFactory = (stateAndStore) => {
+    const routes: Record<string, AnyBackendProtocol> = {
       "/memories/": new StoreBackend(stateAndStore, {
         namespace: ["projects", canvasId, "memories"],
       }),

@@ -36,6 +36,11 @@ export const videoGenerationPayloadSchema = z.object({
   aspect_ratio: z.string().optional(),
   input_images: z.array(z.string()).optional(),
   input_video: z.string().optional(),
+  first_frame: z.string().optional(),
+  last_frame: z.string().optional(),
+  reference_images: z.array(z.string()).min(1).max(8).optional(),
+  reference_audios: z.array(z.string()).max(3).optional(),
+  input_video_duration: z.number().positive().max(141).optional(),
   enable_audio: z.boolean().optional(),
 });
 export type VideoGenerationPayload = z.infer<typeof videoGenerationPayloadSchema>;
@@ -52,6 +57,11 @@ export const createVideoJobRequestSchema = z.object({
   aspect_ratio: z.string().optional(),
   input_images: z.array(z.string()).optional(),
   input_video: z.string().optional(),
+  first_frame: z.string().optional(),
+  last_frame: z.string().optional(),
+  reference_images: z.array(z.string()).min(1).max(8).optional(),
+  reference_audios: z.array(z.string()).max(3).optional(),
+  input_video_duration: z.number().positive().max(141).optional(),
   enable_audio: z.boolean().optional(),
 });
 export type CreateVideoJobRequest = z.infer<typeof createVideoJobRequestSchema>;

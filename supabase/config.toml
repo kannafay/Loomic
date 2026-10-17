@@ -23,7 +23,8 @@ port = 54324
 
 [auth]
 enabled = true
-site_url = "http://localhost:3000"
+site_url = "http://localhost:3002"
+additional_redirect_urls = ["http://localhost:3002/auth/callback"]
 
 [auth.email]
 enable_signup = true
@@ -35,7 +36,7 @@ enabled = true
 file_size_limit = "50MiB"
 
 [storage.buckets.project-assets]
-public = false
+public = true
 file_size_limit = "50MiB"
 
 [storage.buckets.user-avatars]

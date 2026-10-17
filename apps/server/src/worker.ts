@@ -1,14 +1,7 @@
 // @credits-system — Worker process: handles job failure refunds (credit refund on generation error)
-import { bootstrap } from "global-agent";
+import { configureNetworkProxy } from "./config/network-proxy.js";
 
-// Enable HTTP proxy for all outbound requests if GLOBAL_AGENT_HTTP_PROXY is set
-bootstrap();
-
-// Native fetch() proxy — needed for @google/generative-ai SDK
-if (process.env.GLOBAL_AGENT_HTTP_PROXY) {
-  const { ProxyAgent, setGlobalDispatcher } = await import("undici");
-  setGlobalDispatcher(new ProxyAgent(process.env.GLOBAL_AGENT_HTTP_PROXY));
-}
+configureNetworkProxy();
 
 import { randomUUID } from "node:crypto";
 import { loadServerEnv } from "./config/env.js";
@@ -18,6 +11,8 @@ import { createCreditService, type CreditService } from "./features/credits/cred
 import { getExecutor, type ExecutorContext } from "./features/jobs/job-executor.js";
 import { createAdminSupabaseClient } from "./supabase/admin.js";
 import { createUserSupabaseClientFactory } from "./supabase/user.js";
+import { createModelConfigService } from "./features/model-config/model-config-service.js";
+import { refreshConfiguredProviders } from "./features/model-config/runtime.js";
 
 // Import executors to trigger registration via side effects
 import "./features/jobs/executors/image-generation.js";
@@ -60,12 +55,16 @@ async function main() {
     adminClient ??= createAdminSupabaseClient(env);
     return adminClient;
   };
+  const modelConfigService = env.modelConfigSecret
+    ? createModelConfigService({ getAdminClient, secret: env.modelConfigSecret }) : undefined;
+  if (modelConfigService) await modelConfigService.syncNetworkSettings(true);
 
   const jobService = createJobService({ createUserClient, getAdminClient, pgmq });
   const creditService = createCreditService({ getAdminClient });
 
   // Base context — per-message fields (queue, msgId, renewVt) are added in processMessage
   const baseCtx = {
+    ...(modelConfigService ? { modelConfigService } : {}),
     jobService,
     pgmq,
     getAdminClient,
@@ -184,6 +183,9 @@ async function processMessage(
   await ctx.jobService.markRunning(jobId);
 
   try {
+    if (ctx.modelConfigService) {
+      await refreshConfiguredProviders(ctx.modelConfigService, true);
+    }
     const result = await executor(jobId, msg.message as Record<string, unknown>, ctx);
     await ctx.jobService.markSucceeded(jobId, result);
     await ctx.pgmq.deleteMsg(queue, msg.msg_id);
@@ -199,6 +201,7 @@ async function processMessage(
       "model_not_found",
       "provider_not_found",
       "safety_filter",
+      "agnes_video_error",
     ]);
     const shouldDeadLetter =
       attempt_count >= max_attempts || NON_RETRYABLE_CODES.has(errorCode);

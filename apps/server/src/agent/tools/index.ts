@@ -17,6 +17,7 @@ import {
   type SubmitVideoJobFn,
 } from "./video-generate.js";
 import { createPersistSandboxFileTool } from "./persist-sandbox-file.js";
+import type { AvailableModel, AvailableVideoModel } from "../../generation/providers/registry.js";
 
 export { createImageGenerateTool } from "./image-generate.js";
 export { createVideoGenerateTool } from "./video-generate.js";
@@ -54,6 +55,8 @@ export { createManipulateCanvasTool } from "./manipulate-canvas.js";
 export function createMainAgentTools(
   backend: BackendProtocol | BackendFactory,
   deps: {
+    availableImageModels?: AvailableModel[];
+    availableVideoModels?: AvailableVideoModel[];
     createUserClient: (accessToken: string) => any;
     brandKitId?: string | null;
     connectionManager?: ConnectionManager;
@@ -67,13 +70,15 @@ export function createMainAgentTools(
     createProjectSearchTool(backend),
     createInspectCanvasTool(deps),
     createManipulateCanvasTool(deps),
-    createImageGenerateTool({
+    ...(deps.availableImageModels?.length === 0 ? [] : [createImageGenerateTool({
+      ...(deps.availableImageModels ? { availableModels: deps.availableImageModels } : {}),
       ...(deps.persistImage ? { persistImage: deps.persistImage } : {}),
       ...(deps.submitImageJob ? { submitImageJob: deps.submitImageJob } : {}),
-    }),
-    createVideoGenerateTool({
+    })]),
+    ...(deps.availableVideoModels?.length === 0 ? [] : [createVideoGenerateTool({
+      ...(deps.availableVideoModels ? { availableModels: deps.availableVideoModels } : {}),
       ...(deps.submitVideoJob ? { submitVideoJob: deps.submitVideoJob } : {}),
-    }),
+    })]),
     createPersistSandboxFileTool({
       createUserClient: deps.createUserClient,
       ...(deps.sandboxDir ? { sandboxDir: deps.sandboxDir } : {}),

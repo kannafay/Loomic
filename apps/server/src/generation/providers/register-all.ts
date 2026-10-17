@@ -6,6 +6,8 @@
  * source of truth so that adding a new provider only requires a change here.
  */
 import type { ServerEnv } from "../../config/env.js";
+import { AgnesImageProvider } from "./agnes-image.js";
+import { AgnesVideoProvider } from "./agnes-video.js";
 import { GoogleImageProvider } from "./google-image.js";
 import { GoogleVertexImageProvider } from "./google-vertex-image.js";
 import { GoogleVertexVideoProvider } from "./google-vertex-video.js";
@@ -76,5 +78,10 @@ export function registerAllProviders(env: ServerEnv): void {
     registerImageProvider(
       new VolcesImageProvider(env.volcesApiKey, env.volcesBaseUrl),
     );
+  }
+
+  if (env.agnesApiKey) {
+    registerImageProvider(new AgnesImageProvider(env.agnesApiKey, env.agnesApiBase));
+    registerVideoProvider(new AgnesVideoProvider(env.agnesApiKey, env.agnesApiBase));
   }
 }

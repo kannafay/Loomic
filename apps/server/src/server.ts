@@ -1,13 +1,6 @@
-import { bootstrap } from "global-agent";
+import { configureNetworkProxy } from "./config/network-proxy.js";
 
-// Enable HTTP proxy for all outbound requests if http_proxy / https_proxy is set
-bootstrap();
-
-// Native fetch() proxy — needed for @google/generative-ai SDK
-if (process.env.GLOBAL_AGENT_HTTP_PROXY) {
-  const { ProxyAgent, setGlobalDispatcher } = await import("undici");
-  setGlobalDispatcher(new ProxyAgent(process.env.GLOBAL_AGENT_HTTP_PROXY));
-}
+configureNetworkProxy();
 
 import { buildApp } from "./app.js";
 import { loadServerEnv } from "./config/env.js";

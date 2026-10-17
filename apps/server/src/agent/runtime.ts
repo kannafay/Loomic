@@ -43,6 +43,8 @@ import { sanitizeErrorForClient } from "../utils/error-sanitizer.js";
 import { loadWorkspaceSkills, type WorkspaceSkillEntry } from "./workspace-skills.js";
 import { buildCanvasSummaryForContext } from "./tools/inspect-canvas.js";
 import { insertImageElement, insertVideoElement } from "../features/canvas/canvas-element-writer.js";
+import { getAvailableImageModels, getAvailableVideoModels } from "../generation/providers/registry.js";
+import { selectedGenerationModels } from "./model-selection.js";
 
 /**
  * Build the text portion of a user message, appending <input_images> XML
@@ -247,6 +249,8 @@ type RuntimeRunRecord = RunCreateRequest & {
 };
 
 type CreateAgentRuntimeOptions = {
+  prepareModels?: () => Promise<unknown>;
+  resolveModel?: (key?: string) => Promise<BaseLanguageModel>;
   agentPersistenceService?: AgentPersistenceService;
   agentFactory?: LoomicAgentFactory;
   agentRunMetadataService?: AgentRunMetadataService;
@@ -713,6 +717,11 @@ export function createAgentRunService(options: CreateAgentRuntimeOptions) {
               ...(input.aspectRatio ? { aspect_ratio: input.aspectRatio } : {}),
               ...(input.inputImages ? { input_images: input.inputImages } : {}),
               ...(input.inputVideo ? { input_video: input.inputVideo } : {}),
+              ...(input.firstFrame ? { first_frame: input.firstFrame } : {}),
+              ...(input.lastFrame ? { last_frame: input.lastFrame } : {}),
+              ...(input.referenceImages ? { reference_images: input.referenceImages } : {}),
+              ...(input.referenceAudios ? { reference_audios: input.referenceAudios } : {}),
+              ...(input.inputVideoDuration != null ? { input_video_duration: input.inputVideoDuration } : {}),
               ...(input.enableAudio != null ? { enable_audio: input.enableAudio } : {}),
             },
           });
@@ -868,7 +877,10 @@ export function createAgentRunService(options: CreateAgentRuntimeOptions) {
       try {
       let agent: LoomicAgent;
       try {
-        const resolvedModel = run.modelOverride
+        await options.prepareModels?.();
+        const resolvedModel = options.resolveModel
+          ? await options.resolveModel(run.modelOverride ?? run.model)
+          : run.modelOverride
           ? (run.modelOverride.includes(":")
             ? run.modelOverride
             : createDefaultModelSpecifier({ agentModel: run.modelOverride }))
@@ -986,6 +998,8 @@ export function createAgentRunService(options: CreateAgentRuntimeOptions) {
         }
 
         agent = resolvedAgentFactory({
+          availableImageModels: selectedGenerationModels(getAvailableImageModels(), run.imageGenerationPreference, run.mentions),
+          availableVideoModels: selectedGenerationModels(getAvailableVideoModels(), run.videoGenerationPreference),
           backendResult,
           ...(brandKitId ? { brandKitId } : {}),
           ...(run.canvasId ? { canvasId: run.canvasId } : {}),
@@ -1148,6 +1162,7 @@ export function createAgentRunService(options: CreateAgentRuntimeOptions) {
         runId,
         sessionId: run.sessionId,
         signal: run.controller.signal,
+        modelNames: Object.fromEntries([...getAvailableImageModels(), ...getAvailableVideoModels()].map(m => [m.id, m.displayName])),
         stream,
       })) {
         run.status = mapEventToStatus(event);
@@ -1173,11 +1188,13 @@ export function createAgentRunService(options: CreateAgentRuntimeOptions) {
             });
           } catch {
             run.status = "canceled";
-            yield {
+            const canceledEvent: StreamEvent = {
               runId,
               timestamp: now(),
               type: "run.canceled",
             };
+            await syncPersistedRunFromEvent(options.agentRunMetadataService, run, canceledEvent, now);
+            yield canceledEvent;
             return;
           }
         }
@@ -1306,5 +1323,18 @@ async function syncPersistedRunFromEvent(
       now,
       new Error(event.error.message),
     );
+    return;
+  }
+
+  if (event.type === "run.canceled" && agentRunMetadataService && run.threadId) {
+    // The database's terminal statuses are completed/failed. Keep cancellation
+    // distinct through its error code rather than leaving the row running.
+    await agentRunMetadataService.updateRun({
+      runId: run.runId,
+      status: "failed",
+      errorCode: "run_canceled",
+      errorMessage: "已停止生成。",
+      completedAt: now(),
+    });
   }
 }

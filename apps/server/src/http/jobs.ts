@@ -26,10 +26,12 @@ import {
 } from "../features/credits/tier-guard.js";
 import type { ViewerService } from "../features/bootstrap/ensure-user-foundation.js";
 import type { RequestAuthenticator } from "../supabase/user.js";
+import { ModelConfigError, type ModelConfigService } from "../features/model-config/model-config-service.js";
 
 export async function registerJobRoutes(
   app: FastifyInstance,
   options: {
+    modelConfigService?: ModelConfigService;
     auth: RequestAuthenticator;
     creditService?: CreditService;
     jobService: JobService;
@@ -47,7 +49,9 @@ export async function registerJobRoutes(
       const viewer = await options.viewerService.ensureViewer(user);
 
       // Credit checks (skip if credit system not configured)
-      const model = payload.model ?? "black-forest-labs/flux-kontext-pro";
+      const model = options.modelConfigService
+        ? (await options.modelConfigService.resolve("image", payload.model)).model.key
+        : payload.model ?? "black-forest-labs/flux-kontext-pro";
       let creditsCost = 0;
       let quality: ImageQualityLevel = payload.quality ?? "hd";
 
@@ -78,7 +82,7 @@ export async function registerJobRoutes(
         jobType: "image_generation",
         payload: {
           prompt: payload.prompt,
-          ...(payload.model !== undefined ? { model: payload.model } : {}),
+          model,
           ...(payload.aspect_ratio !== undefined
             ? { aspect_ratio: payload.aspect_ratio }
             : {}),
@@ -125,7 +129,9 @@ export async function registerJobRoutes(
       const viewer = await options.viewerService.ensureViewer(user);
 
       // Credit checks (skip if credit system not configured)
-      const model = payload.model ?? "wan-video/wan-2.6";
+      const model = options.modelConfigService
+        ? (await options.modelConfigService.resolve("video", payload.model)).model.key
+        : payload.model ?? "wan-video/wan-2.6";
       let creditsCost = 0;
 
       if (options.creditService && options.tierGuard) {
@@ -156,12 +162,17 @@ export async function registerJobRoutes(
         jobType: "video_generation",
         payload: {
           prompt: payload.prompt,
-          ...(payload.model !== undefined ? { model: payload.model } : {}),
+          model,
           ...(payload.duration !== undefined ? { duration: payload.duration } : {}),
           ...(payload.resolution !== undefined ? { resolution: payload.resolution } : {}),
           ...(payload.aspect_ratio !== undefined ? { aspect_ratio: payload.aspect_ratio } : {}),
           ...(payload.input_images !== undefined ? { input_images: payload.input_images } : {}),
           ...(payload.input_video !== undefined ? { input_video: payload.input_video } : {}),
+          ...(payload.first_frame !== undefined ? { first_frame: payload.first_frame } : {}),
+          ...(payload.last_frame !== undefined ? { last_frame: payload.last_frame } : {}),
+          ...(payload.reference_images !== undefined ? { reference_images: payload.reference_images } : {}),
+          ...(payload.reference_audios !== undefined ? { reference_audios: payload.reference_audios } : {}),
+          ...(payload.input_video_duration !== undefined ? { input_video_duration: payload.input_video_duration } : {}),
           ...(payload.enable_audio !== undefined ? { enable_audio: payload.enable_audio } : {}),
         },
       });
@@ -265,6 +276,7 @@ function sendJobError(
   reply: FastifyReply,
   fallbackCode: JobErrorFallbackCode,
 ) {
+  if (error instanceof ModelConfigError) return reply.code(error.statusCode).send({ error: { code: error.code, message: error.message } });
   if (error instanceof JobServiceError) {
     return reply.code(error.statusCode).send(
       applicationErrorResponseSchema.parse({

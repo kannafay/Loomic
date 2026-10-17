@@ -21,8 +21,10 @@ import type { CanvasEventBuffer } from "./event-buffer.js";
 import type { ChatService } from "../features/chat/chat-service.js";
 import type { ContentBlock, ToolBlock } from "@loomic/shared";
 import { createPipelineLogger } from "./logger.js";
+import type { ModelConfigService } from "../features/model-config/model-config-service.js";
 
 type RegisterWsOptions = {
+  modelConfigService?: ModelConfigService;
   agentRuns: AgentRunService;
   agentRunMetadataService?: AgentRunMetadataService;
   auth?: RequestAuthenticator;
@@ -269,7 +271,12 @@ async function handleRunCommand(
     })(),
   ]);
   // Client-provided model takes priority over workspace default
-  const resolvedModel = payload.model ?? model;
+  let resolvedModel = payload.model ?? model;
+  if (services.modelConfigService) {
+    const catalog = await services.modelConfigService.catalog();
+    const preferred = payload.model ?? (catalog.models.some(m => m.kind === "text" && m.key === model) ? model : undefined);
+    resolvedModel = (await services.modelConfigService.resolve("text", preferred)).model.key;
+  }
   log.lap("resolve", { threadId: !!threadId, model: resolvedModel });
 
   const response = agentRuns.createRun(payload, {

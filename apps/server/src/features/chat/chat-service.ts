@@ -106,7 +106,7 @@ export function createChatService(options: {
           canvas_id: canvasId,
           created_by: user.id,
           thread_id: options.threadService.createThreadId(),
-          ...(title ? { title } : {}),
+          title: title || "新对话",
         })
         .select("id, title, updated_at")
         .single();

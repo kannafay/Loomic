@@ -4,8 +4,10 @@ import type { JobService } from "./job-service.js";
 import type { PgmqClient } from "../../queue/pgmq-client.js";
 import type { AdminSupabaseClient } from "../../supabase/admin.js";
 import type { ServerEnv } from "../../config/env.js";
+import type { ModelConfigService } from "../model-config/model-config-service.js";
 
 export type ExecutorContext = {
+  modelConfigService?: ModelConfigService;
   jobService: JobService;
   pgmq: PgmqClient;
   getAdminClient: () => AdminSupabaseClient;

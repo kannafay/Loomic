@@ -53,10 +53,11 @@ function imageSize(params: ImageGenerateParams): string {
 
 export class OpenAIImageProvider implements ImageProvider {
   readonly name = "openai";
-  readonly models = OPENAI_IMAGE_MODELS;
+  readonly models: readonly ModelInfo[];
   private client: OpenAI;
 
-  constructor(apiKey: string, baseURL?: string) {
+  constructor(apiKey: string, baseURL?: string, models: readonly ModelInfo[] = OPENAI_IMAGE_MODELS) {
+    this.models = models;
     this.client = new OpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) });
   }
 

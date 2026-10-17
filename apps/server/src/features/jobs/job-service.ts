@@ -68,6 +68,7 @@ export type JobService = {
 };
 
 export function createJobService(options: {
+  validateModel?: (kind: "image" | "video", model?: string) => Promise<string>;
   createUserClient: (accessToken: string) => UserSupabaseClient;
   getAdminClient: () => AdminSupabaseClient;
   pgmq: PgmqClient;
@@ -104,6 +105,10 @@ export function createJobService(options: {
 
   return {
     async createJob(user, input) {
+      if (options.validateModel && (input.jobType === "image_generation" || input.jobType === "video_generation")) {
+        const model = await options.validateModel(input.jobType === "image_generation" ? "image" : "video", typeof input.payload.model === "string" ? input.payload.model : undefined);
+        input = { ...input, payload: { ...input.payload, model } };
+      }
       const client = options.createUserClient(user.accessToken);
       const queueName = QUEUE_MAP[input.jobType];
 
