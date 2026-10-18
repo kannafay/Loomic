@@ -22,6 +22,7 @@ import { getServerBaseUrl } from "../lib/env";
 import { saveCanvas, uploadThumbnail } from "../lib/server-api";
 import { CanvasScrollbars } from "./canvas-scrollbars";
 import { CanvasToolMenu } from "./canvas-tool-menu";
+import { ImageHoverActions } from "./canvas/image-hover-actions";
 import { VideoCanvasElement } from "./canvas/video-canvas-element";
 import { ErrorBoundary } from "./error-boundary";
 
@@ -89,6 +90,7 @@ export function CanvasEditor({
   onSelectionChange,
 }: CanvasEditorProps) {
   const { resolvedTheme } = useTheme();
+  const editorRef = useRef<HTMLDivElement>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thumbnailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const accessTokenRef = useRef(accessToken);
@@ -626,7 +628,7 @@ export function CanvasEditor({
     <ErrorBoundary
       onError={(err) => console.error("[canvas-editor] render crashed:", err)}
     >
-      <div className="h-full w-full relative">
+      <div ref={editorRef} className="h-full w-full relative">
         <CanvasScrollbars />
         <Excalidraw
           langCode="zh-CN"
@@ -641,6 +643,12 @@ export function CanvasEditor({
           renderEmbeddable={renderEmbeddable}
           validateEmbeddable={validateEmbeddable}
         />
+        {excalidrawApi && (
+          <ImageHoverActions
+            excalidrawApi={excalidrawApi}
+            containerRef={editorRef}
+          />
+        )}
         {excalidrawApi && (
           <MemoizedCanvasToolMenu
             accessToken={accessToken}
