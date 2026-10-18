@@ -119,7 +119,7 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
       <SelectContent
         align="start"
         alignItemWithTrigger={false}
-        className="max-h-[min(70vh,420px)] w-64 p-1"
+        className="max-h-[min(70vh,420px)] w-64"
       >
         <SelectGroup>
           <SelectLabel>对话模型</SelectLabel>

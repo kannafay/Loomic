@@ -15,6 +15,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -303,8 +304,10 @@ export function ImageModelPreferencePopover({
                     positionMethod="fixed"
                     className="min-w-44"
                   >
-                    <SelectItem value="auto">自动选择</SelectItem>
-                    <SelectItem value="manual">限定模型（可多选）</SelectItem>
+                    <SelectGroup>
+                      <SelectItem value="auto">自动选择</SelectItem>
+                      <SelectItem value="manual">限定模型（可多选）</SelectItem>
+                    </SelectGroup>
                   </SelectContent>
                 </Select>
               </div>

@@ -7,6 +7,7 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -305,20 +306,22 @@ export function ImageGeneratorPanel({
               side="top"
               align="start"
               alignItemWithTrigger={false}
-              className="w-64 p-1"
+              className="w-64"
             >
-              {models.map((candidate) => (
-                <SelectItem key={candidate.id} value={candidate.id}>
-                  {candidate.iconUrl && (
-                    <img
-                      src={candidate.iconUrl}
-                      alt=""
-                      className="size-3.5 rounded-full"
-                    />
-                  )}
-                  {candidate.displayName}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {models.map((candidate) => (
+                  <SelectItem key={candidate.id} value={candidate.id}>
+                    {candidate.iconUrl && (
+                      <img
+                        src={candidate.iconUrl}
+                        alt=""
+                        className="size-3.5 rounded-full"
+                      />
+                    )}
+                    {candidate.displayName}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
 
@@ -411,13 +414,15 @@ export function ImageGeneratorPanel({
             <SelectContent
               side="top"
               alignItemWithTrigger={false}
-              className="min-w-24 p-1"
+              className="min-w-24"
             >
-              {QUALITIES.map((item) => (
-                <SelectItem key={item.value} value={item.value}>
-                  {item.label}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {QUALITIES.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
           <Select
@@ -437,13 +442,15 @@ export function ImageGeneratorPanel({
             <SelectContent
               side="top"
               alignItemWithTrigger={false}
-              className="min-w-24 p-1"
+              className="min-w-24"
             >
-              {ASPECT_RATIOS.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {value}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {ASPECT_RATIOS.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {value}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
 

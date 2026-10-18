@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -152,12 +153,14 @@ export function FontPickerDialog({
           <SelectTrigger aria-label="字体分类" className="w-full">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="p-1">
-            {CATEGORIES.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
+          <SelectContent>
+            <SelectGroup>
+              {CATEGORIES.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
         <div

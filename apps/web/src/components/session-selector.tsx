@@ -1,7 +1,16 @@
 "use client";
 
 import type { ChatSessionSummary } from "@loomic/shared";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { CheckIcon } from "lucide-react";
+import { useCallback, useState } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "./ui/popover";
 
 type SessionSelectorProps = {
   sessions: ChatSessionSummary[];
@@ -86,27 +95,12 @@ export function SessionSelector({
   const [open, setOpen] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const panelRef = useRef<HTMLDivElement>(null);
 
   const filtered = search.trim()
     ? sessions.filter((s) =>
         s.title.toLowerCase().includes(search.toLowerCase()),
       )
     : sessions;
-
-  // Close panel on outside click
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setOpen(false);
-        setConfirmingId(null);
-        setSearch("");
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
 
   const handleSelect = useCallback(
     (sessionId: string) => {
@@ -129,15 +123,22 @@ export function SessionSelector({
   return (
     <div className="flex items-center gap-1.5">
       {/* History toggle */}
-      <div className="relative" ref={panelRef}>
-        <button
-          type="button"
-          onClick={() => {
-            setOpen(!open);
-            setConfirmingId(null);
-            setSearch("");
-          }}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+      <Popover
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          setConfirmingId(null);
+          setSearch("");
+        }}
+      >
+        <PopoverTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-7 gap-1.5 px-2 text-xs text-muted-foreground hover:text-foreground"
+            />
+          }
         >
           <HistoryIcon className="h-3.5 w-3.5" />
           <span className="max-w-[140px] truncate">
@@ -151,100 +152,107 @@ export function SessionSelector({
           >
             <path d="M4.22 6.22a.75.75 0 0 1 1.06 0L8 8.94l2.72-2.72a.75.75 0 1 1 1.06 1.06l-3.25 3.25a.75.75 0 0 1-1.06 0L4.22 7.28a.75.75 0 0 1 0-1.06Z" />
           </svg>
-        </button>
-
-        {open && (
-          <div className="absolute left-0 top-full mt-1.5 z-50 w-[260px] rounded-lg border border-border bg-popover shadow-lg overflow-hidden">
-            {/* Header */}
-            <div className="px-3 pt-3 pb-2">
-              <p className="text-xs font-medium text-foreground mb-2">
-                历史对话
-              </p>
-              {/* Search */}
-              <div className="relative">
-                <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="请输入搜索关键词"
-                  className="w-full rounded-md border border-input bg-muted py-1.5 pl-7 pr-2 text-xs text-foreground placeholder:text-muted-foreground/70 outline-none focus:border-input-border focus:bg-background transition-colors"
-                />
-              </div>
-            </div>
-
-            {/* Session list */}
-            <div className="max-h-[240px] overflow-y-auto px-1 pb-1">
-              {filtered.length === 0 && (
-                <p className="px-3 py-4 text-center text-xs text-muted-foreground/70">
-                  {search ? "无匹配结果" : "暂无对话"}
-                </p>
-              )}
-              {filtered.map((s) => (
-                <div
-                  key={s.id}
-                  className={`group flex items-center justify-between gap-1 rounded-md px-2 py-1.5 text-xs cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${
-                    s.id === activeSessionId
-                      ? "bg-muted text-foreground font-medium"
-                      : "text-muted-foreground hover:bg-muted"
-                  }`}
-                >
-                  {confirmingId === s.id ? (
-                    /* Inline confirm */
-                    <>
-                      <span className="truncate flex-1">{s.title}</span>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          className="px-2 py-0.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setConfirmingId(null);
-                          }}
-                        >
-                          取消
-                        </button>
-                        <button
-                          type="button"
-                          className="px-2 py-0.5 rounded text-xs text-destructive-foreground bg-destructive hover:bg-destructive/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(s.id);
-                          }}
-                        >
-                          删除
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    /* Normal state */
-                    <>
-                      <button
-                        type="button"
-                        className="truncate flex-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        onClick={() => handleSelect(s.id)}
-                      >
-                        {s.title}
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`删除${s.title}`}
-                        className="hidden group-hover:flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-destructive transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmingId(s.id);
-                        }}
-                      >
-                        <TrashIcon className="h-3 w-3" />
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
+        </PopoverTrigger>
+        <PopoverContent
+          align="start"
+          className="max-h-(--available-height) w-64 max-w-[calc(100vw-1rem)] gap-0 overflow-hidden p-0"
+        >
+          {/* Header */}
+          <div className="shrink-0 px-2.5 pt-2.5 pb-2">
+            <PopoverTitle className="mb-2 text-xs font-medium">
+              历史对话
+            </PopoverTitle>
+            {/* Search */}
+            <div className="relative">
+              <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/70" />
+              <Input
+                type="search"
+                aria-label="搜索历史对话"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="请输入搜索关键词"
+                className="pl-7 text-xs md:text-xs"
+              />
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Session list */}
+          <div className="min-h-0 max-h-60 overflow-y-auto overscroll-contain px-1 pb-1">
+            {filtered.length === 0 && (
+              <p className="px-3 py-4 text-center text-xs text-muted-foreground/70">
+                {search ? "无匹配结果" : "暂无对话"}
+              </p>
+            )}
+            {filtered.map((s) => (
+              <div
+                key={s.id}
+                className={`group flex items-center justify-between gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors focus-within:bg-muted ${
+                  s.id === activeSessionId
+                    ? "bg-muted text-foreground font-medium"
+                    : "text-muted-foreground hover:bg-muted"
+                }`}
+              >
+                {confirmingId === s.id ? (
+                  /* Inline confirm */
+                  <>
+                    <span className="truncate flex-1">{s.title}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        className="px-2 py-0.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmingId(null);
+                        }}
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        className="px-2 py-0.5 rounded text-xs text-destructive-foreground bg-destructive hover:bg-destructive/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(s.id);
+                        }}
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  /* Normal state */
+                  <>
+                    <button
+                      type="button"
+                      className="min-w-0 truncate flex-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => handleSelect(s.id)}
+                    >
+                      {s.title}
+                    </button>
+                    {s.id === activeSessionId && (
+                      <CheckIcon
+                        aria-hidden="true"
+                        className="size-4 shrink-0"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      aria-label={`删除${s.title}`}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-colors hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 outline-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setConfirmingId(s.id);
+                      }}
+                    >
+                      <TrashIcon className="h-3 w-3" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
 
       {/* New chat button */}
       <button

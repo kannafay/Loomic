@@ -8,6 +8,7 @@ import { Label } from "./ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -98,11 +99,13 @@ export function AgentSection({
                 <SelectValue placeholder="暂无可用模型" />
               </SelectTrigger>
               <SelectContent>
-                {models.map((model) => (
-                  <SelectItem key={model.id} value={model.id}>
-                    {model.name} ({model.provider})
-                  </SelectItem>
-                ))}
+                <SelectGroup>
+                  {models.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name} ({model.provider})
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
           )}

@@ -130,6 +130,23 @@ describe("keyboard interactions", () => {
     await user.keyboard("{Enter}");
     expect(onSelect).toHaveBeenCalledExactlyOnceWith("session-b");
     expect(onDelete).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "当前会话" }));
+    await user.type(
+      screen.getByRole("searchbox", { name: "搜索历史对话" }),
+      "另一个",
+    );
+    expect(
+      screen.queryByRole("button", { name: /^当前会话$/ }),
+    ).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("searchbox")).not.toBeInTheDocument(),
+    );
+    await user.click(screen.getByRole("button", { name: "当前会话" }));
+    expect(
+      await screen.findByRole("searchbox", { name: "搜索历史对话" }),
+    ).toHaveValue("");
+    expect(screen.getByRole("button", { name: "另一个会话" })).toBeVisible();
   });
 
   it("retries a failed attachment using the keyboard", async () => {

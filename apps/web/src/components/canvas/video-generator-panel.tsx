@@ -14,6 +14,7 @@ import {
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -578,14 +579,17 @@ export function VideoGeneratorPanel({
                 <SelectTrigger id={`${elementId}-ratio`} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false} className="p-1">
-                  {(mode === "extend" ? [aspectRatio] : aspectRatioOptions).map(
-                    (value) => (
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectGroup>
+                    {(mode === "extend"
+                      ? [aspectRatio]
+                      : aspectRatioOptions
+                    ).map((value) => (
                       <SelectItem key={value} value={value}>
                         {value}
                       </SelectItem>
-                    ),
-                  )}
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -604,12 +608,14 @@ export function VideoGeneratorPanel({
                 <SelectTrigger id={`${elementId}-duration`} className="w-full">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false} className="p-1">
-                  {durationOptions.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {mode === "extend" ? "续写 7 秒" : `${value} 秒`}
-                    </SelectItem>
-                  ))}
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectGroup>
+                    {durationOptions.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {mode === "extend" ? "续写 7 秒" : `${value} 秒`}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -631,12 +637,14 @@ export function VideoGeneratorPanel({
                 >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false} className="p-1">
-                  {resolutionOptions.map((value) => (
-                    <SelectItem key={value} value={value}>
-                      {value}
-                    </SelectItem>
-                  ))}
+                <SelectContent alignItemWithTrigger={false}>
+                  <SelectGroup>
+                    {resolutionOptions.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {value}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
@@ -675,20 +683,22 @@ export function VideoGeneratorPanel({
               side="top"
               align="end"
               alignItemWithTrigger={false}
-              className="w-64 p-1"
+              className="w-64"
             >
-              {models.map((candidate) => (
-                <SelectItem key={candidate.id} value={candidate.id}>
-                  {candidate.iconUrl && (
-                    <img
-                      src={candidate.iconUrl}
-                      alt=""
-                      className="size-3.5 rounded-full"
-                    />
-                  )}
-                  {candidate.displayName}
-                </SelectItem>
-              ))}
+              <SelectGroup>
+                {models.map((candidate) => (
+                  <SelectItem key={candidate.id} value={candidate.id}>
+                    {candidate.iconUrl && (
+                      <img
+                        src={candidate.iconUrl}
+                        alt=""
+                        className="size-3.5 rounded-full"
+                      />
+                    )}
+                    {candidate.displayName}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
             </SelectContent>
           </Select>
 

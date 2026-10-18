@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -306,13 +307,15 @@ export function VideoGenerationInputs({
               <SelectTrigger aria-label="选择要延长的视频" className="w-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent alignItemWithTrigger={false} className="p-1">
-                <SelectItem value="">选择已有的 Veo 视频</SelectItem>
-                {sources.map((source) => (
-                  <SelectItem key={source.jobId} value={source.jobId}>
-                    {source.prompt.slice(0, 40)} · {source.duration} 秒
-                  </SelectItem>
-                ))}
+              <SelectContent alignItemWithTrigger={false}>
+                <SelectGroup>
+                  <SelectItem value="">选择已有的 Veo 视频</SelectItem>
+                  {sources.map((source) => (
+                    <SelectItem key={source.jobId} value={source.jobId}>
+                      {source.prompt.slice(0, 40)} · {source.duration} 秒
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               </SelectContent>
             </Select>
             <p className="text-[11px] leading-5 text-muted-foreground">
