@@ -113,13 +113,19 @@ export async function refreshConfiguredProviders(
             ? provider.name
             : provider.preset;
     const name = `configured-${model.id}`;
+    const iconUrl =
+      model.adapter === "agnes"
+        ? "/providers/agnes.ico"
+        : provider.preset === "google"
+          ? "/providers/google.svg"
+          : undefined;
     const info = {
       id: model.key,
       displayName: model.name,
       description: model.description,
       providerId: provider.id,
       providerName: provider.name,
-      ...(model.adapter === "agnes" ? { iconUrl: "/providers/agnes.ico" } : {}),
+      ...(iconUrl ? { iconUrl } : {}),
     };
     if (model.kind === "image") {
       const prefix = model.adapter === "agnes" ? "agnes/" : "openai-official/";
@@ -156,9 +162,7 @@ export async function refreshConfiguredProviders(
         ...videoMetadata(model),
         providerId: provider.id,
         providerName: provider.name,
-        ...(model.adapter === "agnes"
-          ? { iconUrl: "/providers/agnes.ico" }
-          : {}),
+        ...(iconUrl ? { iconUrl } : {}),
       };
       if (model.adapter === "agnes") {
         const nativeId = `agnes/${model.apiModel}`;
