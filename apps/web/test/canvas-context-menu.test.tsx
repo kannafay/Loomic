@@ -50,6 +50,65 @@ afterEach(() => {
 });
 
 describe("native canvas context menu", () => {
+  it.each(["image-generator", "video-generator"])(
+    "keeps %s generation content visible while the native menu opens and closes",
+    (type) => {
+      const element = {
+        id: "generating",
+        type: "rectangle",
+        x: 0,
+        y: 0,
+        width: 400,
+        height: 225,
+        customData: { type, status: "generating", model: "team/test-model" },
+      };
+      let state = {
+        selectedElementIds: {},
+        scrollX: 0,
+        scrollY: 0,
+        zoom: { value: 1 },
+        contextMenu: null as null | {
+          items: never[];
+          left: number;
+          top: number;
+        },
+      };
+      const listeners = new Set<
+        (elements: unknown[], state: unknown) => void
+      >();
+      const api = {
+        getAppState: () => state,
+        getSceneElements: () => [element],
+        updateScene: vi.fn(),
+        onChange: (callback: (elements: unknown[], state: unknown) => void) => {
+          listeners.add(callback);
+          return () => listeners.delete(callback);
+        },
+      } as unknown as ExcalidrawImperativeAPI;
+      const emitChange = () => {
+        for (const listener of listeners) listener([element], state);
+      };
+      render(<CanvasToolMenu excalidrawApi={api} accessToken="token" />);
+      act(emitChange);
+      const status = screen.getByText("正在生成…");
+      const model = screen.getByText("Test Model");
+
+      state = { ...state, contextMenu: { items: [], left: 100, top: 100 } };
+      act(emitChange);
+      expect(status).toBeVisible();
+      expect(model).toBeVisible();
+      expect(screen.getByText("正在生成…")).toBe(status);
+
+      state = { ...state, contextMenu: null };
+      act(emitChange);
+      expect(screen.getByText("正在生成…")).toBe(status);
+      element.customData.status = "completed";
+      act(emitChange);
+      expect(screen.queryByText("正在生成…")).not.toBeInTheDocument();
+      expect(api.updateScene).not.toHaveBeenCalled();
+    },
+  );
+
   it("initializes a different image generator from its own saved settings", async () => {
     const elements = ["first", "second"].map((id, index) => ({
       id,

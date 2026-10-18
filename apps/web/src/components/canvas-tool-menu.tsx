@@ -123,7 +123,7 @@ const GeneratingOverlay = memo(function GeneratingOverlay({
         top: screenY,
         width: screenW,
         height: screenH,
-        zIndex: 99,
+        zIndex: "var(--zIndex-svgLayer, 3)",
       }}
     >
       <div className="absolute inset-0 flex flex-col items-center justify-center bg-muted">
@@ -630,8 +630,7 @@ export function CanvasToolMenu({
       )}
 
       {/* Shimmer overlays for generating elements */}
-      {!contextMenuOpen &&
-        generatingElements.length > 0 &&
+      {generatingElements.length > 0 &&
         createPortal(
           generatingElements.map((el) => (
             <GeneratingOverlay key={el.id} {...el} />
