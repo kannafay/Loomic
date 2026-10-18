@@ -740,7 +740,6 @@ export function VideoGeneratorPanel({
               </SelectValue>
             </SelectTrigger>
             <SelectContent
-              side="top"
               align="end"
               alignItemWithTrigger={false}
               className="w-64"

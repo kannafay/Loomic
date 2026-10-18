@@ -300,7 +300,6 @@ export function ImageGeneratorPanel({
               <SelectValue>{modelLabel}</SelectValue>
             </SelectTrigger>
             <SelectContent
-              side="top"
               align="start"
               alignItemWithTrigger={false}
               className="w-64"
@@ -412,11 +411,7 @@ export function ImageGeneratorPanel({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent
-              side="top"
-              alignItemWithTrigger={false}
-              className="min-w-24"
-            >
+            <SelectContent alignItemWithTrigger={false} className="min-w-24">
               <SelectGroup>
                 {QUALITIES.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
@@ -440,11 +435,7 @@ export function ImageGeneratorPanel({
             >
               <SelectValue />
             </SelectTrigger>
-            <SelectContent
-              side="top"
-              alignItemWithTrigger={false}
-              className="min-w-24"
-            >
+            <SelectContent alignItemWithTrigger={false} className="min-w-24">
               <SelectGroup>
                 {ASPECT_RATIOS.map((value) => (
                   <SelectItem key={value} value={value}>
