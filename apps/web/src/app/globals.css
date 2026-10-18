@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Keep plugin defaults below utilities such as a dialog's fixed positioning. */
+@import "overlayscrollbars/overlayscrollbars.css" layer(components);
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 

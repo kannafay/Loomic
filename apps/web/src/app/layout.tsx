@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 
 import { Providers } from "../components/providers";
 
-import "overlayscrollbars/overlayscrollbars.css";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
