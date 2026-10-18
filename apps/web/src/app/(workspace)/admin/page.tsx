@@ -3,6 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,7 +38,15 @@ import type {
   ProviderConnectionTest,
   ProviderWrite,
 } from "@loomic/shared";
-import { PlusIcon } from "lucide-react";
+import {
+  CheckIcon,
+  DownloadIcon,
+  ListPlusIcon,
+  PencilIcon,
+  PlugZapIcon,
+  PlusIcon,
+  SaveIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NetworkSettingsPanel } from "./network-settings-panel";
 import { ProviderModelDiscovery } from "./provider-model-discovery";
@@ -428,9 +437,9 @@ export default function AdminPage() {
           </aside>
 
           <div className="min-w-0 space-y-5">
-            <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
-              <div className="mb-5">
-                <h2 className="text-base font-semibold">
+            <section className="overflow-hidden rounded-xl border border-border bg-card">
+              <div className="border-b border-border px-5 py-3">
+                <h2 className="text-sm font-semibold">
                   {adding ? "添加提供商" : (selected?.name ?? "提供商配置")}
                 </h2>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
@@ -441,7 +450,7 @@ export default function AdminPage() {
               </div>
               {adding && (
                 <Tabs
-                  className="mb-5"
+                  className="gap-2 border-b border-border bg-muted/20 px-5 py-3"
                   value={providerDraft.category}
                   onValueChange={(value) => {
                     const category = CATEGORIES.find(
@@ -460,12 +469,13 @@ export default function AdminPage() {
                       });
                   }}
                 >
-                  <TabsList
-                    className="h-auto flex-wrap"
-                    aria-label="提供商分类"
-                  >
+                  <TabsList className="max-w-full" aria-label="提供商分类">
                     {CATEGORIES.map((category) => (
-                      <TabsTrigger key={category.id} value={category.id}>
+                      <TabsTrigger
+                        key={category.id}
+                        value={category.id}
+                        className="px-1.5 text-xs sm:px-2.5"
+                      >
                         {category.name}
                       </TabsTrigger>
                     ))}
@@ -480,14 +490,18 @@ export default function AdminPage() {
                       )
                       .map((preset) => (
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           key={preset.id}
                           type="button"
                           onClick={() => usePreset(preset.id)}
                           aria-pressed={providerDraft.preset === preset.id}
-                          className={`${providerDraft.preset === preset.id ? "border-accent bg-accent/10" : ""}`}
+                          className={`gap-2 px-3 text-xs transition-colors active:translate-y-0 ${providerDraft.preset === preset.id ? "border-foreground/25 bg-muted hover:bg-muted" : "bg-background"}`}
                         >
                           {preset.name}
+                          <CheckIcon
+                            aria-hidden="true"
+                            className={`size-3.5 ${providerDraft.preset === preset.id ? "" : "invisible"}`}
+                          />
                         </Button>
                       ))}
                   </TabsContent>
@@ -521,16 +535,17 @@ export default function AdminPage() {
                     setNotice("提供商已保存。勾选下方模型即可启用到前台。");
                   });
                 }}
-                className="space-y-4"
+                className="space-y-3 px-5 pt-4"
               >
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label
+                  <Label
                     htmlFor="page-provider-draft-name"
-                    className="space-y-1.5 text-sm"
+                    className="grid gap-2 text-xs"
                   >
                     <span>配置名称</span>
                     <Input
                       id="page-provider-draft-name"
+                      className="font-normal"
                       required
                       value={providerDraft.name}
                       maxLength={100}
@@ -542,8 +557,8 @@ export default function AdminPage() {
                       }
                       placeholder="例如：团队 Agnes"
                     />
-                  </label>
-                  <label htmlFor="page-1" className="space-y-1.5 text-sm">
+                  </Label>
+                  <Label htmlFor="page-1" className="grid gap-2 text-xs">
                     <span>接口类型</span>
                     <Select
                       items={[
@@ -562,7 +577,7 @@ export default function AdminPage() {
                       <SelectTrigger
                         id="page-1"
                         aria-label="接口类型"
-                        className="w-full"
+                        className="w-full font-normal"
                       >
                         <SelectValue />
                       </SelectTrigger>
@@ -574,15 +589,16 @@ export default function AdminPage() {
                         <SelectItem value="gemini">Gemini 原生</SelectItem>
                       </SelectContent>
                     </Select>
-                  </label>
+                  </Label>
                 </div>
-                <label
+                <Label
                   htmlFor="page-provider-draft-base-url"
-                  className="block space-y-1.5 text-sm"
+                  className="grid gap-2 text-xs"
                 >
                   <span>接口地址</span>
                   <Input
                     id="page-provider-draft-base-url"
+                    className="font-normal"
                     type="url"
                     required
                     value={providerDraft.baseUrl}
@@ -596,23 +612,24 @@ export default function AdminPage() {
                     autoComplete="off"
                     spellCheck={false}
                   />
-                </label>
-                <label htmlFor="page-2" className="block space-y-1.5 text-sm">
+                </Label>
+                <Label htmlFor="page-2" className="grid gap-2 text-xs">
                   <span>
                     API Key{" "}
                     {selected?.hasApiKey && !adding && (
-                      <span className="ml-1 text-xs text-muted-foreground">
+                      <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
                         已保存
                       </span>
                     )}
                     {providerDraft.category === "custom" && (
-                      <span className="ml-1 text-xs text-muted-foreground">
+                      <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
                         本地服务可留空
                       </span>
                     )}
                   </span>
                   <Input
                     id="page-2"
+                    className="font-normal"
                     type="password"
                     required={
                       providerDraft.category !== "custom" &&
@@ -632,73 +649,79 @@ export default function AdminPage() {
                     }
                     autoComplete="new-password"
                   />
-                </label>
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-                  <label
-                    htmlFor="provider-enabled"
-                    className="flex items-center gap-2 text-sm"
-                  >
-                    <Checkbox
-                      id="provider-enabled"
-                      aria-label="启用此提供商"
-                      checked={providerDraft.enabled}
-                      onCheckedChange={(checked) =>
-                        setProviderDraft({
-                          ...providerDraft,
-                          enabled: checked,
-                        })
-                      }
-                    />
-                    启用此提供商
-                  </label>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      type="button"
-                      disabled={busy || !data}
-                      onClick={() => {
-                        if (!token) return;
-                        const signature = connectionSignature;
-                        setConnectionTest(null);
-                        void perform(async () => {
-                          const result = await testProviderConnection(token, {
+                </Label>
+                <div className="-mx-5 space-y-2 border-t border-border bg-muted/20 px-5 py-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Label
+                      htmlFor="provider-enabled"
+                      className="gap-2 text-xs font-normal"
+                    >
+                      <Checkbox
+                        id="provider-enabled"
+                        aria-label="启用此提供商"
+                        checked={providerDraft.enabled}
+                        onCheckedChange={(checked) =>
+                          setProviderDraft({
                             ...providerDraft,
-                            ...(!adding && selectedId
-                              ? { providerId: selectedId }
-                              : {}),
+                            enabled: checked,
+                          })
+                        }
+                      />
+                      启用此提供商
+                    </Label>
+                    <div className="flex w-full gap-2 sm:w-auto">
+                      <Button
+                        variant="outline"
+                        type="button"
+                        className="min-w-0 flex-1 text-xs sm:flex-none sm:text-sm"
+                        disabled={busy || !data}
+                        onClick={() => {
+                          if (!token) return;
+                          const signature = connectionSignature;
+                          setConnectionTest(null);
+                          void perform(async () => {
+                            const result = await testProviderConnection(token, {
+                              ...providerDraft,
+                              ...(!adding && selectedId
+                                ? { providerId: selectedId }
+                                : {}),
+                            });
+                            setConnectionTest({ ...result, signature });
                           });
-                          setConnectionTest({ ...result, signature });
-                        });
-                      }}
-                    >
-                      测试连通性
-                    </Button>
-                    <Button
-                      variant="default"
-                      type="submit"
-                      disabled={busy || !data}
-                    >
-                      保存提供商
-                    </Button>
+                        }}
+                      >
+                        <PlugZapIcon aria-hidden="true" className="size-3.5" />
+                        测试连通性
+                      </Button>
+                      <Button
+                        variant="default"
+                        type="submit"
+                        className="min-w-0 flex-1 text-xs sm:flex-none sm:text-sm"
+                        disabled={busy || !data}
+                      >
+                        <SaveIcon aria-hidden="true" className="size-3.5" />
+                        保存提供商
+                      </Button>
+                    </div>
                   </div>
+                  {currentConnectionTest && (
+                    <output
+                      className={`block rounded-lg px-3 py-2 text-xs leading-5 ${currentConnectionTest.status === "connected" ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}
+                    >
+                      {currentConnectionTest.message} 用时{" "}
+                      {currentConnectionTest.latencyMs} ms。
+                    </output>
+                  )}
+                  <p className="text-[11px] leading-4 text-muted-foreground">
+                    测试仅检查接口和鉴权，使用全局代理，不执行生成任务。
+                  </p>
                 </div>
-                {currentConnectionTest && (
-                  <output
-                    className={`block rounded-lg px-3 py-2 text-sm ${currentConnectionTest.status === "connected" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}
-                  >
-                    {currentConnectionTest.message} 用时{" "}
-                    {currentConnectionTest.latencyMs} ms。
-                  </output>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  测试仅检查接口和鉴权，使用全局代理，不执行生成任务。
-                </p>
               </form>
             </section>
 
             {(adding || selected) && (
               <section className="overflow-hidden rounded-xl border border-border bg-card">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
                   <div>
                     <h2 className="text-sm font-semibold">可用模型</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
@@ -710,6 +733,7 @@ export default function AdminPage() {
                   <div className="flex flex-wrap gap-2">
                     <Button
                       variant="outline"
+                      size="sm"
                       type="button"
                       disabled={busy}
                       onClick={() => {
@@ -719,11 +743,14 @@ export default function AdminPage() {
                         setShowDiscovery(true);
                       }}
                     >
+                      <DownloadIcon aria-hidden="true" className="size-3.5" />
                       获取模型列表
                     </Button>
                     {providerDraft.preset !== "custom" && (
                       <Button
-                        variant="outline"
+                        variant="ghost"
+                        size="sm"
+                        className="text-muted-foreground hover:text-foreground"
                         type="button"
                         disabled={busy}
                         onClick={() => {
@@ -757,15 +784,18 @@ export default function AdminPage() {
                             });
                         }}
                       >
+                        <ListPlusIcon aria-hidden="true" className="size-3.5" />
                         补充预设
                       </Button>
                     )}
                     <Button
                       variant="outline"
+                      size="sm"
                       type="button"
                       disabled={busy}
                       onClick={() => editModel()}
                     >
+                      <PlusIcon aria-hidden="true" className="size-3.5" />
                       添加模型
                     </Button>
                   </div>
@@ -850,16 +880,16 @@ export default function AdminPage() {
                   }}
                   className="gap-0"
                 >
-                  <div className="overflow-x-auto border-b border-border px-5 py-2">
-                    <TabsList variant="line" aria-label="模型类型">
+                  <div className="border-b border-border px-4 py-2 sm:px-5">
+                    <TabsList aria-label="模型类型" className="w-full sm:w-fit">
                       {KINDS.map((item) => (
                         <TabsTrigger
                           key={item.id}
                           value={item.id}
-                          className="px-4"
+                          className="gap-1 px-1.5 text-xs sm:gap-1.5 sm:px-3"
                         >
                           {item.name}
-                          <span className="ml-1.5 text-xs text-muted-foreground">
+                          <span className="min-w-3 rounded bg-background/70 px-0.5 py-0.5 text-center text-[10px] leading-3 text-muted-foreground tabular-nums sm:min-w-4 sm:px-1">
                             {
                               providerModels.filter(
                                 (model) => model.kind === item.id,
@@ -874,7 +904,7 @@ export default function AdminPage() {
                     {visibleModels.map((model) => (
                       <div
                         key={model.id}
-                        className="flex items-center gap-3 px-5 py-4"
+                        className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-muted/25"
                       >
                         <Checkbox
                           aria-label={`启用 ${model.name}`}
@@ -908,18 +938,21 @@ export default function AdminPage() {
                           }}
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-sm font-medium">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span
+                              className="truncate text-[13px] font-medium leading-5"
+                              title={model.name}
+                            >
                               {model.name}
                             </span>
                             {model.isDefault && (
-                              <span className="rounded bg-accent/20 px-1.5 py-0.5 text-[10px]">
+                              <span className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                                 默认
                               </span>
                             )}
                           </div>
                           <p
-                            className="mt-1 truncate text-xs text-muted-foreground"
+                            className="mt-0.5 truncate font-mono text-[11px] leading-4 text-muted-foreground"
                             title={model.apiModel}
                           >
                             {model.apiModel}
@@ -928,9 +961,10 @@ export default function AdminPage() {
                         {!adding && model.enabled && !model.isDefault && (
                           <Button
                             variant="ghost"
+                            size="sm"
                             type="button"
                             disabled={busy}
-                            className="hidden shrink-0 text-xs text-muted-foreground hover:text-foreground sm:block"
+                            className="hidden shrink-0 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
                             onClick={() => {
                               if (token)
                                 void perform(async () => {
@@ -947,18 +981,21 @@ export default function AdminPage() {
                           </Button>
                         )}
                         <Button
-                          variant="outline"
+                          variant="ghost"
+                          size="sm"
                           type="button"
                           aria-label={`编辑 ${model.name}`}
                           disabled={busy}
+                          className="shrink-0 text-muted-foreground hover:text-foreground"
                           onClick={() => editModel(model)}
                         >
+                          <PencilIcon aria-hidden="true" className="size-3.5" />
                           编辑
                         </Button>
                       </div>
                     ))}
                     {visibleModels.length === 0 && (
-                      <p className="px-5 py-10 text-center text-sm text-muted-foreground">
+                      <p className="px-5 py-8 text-center text-xs leading-5 text-muted-foreground">
                         暂无{KINDS.find((item) => item.id === kind)?.name}
                         模型，可添加预设或自定义模型。
                       </p>
@@ -966,7 +1003,7 @@ export default function AdminPage() {
                   </TabsContent>
                   {modelDraft && (
                     <form
-                      className="space-y-4 border-t border-border bg-muted/25 p-5"
+                      className="space-y-4 border-t border-border bg-muted/20 p-5 [&_label]:text-xs [&_label]:font-medium"
                       onSubmit={(event) => {
                         event.preventDefault();
                         if (!token) return;
