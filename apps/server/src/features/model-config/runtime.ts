@@ -117,6 +117,8 @@ export async function refreshConfiguredProviders(
       id: model.key,
       displayName: model.name,
       description: model.description,
+      providerId: provider.id,
+      providerName: provider.name,
       ...(model.adapter === "agnes" ? { iconUrl: "/providers/agnes.ico" } : {}),
     };
     if (model.kind === "image") {
@@ -150,7 +152,14 @@ export async function refreshConfiguredProviders(
       });
     }
     if (model.kind === "video") {
-      const info = videoMetadata(model);
+      const info = {
+        ...videoMetadata(model),
+        providerId: provider.id,
+        providerName: provider.name,
+        ...(model.adapter === "agnes"
+          ? { iconUrl: "/providers/agnes.ico" }
+          : {}),
+      };
       if (model.adapter === "agnes") {
         const nativeId = `agnes/${model.apiModel}`;
         const implementation = new AgnesVideoProvider(

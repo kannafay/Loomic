@@ -6,6 +6,9 @@ export interface ModelInfo {
   displayName: string;
   /** Short description for LLM model selection */
   description: string;
+  /** Saved provider identity and display name for catalog grouping. */
+  providerId?: string;
+  providerName?: string;
   /** URL to the model owner's avatar/icon */
   iconUrl?: string;
 }

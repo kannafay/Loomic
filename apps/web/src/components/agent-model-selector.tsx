@@ -101,7 +101,8 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
       ]}
     >
       <SelectTrigger
-        aria-label="助手模型"
+        aria-label="对话模型"
+        title={`对话模型：${displayLabel}`}
         className={`h-8 rounded-full ${compact ? "px-2.5 text-[11px]" : "px-3 text-xs"}${isActive ? " border-accent bg-accent/10 hover:bg-accent/20" : " hover:bg-muted"}`}
       >
         <svg
@@ -121,7 +122,7 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
         className="max-h-[min(70vh,420px)] w-64 p-1"
       >
         <SelectGroup>
-          <SelectLabel>助手模型</SelectLabel>
+          <SelectLabel>对话模型</SelectLabel>
           <SelectItem value={automatic}>自动（工作空间默认）</SelectItem>
         </SelectGroup>
         {providers.map((provider) => (

@@ -4,6 +4,7 @@ import { generateImage } from "../../generation/image-generation.js";
 import {
   clearProviders,
   getAvailableImageModels,
+  getAvailableVideoModels,
   resolveImageProviderName,
 } from "../../generation/providers/registry.js";
 import type {
@@ -78,6 +79,8 @@ it("routes a configured Agnes image model by its saved API ID and advertises its
       id: model.key,
       displayName: model.name,
       provider: "agnes",
+      providerId: provider.id,
+      providerName: provider.name,
     }),
   ]);
   const result = await generateImage(resolveImageProviderName(model.key), {
@@ -86,4 +89,48 @@ it("routes a configured Agnes image model by its saved API ID and advertises its
   });
   expect(result.width).toBe(1);
   expect(fetch).toHaveBeenCalledOnce();
+});
+
+it("publishes saved provider identities for video model grouping", async () => {
+  const providers: PrivateProvider[] = ["主账号", "备用账号"].map(
+    (name, index) => ({
+      id: `provider-${index}`,
+      createdBy: "admin-1",
+      name,
+      category: "third_party",
+      preset: "agnes",
+      protocol: "openai",
+      baseUrl: "https://api.example.test/v1",
+      apiKey: "test-key",
+      hasApiKey: true,
+      enabled: true,
+    }),
+  );
+  const models: ConfiguredModel[] = providers.map((provider, index) => ({
+    id: `video-${index}`,
+    providerId: provider.id,
+    key: `configured/video-${index}`,
+    apiModel: "agnes-video-test",
+    name: "团队视频模型",
+    kind: "video",
+    description: "",
+    adapter: "agnes",
+    enabled: true,
+    isDefault: index === 0,
+    options: {},
+  }));
+  await refreshConfiguredProviders({
+    syncNetworkSettings: async () => {},
+    catalog: async () => ({ providers, models }),
+  } as unknown as ModelConfigService);
+  expect(getAvailableVideoModels()).toEqual(
+    providers.map((provider, index) =>
+      expect.objectContaining({
+        id: `configured/video-${index}`,
+        provider: "agnes",
+        providerId: provider.id,
+        providerName: provider.name,
+      }),
+    ),
+  );
 });

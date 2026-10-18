@@ -24,10 +24,11 @@ vi.mock("../src/lib/supabase-browser", () => ({
 import { AuthProvider, useAuth } from "../src/lib/auth-context";
 
 function TestConsumer() {
-  const { user, loading } = useAuth();
+  const { user, loading, roleLoading } = useAuth();
   return (
     <div>
       <span data-testid="loading">{String(loading)}</span>
+      <span data-testid="role-loading">{String(roleLoading)}</span>
       <span data-testid="user">{user?.email ?? "none"}</span>
     </div>
   );
@@ -36,10 +37,19 @@ function TestConsumer() {
 describe("AuthProvider", () => {
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ role: "user" }), {
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
     mockGetSession.mockResolvedValue({
       data: { session: null },
       error: null,
@@ -80,6 +90,7 @@ describe("AuthProvider", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("user").textContent).toBe("test@test.com");
+      expect(screen.getByTestId("role-loading").textContent).toBe("false");
     });
   });
 });

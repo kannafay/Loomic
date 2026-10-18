@@ -343,10 +343,11 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                           size="icon"
                           variant="outline"
                           type="button"
-                          title="生成模型偏好"
-                          aria-label="生成模型偏好"
+                          title="图片与视频生成模型"
+                          aria-label="图片与视频生成模型"
                           className={`flex h-10 w-10 items-center justify-center rounded-full border-[0.5px] transition-colors sm:h-8 sm:w-8 ${
-                            preference.mode === "manual"
+                            preference.mode === "manual" ||
+                            videoPreference.mode === "manual"
                               ? "border-accent bg-accent/30 text-accent-foreground"
                               : "border-border text-foreground hover:bg-muted"
                           }`}

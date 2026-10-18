@@ -465,6 +465,8 @@ export const annotatedModelSchema = z.object({
   description: z.string(),
   iconUrl: z.string().optional(),
   provider: z.string(),
+  providerId: z.string().optional(),
+  providerName: z.string().optional(),
   accessible: z.boolean(),
   creditCost: z.number().int(),
   minTier: subscriptionPlanSchema,

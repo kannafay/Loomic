@@ -432,6 +432,8 @@ export type ImageModelInfo = {
   displayName: string;
   description: string;
   provider: string;
+  providerId?: string;
+  providerName?: string;
   iconUrl?: string;
   creditCost?: number;
   accessible?: boolean;
@@ -460,6 +462,8 @@ export type VideoModelInfo = {
   displayName: string;
   description: string;
   provider: string;
+  providerId?: string;
+  providerName?: string;
   iconUrl?: string;
   creditCost?: number;
   accessible?: boolean;

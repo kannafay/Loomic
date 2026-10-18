@@ -360,8 +360,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     size="icon"
                     variant="outline"
                     type="button"
-                    title="生成模型偏好"
-                    aria-label="生成模型偏好"
+                    title="图片与视频生成模型"
+                    aria-label="图片与视频生成模型"
                     className={`flex h-8 w-8 items-center justify-center rounded-full border-[0.5px] transition-colors ${
                       preference.mode === "manual" ||
                       videoPreference.mode === "manual"
