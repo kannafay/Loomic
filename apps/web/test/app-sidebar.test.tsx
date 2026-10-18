@@ -204,7 +204,29 @@ describe("workspace sidebar", () => {
     ).toHaveTextContent("项目");
   });
 
-  it("signs out before redirecting to login", async () => {
+  it.each(["cancel", "escape"])(
+    "keeps the session and restores focus when the logout dialog is dismissed with %s",
+    async (action) => {
+      const user = userEvent.setup();
+      renderWorkspace();
+      const trigger = screen.getByRole("button", { name: "退出登录" });
+      await user.click(trigger);
+      const dialog = await screen.findByRole("dialog", {
+        name: "确认退出登录",
+      });
+      const cancel = within(dialog).getByRole("button", { name: "取消" });
+      await waitFor(() => expect(cancel).toHaveFocus());
+
+      if (action === "cancel") await user.click(cancel);
+      else await user.keyboard("{Escape}");
+      await waitFor(() => expect(dialog).not.toBeInTheDocument());
+      expect(signOut).not.toHaveBeenCalled();
+      expect(replace).not.toHaveBeenCalled();
+      await waitFor(() => expect(trigger).toHaveFocus());
+    },
+  );
+
+  it("signs out only after confirmation and waits for logout before redirecting", async () => {
     const user = userEvent.setup();
     const completion: { resolve?: () => void } = {};
     signOut.mockImplementation(
@@ -215,12 +237,41 @@ describe("workspace sidebar", () => {
     );
     renderWorkspace();
     await user.click(screen.getByRole("button", { name: "退出登录" }));
+    const dialog = await screen.findByRole("dialog", { name: "确认退出登录" });
+    expect(signOut).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "退出登录" }));
 
     expect(signOut).toHaveBeenCalledExactlyOnceWith();
     expect(replace).not.toHaveBeenCalled();
+    expect(
+      within(dialog).getByRole("button", { name: "正在退出…" }),
+    ).toBeDisabled();
+    expect(within(dialog).getByRole("button", { name: "取消" })).toBeDisabled();
+    await user.keyboard("{Escape}");
+    expect(dialog).toBeInTheDocument();
     completion.resolve?.();
     await waitFor(() =>
       expect(replace).toHaveBeenCalledExactlyOnceWith("/login"),
     );
+  });
+
+  it("keeps the dialog open and permits retry when logout fails", async () => {
+    const user = userEvent.setup();
+    signOut.mockRejectedValueOnce(new Error("network unavailable"));
+    renderWorkspace();
+    await user.click(screen.getByRole("button", { name: "退出登录" }));
+    const dialog = await screen.findByRole("dialog", { name: "确认退出登录" });
+    await user.click(within(dialog).getByRole("button", { name: "退出登录" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "退出登录失败，请重试。",
+    );
+    expect(replace).not.toHaveBeenCalled();
+    expect(within(dialog).getByRole("button", { name: "取消" })).toBeEnabled();
+    await user.click(within(dialog).getByRole("button", { name: "退出登录" }));
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledExactlyOnceWith("/login"),
+    );
+    expect(signOut).toHaveBeenCalledTimes(2);
   });
 });

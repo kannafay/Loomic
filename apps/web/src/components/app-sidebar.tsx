@@ -14,8 +14,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 
 import { LoomicLogo } from "@/components/icons/loomic-logo";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -120,6 +132,10 @@ export function AppSidebar() {
   const router = useRouter();
   const { signOut, role } = useAuth();
   const { open, toggleSidebar } = useSidebar();
+  const [logoutOpen, setLogoutOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+  const cancelLogoutRef = useRef<HTMLButtonElement>(null);
   const accountItems = [
     SETTINGS_ITEM,
     ...(role === "admin" ? [ADMIN_ITEM] : []),
@@ -128,12 +144,33 @@ export function AppSidebar() {
   const ToggleIcon = open ? PanelLeftCloseIcon : PanelLeftOpenIcon;
 
   async function handleSignOut() {
-    await signOut();
-    router.replace("/login");
+    if (signingOut) return;
+    setSigningOut(true);
+    setLogoutError("");
+    try {
+      await signOut();
+      setLogoutOpen(false);
+      router.replace("/login");
+    } catch {
+      setLogoutError("退出登录失败，请重试。");
+    } finally {
+      setSigningOut(false);
+    }
   }
 
   return (
-    <>
+    <Dialog
+      open={logoutOpen}
+      onOpenChange={(nextOpen, eventDetails) => {
+        if (signingOut) {
+          eventDetails.cancel();
+          return;
+        }
+        setLogoutOpen(nextOpen);
+        setLogoutError("");
+      }}
+      disablePointerDismissal={signingOut}
+    >
       <Sidebar id="workspace-sidebar" collapsible="icon">
         <SidebarHeader className="py-4">
           <SidebarMenu>
@@ -175,16 +212,19 @@ export function AppSidebar() {
                 <NavigationItem key={item.href} item={item} />
               ))}
               <SidebarMenuItem>
-                <SidebarMenuButton
-                  type="button"
-                  onClick={handleSignOut}
-                  aria-label="退出登录"
-                  tooltip="退出登录"
-                  className={MENU_BUTTON_CLASS}
+                <DialogTrigger
+                  render={
+                    <SidebarMenuButton
+                      type="button"
+                      aria-label="退出登录"
+                      tooltip="退出登录"
+                      className={MENU_BUTTON_CLASS}
+                    />
+                  }
                 >
                   <LogOutIcon aria-hidden="true" />
                   <span>退出登录</span>
-                </SidebarMenuButton>
+                </DialogTrigger>
               </SidebarMenuItem>
             </SidebarMenu>
           </nav>
@@ -209,6 +249,41 @@ export function AppSidebar() {
       </Sidebar>
 
       <MobileBottomBar items={[...MAIN_ITEMS, ...accountItems]} />
-    </>
+      <DialogContent showCloseButton={false} initialFocus={cancelLogoutRef}>
+        <DialogHeader>
+          <DialogTitle>确认退出登录</DialogTitle>
+          <DialogDescription>
+            确定要退出当前账号吗？退出后需要重新登录。
+          </DialogDescription>
+        </DialogHeader>
+        {logoutError && (
+          <p role="alert" className="text-sm text-destructive">
+            {logoutError}
+          </p>
+        )}
+        <DialogFooter>
+          <DialogClose
+            render={
+              <Button
+                ref={cancelLogoutRef}
+                type="button"
+                variant="outline"
+                disabled={signingOut}
+              />
+            }
+          >
+            取消
+          </DialogClose>
+          <Button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            aria-busy={signingOut}
+          >
+            {signingOut ? "正在退出…" : "退出登录"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
