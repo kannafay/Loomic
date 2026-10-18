@@ -51,6 +51,91 @@ afterEach(() => {
 
 describe("native canvas context menu", () => {
   it.each(["image-generator", "video-generator"])(
+    "keeps the %s loading contour aligned through zoom, pan, rotation and corner changes",
+    (type) => {
+      const element = {
+        id: "generating",
+        type: "rectangle",
+        x: 20,
+        y: 30,
+        width: 400,
+        height: 225,
+        angle: 0,
+        roundness: { type: 3, value: 32 } as {
+          type: number;
+          value: number;
+        } | null,
+        customData: { type, status: "generating" },
+      };
+      let state = {
+        selectedElementIds: {},
+        scrollX: 0,
+        scrollY: 0,
+        offsetLeft: 0,
+        offsetTop: 0,
+        zoom: { value: 1 },
+        contextMenu: null,
+      };
+      let onChange = (_elements: unknown[], _state: unknown) => {};
+      const api = {
+        getAppState: () => state,
+        getSceneElements: () => [element],
+        updateScene: vi.fn(),
+        onChange: (callback: typeof onChange) => {
+          onChange = callback;
+          return () => {};
+        },
+      } as unknown as ExcalidrawImperativeAPI;
+      const emitChange = () => act(() => onChange([element], state));
+      render(<CanvasToolMenu excalidrawApi={api} accessToken="token" />);
+      emitChange();
+      const overlay =
+        screen.getByText("正在生成…").parentElement?.parentElement;
+      expect(overlay).toHaveStyle({
+        left: "20px",
+        top: "30px",
+        width: "400px",
+        height: "225px",
+      });
+      expect(overlay?.style.clipPath).toBe(
+        'path("M 32 0 L 368 0 Q 400 0 400 32 L 400 193 Q 400 225 368 225 L 32 225 Q 0 225 0 193 L 0 32 Q 0 0 32 0 Z")',
+      );
+
+      state = {
+        ...state,
+        zoom: { value: 2 },
+        scrollX: 10,
+        scrollY: -5,
+        offsetLeft: 100,
+        offsetTop: 40,
+      };
+      emitChange();
+      expect(overlay).toHaveStyle({
+        left: "160px",
+        top: "90px",
+        width: "800px",
+        height: "450px",
+      });
+      expect(overlay?.style.clipPath).toContain('path("M 64 0 L 736 0');
+
+      element.angle = Math.PI / 6;
+      element.roundness = { type: 3, value: 16 };
+      emitChange();
+      expect(overlay).toHaveStyle({ transform: `rotate(${Math.PI / 6}rad)` });
+      expect(overlay?.style.clipPath).toContain('path("M 32 0 L 768 0');
+
+      element.width = 80;
+      element.height = 40;
+      emitChange();
+      expect(overlay?.style.clipPath).toContain('path("M 20 0 L 140 0');
+      element.roundness = null;
+      emitChange();
+      expect(overlay?.style.clipPath).toContain('path("M 0 0 L 160 0');
+      expect(api.updateScene).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["image-generator", "video-generator"])(
     "keeps %s generation content visible while the native menu opens and closes",
     (type) => {
       const element = {
