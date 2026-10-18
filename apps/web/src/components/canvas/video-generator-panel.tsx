@@ -515,76 +515,80 @@ export function VideoGeneratorPanel({
       onKeyDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
-      <VideoGenerationInputs
-        mode={mode}
-        onModeChange={(next) => {
-          setMode(next);
-          setError(null);
-        }}
-        model={currentModel}
-        firstFrame={firstFrame}
-        lastFrame={lastFrame}
-        references={references}
-        onFirstFrame={setFirstFrame}
-        onLastFrame={setLastFrame}
-        onReferences={setReferences}
-        referenceAudios={referenceAudios}
-        referenceVideo={referenceVideo}
-        onReferenceAudios={setReferenceAudios}
-        onReferenceVideo={setReferenceVideo}
-        sources={sources}
-        sourceJobId={sourceJobId}
-        onSourceChange={(id) => {
-          setSourceJobId(id);
-          const source = sources.find((item) => item.jobId === id);
-          if (source) handleAspectRatioChange(source.aspectRatio);
-        }}
-        sourcesLoading={sourcesLoading}
-        disabled={loading}
-        onError={(message) =>
-          handleGenerationError(new Error(message), message)
-        }
-      />
-
-      {/* Prompt textarea */}
-      <div className="px-4 py-3">
-        <Textarea
-          scrollable={false}
-          ref={textareaRef}
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          onBlur={() => {
-            const element = excalidrawApi
-              .getSceneElements()
-              .find((el) => el.id === elementId);
-            if (element?.customData?.prompt !== prompt)
-              updateVideoGeneratorElement(excalidrawApi, elementId, { prompt });
+      <div className="rounded-b-xl border-b border-border">
+        <VideoGenerationInputs
+          mode={mode}
+          onModeChange={(next) => {
+            setMode(next);
+            setError(null);
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              void handleGenerate();
-            }
+          model={currentModel}
+          firstFrame={firstFrame}
+          lastFrame={lastFrame}
+          references={references}
+          onFirstFrame={setFirstFrame}
+          onLastFrame={setLastFrame}
+          onReferences={setReferences}
+          referenceAudios={referenceAudios}
+          referenceVideo={referenceVideo}
+          onReferenceAudios={setReferenceAudios}
+          onReferenceVideo={setReferenceVideo}
+          sources={sources}
+          sourceJobId={sourceJobId}
+          onSourceChange={(id) => {
+            setSourceJobId(id);
+            const source = sources.find((item) => item.jobId === id);
+            if (source) handleAspectRatioChange(source.aspectRatio);
           }}
-          placeholder={
-            mode === "extend"
-              ? "描述接下来发生的画面…"
-              : "描述想生成的视频、动作和镜头…"
-          }
+          sourcesLoading={sourcesLoading}
           disabled={loading}
-          style={{ scrollbarWidth: "none" }}
-          className="field-sizing-fixed border-0 shadow-none focus-visible:ring-0 min-h-[44px] max-h-[140px] w-full resize-none border-none bg-transparent text-[14px] leading-[22px] text-foreground placeholder:text-muted-foreground focus:outline-none [&::-webkit-scrollbar]:hidden"
+          onError={(message) =>
+            handleGenerationError(new Error(message), message)
+          }
         />
+
+        {/* Prompt textarea */}
+        <div className="px-4 py-3">
+          <Textarea
+            scrollable={false}
+            ref={textareaRef}
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onBlur={() => {
+              const element = excalidrawApi
+                .getSceneElements()
+                .find((el) => el.id === elementId);
+              if (element?.customData?.prompt !== prompt)
+                updateVideoGeneratorElement(excalidrawApi, elementId, {
+                  prompt,
+                });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void handleGenerate();
+              }
+            }}
+            placeholder={
+              mode === "extend"
+                ? "描述接下来发生的画面…"
+                : "描述想生成的视频、动作和镜头…"
+            }
+            disabled={loading}
+            style={{ scrollbarWidth: "none" }}
+            className="field-sizing-fixed border-0 shadow-none focus-visible:ring-0 min-h-[44px] max-h-[140px] w-full resize-none border-none bg-transparent text-[14px] leading-[22px] text-foreground placeholder:text-muted-foreground focus:outline-none [&::-webkit-scrollbar]:hidden"
+          />
+        </div>
+
+        {error && (
+          <div className="mx-4 mb-2 rounded-lg bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
+            {error}
+          </div>
+        )}
       </div>
 
-      {error && (
-        <div className="mx-4 mb-2 rounded-lg bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
-          {error}
-        </div>
-      )}
-
       {/* Bottom toolbar */}
-      <div className="flex items-center justify-between px-2 pb-2">
+      <div className="flex items-center justify-between px-2 pt-1.5 pb-2">
         <div className="flex items-center gap-1">
           <Popover open={showParamsPopover} onOpenChange={setShowParamsPopover}>
             <PopoverTrigger

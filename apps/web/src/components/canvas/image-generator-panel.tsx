@@ -233,44 +233,46 @@ export function ImageGeneratorPanel({
       ref={panelRef}
       hidden={hidden}
       style={{ left: screenX, top: screenY }}
-      className="fixed z-[100] w-[450px] max-w-[calc(100vw-16px)] rounded-xl border-[0.5px] border-border bg-card/95 p-2 shadow-card backdrop-blur-lg"
+      className="fixed z-[100] w-[450px] max-w-[calc(100vw-16px)] rounded-xl border-[0.5px] border-border bg-card/95 shadow-card backdrop-blur-lg"
       onKeyDown={(e) => e.stopPropagation()}
       onWheel={(e) => e.stopPropagation()}
     >
       {/* Prompt textarea */}
-      <Textarea
-        scrollable={false}
-        ref={textareaRef}
-        value={prompt}
-        onChange={(e) => setPrompt(e.target.value)}
-        onBlur={() => {
-          const element = excalidrawApi
-            .getSceneElements()
-            .find((el) => el.id === elementId);
-          if (element?.customData?.prompt !== prompt) {
-            updateImageGeneratorElement(excalidrawApi, elementId, { prompt });
-          }
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            void handleGenerate();
-          }
-        }}
-        placeholder="今天我们要创作什么"
-        disabled={loading}
-        style={{ scrollbarWidth: "none" }}
-        className="field-sizing-fixed border-0 shadow-none focus-visible:ring-0 min-h-[74px] max-h-[140px] w-full resize-none border-none bg-transparent p-1 text-[14px] leading-[18px] text-foreground placeholder:text-muted-foreground focus:outline-none [&::-webkit-scrollbar]:hidden"
-      />
+      <div className="rounded-xl border-b border-border p-2">
+        <Textarea
+          scrollable={false}
+          ref={textareaRef}
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          onBlur={() => {
+            const element = excalidrawApi
+              .getSceneElements()
+              .find((el) => el.id === elementId);
+            if (element?.customData?.prompt !== prompt) {
+              updateImageGeneratorElement(excalidrawApi, elementId, { prompt });
+            }
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void handleGenerate();
+            }
+          }}
+          placeholder="今天我们要创作什么"
+          disabled={loading}
+          style={{ scrollbarWidth: "none" }}
+          className="field-sizing-fixed border-0 shadow-none focus-visible:ring-0 min-h-[74px] max-h-[140px] w-full resize-none border-none bg-transparent p-1 text-[14px] leading-[18px] text-foreground placeholder:text-muted-foreground focus:outline-none [&::-webkit-scrollbar]:hidden"
+        />
 
-      {error && (
-        <div className="mb-2 rounded-lg bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
-          {error}
-        </div>
-      )}
+        {error && (
+          <div className="mb-2 rounded-lg bg-destructive/10 px-2 py-1.5 text-xs text-destructive">
+            {error}
+          </div>
+        )}
+      </div>
 
       {/* Bottom toolbar */}
-      <div className="mt-1 flex items-center justify-between">
+      <div className="flex items-center justify-between px-2 py-1.5">
         {/* Left: model + ref image */}
         <div className="flex items-center">
           <Select
