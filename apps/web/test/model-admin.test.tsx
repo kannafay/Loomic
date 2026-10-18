@@ -1001,12 +1001,16 @@ it("filters model types and keeps selections across filtering and search", async
   const dialog = within(
     await screen.findByRole("dialog", { name: "获取模型列表" }),
   );
+  dialog.getByRole("tabpanel").scrollTop = 240;
   await user.click(dialog.getByRole("tab", { name: /^图片/ }));
+  expect(dialog.getByRole("tabpanel").scrollTop).toBe(0);
   expect(
     dialog.queryByRole("checkbox", { name: "导入 future-video" }),
   ).not.toBeInTheDocument();
   await user.click(dialog.getByRole("checkbox", { name: "导入 future-image" }));
+  dialog.getByRole("tabpanel").scrollTop = 120;
   await user.click(dialog.getByRole("tab", { name: /^视频/ }));
+  expect(dialog.getByRole("tabpanel").scrollTop).toBe(0);
   expect(dialog.getAllByText("future-video")).toHaveLength(1);
   await user.click(dialog.getByRole("button", { name: "全选当前结果" }));
   await user.type(

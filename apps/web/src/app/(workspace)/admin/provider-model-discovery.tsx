@@ -94,6 +94,7 @@ export function ProviderModelDiscovery({
   const [truncated, setTruncated] = useState(false);
   const manualRequested = useRef(false);
   const searchInput = useRef<HTMLInputElement>(null);
+  const modelList = useRef<HTMLDivElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: revision triggers an explicit retry of the same saved connection.
   useEffect(() => {
@@ -227,7 +228,10 @@ export function ProviderModelDiscovery({
           </header>
           <Tabs
             value={filter}
-            onValueChange={(value) => setFilter(value as ModelFilter)}
+            onValueChange={(value) => {
+              if (modelList.current) modelList.current.scrollTop = 0;
+              setFilter(value as ModelFilter);
+            }}
             className="min-h-0 flex-1 gap-0"
           >
             <div className="shrink-0 space-y-3 border-b border-border px-4 py-3 sm:px-5">
@@ -303,7 +307,7 @@ export function ProviderModelDiscovery({
               </Button>
             </div>
             <TabsContent
-              render={<ScrollArea orientation="vertical" />}
+              render={<ScrollArea ref={modelList} orientation="vertical" />}
               value={filter}
               className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
             >
