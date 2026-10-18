@@ -274,7 +274,7 @@ export function ImageModelPreferencePopover({
                   }}
                   items={[
                     { value: "auto", label: "自动选择" },
-                    { value: "manual", label: "限定模型" },
+                    { value: "manual", label: "指定模型" },
                   ]}
                 >
                   <SelectTrigger
@@ -298,7 +298,7 @@ export function ImageModelPreferencePopover({
                   >
                     <SelectGroup>
                       <SelectItem value="auto">自动选择</SelectItem>
-                      <SelectItem value="manual">限定模型（可多选）</SelectItem>
+                      <SelectItem value="manual">指定模型（可多选）</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -373,7 +373,7 @@ export function ImageModelPreferencePopover({
                 {manual
                   ? catalog.status === "ready"
                     ? `已选 ${selectedModels.length} 个${kindLabel}模型`
-                    : `已限定 ${preference.models.length} 个${kindLabel}模型`
+                    : `已指定 ${preference.models.length} 个${kindLabel}模型`
                   : `自动选择${kindLabel}模型`}
               </output>
               {manual ? (
@@ -382,7 +382,7 @@ export function ImageModelPreferencePopover({
                   variant="ghost"
                   size="xs"
                   onClick={restoreAuto}
-                  title="取消模型限制，恢复自动选择"
+                  title="取消指定，恢复自动选择"
                   className="-my-1 -mr-2 text-muted-foreground"
                 >
                   恢复自动

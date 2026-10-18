@@ -74,7 +74,7 @@ async function chooseMode(
   await user.click(screen.getByRole("combobox", { name: /模型选择方式$/ }));
   await user.click(
     await screen.findByRole("option", {
-      name: mode === "manual" ? "限定模型（可多选）" : "自动选择",
+      name: mode === "manual" ? "指定模型（可多选）" : "自动选择",
     }),
   );
 }
