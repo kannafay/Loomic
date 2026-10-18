@@ -592,6 +592,77 @@ it("loads and saves one global proxy configuration", async () => {
 });
 
 const otherProvider = { ...provider, id: "provider-2", name: "Google" };
+it("uses an unsaved custom proxy for connection tests and persists it with the provider", async () => {
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  const mode = await screen.findByRole("combobox", { name: "代理方式" });
+  expect(mode).toHaveTextContent("使用全局代理");
+  await user.click(mode);
+  await user.click(await screen.findByRole("option", { name: "自定义代理" }));
+  await user.type(
+    screen.getByLabelText("自定义代理地址"),
+    "http://127.0.0.1:10808",
+  );
+  await user.click(screen.getByRole("button", { name: "测试连通性" }));
+  await waitFor(() =>
+    expect(state.testConnection).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        providerId: provider.id,
+        proxy: { mode: "custom", url: "http://127.0.0.1:10808" },
+      }),
+    ),
+  );
+  await user.click(screen.getByRole("button", { name: "保存提供商" }));
+  await waitFor(() =>
+    expect(state.saveProvider).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        proxy: { mode: "custom", url: "http://127.0.0.1:10808" },
+      }),
+      provider.id,
+    ),
+  );
+});
+it("restores each provider's own proxy setting and allows direct connections", async () => {
+  state.fetch.mockResolvedValue({
+    providers: [
+      { ...provider, proxy: { mode: "custom", url: "http://127.0.0.1:7890" } },
+      otherProvider,
+    ],
+    models: [model],
+    presets: [],
+  });
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  expect(await screen.findByLabelText("自定义代理地址")).toHaveValue(
+    "http://127.0.0.1:7890",
+  );
+  await user.click(screen.getByRole("button", { name: "Google" }));
+  expect(screen.getByRole("combobox", { name: "代理方式" })).toHaveTextContent(
+    "使用全局代理",
+  );
+  expect(screen.queryByLabelText("自定义代理地址")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Agnes AI" }));
+  expect(screen.getByLabelText("自定义代理地址")).toHaveValue(
+    "http://127.0.0.1:7890",
+  );
+  await user.click(screen.getByRole("combobox", { name: "代理方式" }));
+  await user.click(await screen.findByRole("option", { name: "不使用代理" }));
+  expect(
+    screen.getByText("直接连接此提供商，忽略全局代理。"),
+  ).toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "保存提供商" }));
+  await waitFor(() =>
+    expect(state.saveProvider).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        proxy: expect.objectContaining({ mode: "direct" }),
+      }),
+      provider.id,
+    ),
+  );
+});
 function providerNames() {
   return within(screen.getByRole("navigation", { name: "模型提供商" }))
     .getAllByRole("listitem")

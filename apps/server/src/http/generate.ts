@@ -1,9 +1,11 @@
 // @credits-system — Direct generation routes with credit deduction and tier checks
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { withProviderProxy } from "../config/network-proxy.js";
 
 import {
   type ImageQualityLevel,
+  type ProviderProxy,
   type VideoResolution,
   applicationErrorResponseSchema,
   unauthenticatedErrorResponseSchema,
@@ -157,6 +159,7 @@ export async function registerGenerateRoutes(
         user,
         options,
         signal,
+        result.networkProxy,
       );
       signal.throwIfAborted();
 
@@ -672,8 +675,11 @@ async function downloadAndUpload(
   user: AuthenticatedUser,
   deps: { uploadService: UploadService; viewerService: ViewerService },
   signal?: AbortSignal,
+  networkProxy?: ProviderProxy,
 ): Promise<{ signedUrl: string; assetId: string }> {
-  const response = await fetch(sourceUrl, { signal: signal ?? null });
+  const response = await withProviderProxy(networkProxy, () =>
+    fetch(sourceUrl, { signal: signal ?? null }),
+  );
   if (!response.ok) {
     throw new Error(`Failed to download generated image: ${response.status}`);
   }

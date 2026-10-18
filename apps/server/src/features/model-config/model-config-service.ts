@@ -99,6 +99,7 @@ function publicProvider(row: Omit<ProviderRow, "sort_order">): ProviderConfig {
     protocol: row.protocol,
     baseUrl: row.base_url,
     enabled: row.enabled,
+    proxy: { mode: row.proxy_mode ?? "global", url: row.proxy_url ?? "" },
     hasApiKey: !!row.api_key_ciphertext,
   });
 }
@@ -287,6 +288,12 @@ export function createModelConfigService(options: {
         protocol: value.protocol,
         base_url: value.baseUrl.replace(/\/+$/, ""),
         enabled: value.enabled,
+        proxy_mode: value.proxy?.mode ?? existing?.proxy_mode ?? "global",
+        proxy_url: value.proxy
+          ? value.proxy.mode === "custom"
+            ? value.proxy.url.replace(/\/$/, "")
+            : ""
+          : (existing?.proxy_url ?? ""),
         api_key_ciphertext: value.apiKey
           ? encryptApiKey(value.apiKey, options.secret)
           : (existing?.api_key_ciphertext ?? ""),
@@ -332,6 +339,11 @@ export function createModelConfigService(options: {
           ? encryptApiKey(provider.apiKey, options.secret)
           : "",
         enabled: provider.enabled,
+        proxy_mode: provider.proxy?.mode ?? "global",
+        proxy_url:
+          provider.proxy?.mode === "custom"
+            ? provider.proxy.url.replace(/\/$/, "")
+            : "",
       };
       const rows = models.map((model) => ({
         id: randomUUID(),
@@ -472,6 +484,7 @@ export function createModelConfigService(options: {
         protocol: provider.protocol as ProviderConfig["protocol"],
         baseUrl: provider.base_url,
         preset: provider.preset,
+        proxy: publicProvider(provider).proxy,
         apiKey: provider.api_key_ciphertext
           ? decryptApiKey(provider.api_key_ciphertext, options.secret)
           : "",

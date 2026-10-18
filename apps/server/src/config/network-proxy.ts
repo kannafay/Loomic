@@ -1,8 +1,11 @@
+import { AsyncLocalStorage } from "node:async_hooks";
+import { type ProviderProxy, providerProxySchema } from "@loomic/shared";
 import { bootstrap } from "global-agent";
 import {
   Agent,
-  type Dispatcher,
+  Dispatcher,
   EnvHttpProxyAgent,
+  getGlobalDispatcher,
   setGlobalDispatcher,
 } from "undici";
 
@@ -15,6 +18,74 @@ export type ProxyConfiguration = {
 };
 let activeConfiguration: string | undefined;
 let managedDispatcher: Dispatcher | undefined;
+const providerDispatchers = new Map<string, Dispatcher>();
+const providerScope = new AsyncLocalStorage<Dispatcher | null>();
+let routingDispatcher: Dispatcher | undefined;
+
+function installProviderRouting(): void {
+  if (!routingDispatcher) {
+    const initial = getGlobalDispatcher();
+    routingDispatcher = new (class extends Dispatcher {
+      override dispatch(
+        options: Dispatcher.DispatchOptions,
+        handler: Dispatcher.DispatchHandler,
+      ) {
+        return (
+          providerScope.getStore() ??
+          managedDispatcher ??
+          initial
+        ).dispatch(options, handler);
+      }
+    })();
+  }
+  if (getGlobalDispatcher() !== routingDispatcher)
+    setGlobalDispatcher(routingDispatcher);
+}
+
+export function withProviderProxy<T>(
+  proxy: ProviderProxy | undefined,
+  execute: () => T,
+): T {
+  const value = proxy
+    ? providerProxySchema.parse(proxy)
+    : ({ mode: "global", url: "" } as const);
+  installProviderRouting();
+  if (value.mode === "global") return providerScope.run(null, execute);
+  const key = value.mode === "direct" ? "direct" : value.url.replace(/\/$/, "");
+  let dispatcher = providerDispatchers.get(key);
+  if (!dispatcher) {
+    dispatcher =
+      value.mode === "direct"
+        ? new Agent()
+        : new EnvHttpProxyAgent({
+            httpProxy: key,
+            httpsProxy: key,
+            noProxy: LOCAL_HOSTS.join(","),
+          });
+    providerDispatchers.set(key, dispatcher);
+  }
+  return providerScope.run(dispatcher, execute);
+}
+
+export async function* withProviderProxyStream<T>(
+  proxy: ProviderProxy | undefined,
+  stream: AsyncGenerator<T>,
+): AsyncGenerator<T> {
+  try {
+    while (true) {
+      const item = await withProviderProxy(proxy, () => stream.next());
+      if (item.done) return;
+      yield item.value;
+    }
+  } finally {
+    await withProviderProxy(proxy, () => stream.return(undefined));
+  }
+}
+
+export function providerFetch(proxy?: ProviderProxy): typeof globalThis.fetch {
+  return (input, init) =>
+    withProviderProxy(proxy, () => globalThis.fetch(input, init));
+}
 type ProxyController = {
   HTTP_PROXY: string | null;
   HTTPS_PROXY: string | null;
@@ -108,7 +179,7 @@ export function applyNetworkProxy(
         noProxy: configuration.noProxy,
       })
     : new Agent();
-  setGlobalDispatcher(managedDispatcher);
+  installProviderRouting();
   activeConfiguration = signature;
   // Let in-flight responses finish while new requests use the new configuration.
   void previous?.close().catch(() => {});

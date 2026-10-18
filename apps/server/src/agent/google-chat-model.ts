@@ -1,4 +1,9 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import type { ProviderProxy } from "@loomic/shared";
+import {
+  withProviderProxy,
+  withProviderProxyStream,
+} from "../config/network-proxy.js";
 
 // Gemini function declarations use a scalar type and a nullable flag.
 // Newer tool schemas can express the same nullable value as a type array.
@@ -67,6 +72,29 @@ function normalizeToolSchema<T>(tools: T): T {
 }
 
 export class LoomicGoogleChatModel extends ChatGoogleGenerativeAI {
+  networkProxy: ProviderProxy | undefined;
+
+  override _generate(...args: Parameters<ChatGoogleGenerativeAI["_generate"]>) {
+    return withProviderProxy(this.networkProxy, () => super._generate(...args));
+  }
+
+  override _streamResponseChunks(
+    ...args: Parameters<ChatGoogleGenerativeAI["_streamResponseChunks"]>
+  ) {
+    return withProviderProxyStream(
+      this.networkProxy,
+      super._streamResponseChunks(...args),
+    );
+  }
+
+  override _streamChatModelEvents(
+    ...args: Parameters<ChatGoogleGenerativeAI["_streamChatModelEvents"]>
+  ) {
+    return withProviderProxyStream(
+      this.networkProxy,
+      super._streamChatModelEvents(...args),
+    );
+  }
   override invocationParams(
     options?: Parameters<ChatGoogleGenerativeAI["invocationParams"]>[0],
   ): ReturnType<ChatGoogleGenerativeAI["invocationParams"]> {

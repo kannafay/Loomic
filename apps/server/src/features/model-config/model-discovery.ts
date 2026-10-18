@@ -3,7 +3,9 @@ import type {
   ModelDiscoveryResponse,
   ModelKind,
   ModelProtocol,
+  ProviderProxy,
 } from "@loomic/shared";
+import { withProviderProxy } from "../../config/network-proxy.js";
 import { ModelConfigError } from "./errors.js";
 import { MODEL_PRESETS } from "./presets.js";
 
@@ -12,6 +14,7 @@ type DiscoveryProvider = {
   baseUrl: string;
   apiKey: string;
   preset: string;
+  proxy?: ProviderProxy | undefined;
 };
 type RecordValue = Record<string, unknown>;
 const MAX_MODELS = 1000;
@@ -116,7 +119,9 @@ export async function discoverProviderModels(
   for (let page = 0; page < 10; page++) {
     let payload: RecordValue;
     try {
-      const response = await fetch(url, { headers, signal, redirect: "error" });
+      const response = await withProviderProxy(provider.proxy, () =>
+        fetch(url, { headers, signal, redirect: "error" }),
+      );
       if (!response.ok) {
         await response.body?.cancel();
         const message =

@@ -1,3 +1,4 @@
+import { withProviderProxy } from "../../../config/network-proxy.js";
 import {
   getVideoProvider,
   resolveVideoProviderName,
@@ -111,9 +112,11 @@ registerExecutor(
           throw new Error("Invalid data URI: no comma separator");
         buffer = Buffer.from(generated.url.slice(commaIdx + 1), "base64");
       } else {
-        const response = await fetch(generated.url, {
-          signal: ctx.signal ?? null,
-        });
+        const response = await withProviderProxy(generated.networkProxy, () =>
+          fetch(generated.url, {
+            signal: ctx.signal ?? null,
+          }),
+        );
         if (!response.ok) {
           throw new Error(
             `Failed to download video: ${response.status} ${response.statusText}`,

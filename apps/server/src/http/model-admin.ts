@@ -29,7 +29,7 @@ export async function registerModelAdminRoutes(
     admin: boolean,
     fn: (userId: string) => Promise<unknown>,
     messages = {
-      invalid: "请检查必填项、接口地址和模型参数。",
+      invalid: "请检查必填项、接口地址、代理和模型参数。",
       failed: "模型配置处理失败，请稍后重试。",
     },
   ) {

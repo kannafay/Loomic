@@ -1,3 +1,5 @@
+import type { ProviderProxy } from "@loomic/shared";
+
 /** Metadata describing a model supported by a provider. */
 export interface ModelInfo {
   /** Provider-scoped model ID, e.g. "google/nano-banana-pro" */
@@ -39,6 +41,8 @@ export interface ImageGenerateParams {
 }
 
 export interface GeneratedImage {
+  /** Server-only routing policy for downloading the generated media. */
+  networkProxy?: ProviderProxy | undefined;
   url: string;
   mimeType: string;
   width: number;
@@ -71,6 +75,8 @@ export interface VideoGenerateParams {
 }
 
 export interface GeneratedVideo {
+  /** Server-only routing policy for downloading the generated media. */
+  networkProxy?: ProviderProxy | undefined;
   url: string;
   mimeType: string;
   width: number;

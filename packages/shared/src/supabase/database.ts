@@ -782,6 +782,8 @@ export type Database = {
           name: string;
           preset: string;
           protocol: string;
+          proxy_mode: string;
+          proxy_url: string;
           sort_order: number;
           updated_at: string;
         };
@@ -797,6 +799,8 @@ export type Database = {
           name: string;
           preset?: string;
           protocol: string;
+          proxy_mode?: string;
+          proxy_url?: string;
           sort_order?: number;
           updated_at?: string;
         };
@@ -811,6 +815,8 @@ export type Database = {
           name?: string;
           preset?: string;
           protocol?: string;
+          proxy_mode?: string;
+          proxy_url?: string;
           sort_order?: number;
           updated_at?: string;
         };

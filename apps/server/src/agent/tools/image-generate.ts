@@ -1,5 +1,6 @@
 import { tool } from "langchain";
 import { z } from "zod";
+import { withProviderProxy } from "../../config/network-proxy.js";
 import type { ImageQuality, OutputFormat } from "../../generation/types.js";
 
 import { randomUUID } from "node:crypto";
@@ -285,10 +286,8 @@ export async function runImageGenerate(
     let imageUrl = result.url;
     if (persistImage) {
       try {
-        imageUrl = await persistImage(
-          result.url,
-          result.mimeType,
-          input.prompt,
+        imageUrl = await withProviderProxy(result.networkProxy, () =>
+          persistImage(result.url, result.mimeType, input.prompt),
         );
         lap("persist_image_done");
       } catch {

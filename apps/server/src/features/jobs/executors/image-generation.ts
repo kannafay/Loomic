@@ -1,4 +1,5 @@
 import type { ImageQualityLevel } from "@loomic/shared";
+import { withProviderProxy } from "../../../config/network-proxy.js";
 import { generateImage } from "../../../generation/image-generation.js";
 import { resolveImageProviderName } from "../../../generation/providers/registry.js";
 // Internal image generation is identical for administrators and ordinary users.
@@ -96,7 +97,9 @@ registerExecutor(
       lap(`${providerName}_call_done`);
 
       // Download the generated image from the provider CDN
-      const response = await fetch(generated.url);
+      const response = await withProviderProxy(generated.networkProxy, () =>
+        fetch(generated.url),
+      );
       if (!response.ok) {
         throw new Error(
           `Failed to download generated image from ${model}: ${response.status} ${response.statusText}`,

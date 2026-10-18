@@ -51,6 +51,7 @@ import { NetworkSettingsPanel } from "./network-settings-panel";
 import { ProviderApiKeyInput } from "./provider-api-key-input";
 import { ProviderList } from "./provider-list";
 import { ProviderModelDiscovery } from "./provider-model-discovery";
+import { ProviderNetworkSettings } from "./provider-network-settings";
 import { UsersPanel } from "./users-panel";
 
 const KINDS: Array<{ id: ModelKind; name: string }> = [
@@ -127,6 +128,7 @@ export default function AdminPage() {
       baseUrl: provider.baseUrl,
       enabled: provider.enabled,
       apiKey: "",
+      proxy: provider.proxy ?? { mode: "global", url: "" },
     });
   }, []);
   const load = useCallback(async () => {
@@ -575,6 +577,13 @@ export default function AdminPage() {
                     }
                   />
                 </div>
+                <ProviderNetworkSettings
+                  value={providerDraft.proxy}
+                  disabled={busy}
+                  onChange={(proxy) =>
+                    setProviderDraft({ ...providerDraft, proxy })
+                  }
+                />
                 <div className="-mx-5 space-y-2 border-t border-border bg-muted/20 px-5 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <Label
@@ -630,7 +639,7 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <p className="text-[11px] leading-4 text-muted-foreground">
-                    测试仅检查接口和鉴权，使用全局代理，不执行生成任务。
+                    测试按当前代理方式检查接口和鉴权，不执行生成任务。
                   </p>
                 </div>
               </form>

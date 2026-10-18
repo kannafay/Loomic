@@ -2,6 +2,10 @@ import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatOpenAI } from "@langchain/openai";
 import type { ConfiguredModel } from "@loomic/shared";
 import { LoomicGoogleChatModel } from "../../agent/google-chat-model.js";
+import {
+  providerFetch,
+  withProviderProxy,
+} from "../../config/network-proxy.js";
 import { AgnesImageProvider } from "../../generation/providers/agnes-image.js";
 import { AgnesVideoProvider } from "../../generation/providers/agnes-video.js";
 import { GoogleImageProvider } from "../../generation/providers/google-image.js";
@@ -43,15 +47,21 @@ export function configuredChatModel(
       ...tuning,
       model: model.apiModel,
       apiKey,
-      clientOptions: { baseURL: provider.baseUrl },
+      clientOptions: {
+        baseURL: provider.baseUrl,
+        fetch: providerFetch(provider.proxy),
+      },
     });
-  if (provider.protocol === "gemini")
-    return new LoomicGoogleChatModel({
+  if (provider.protocol === "gemini") {
+    const chat = new LoomicGoogleChatModel({
       ...tuning,
       model: model.apiModel,
       apiKey,
       baseUrl: provider.baseUrl,
     });
+    chat.networkProxy = provider.proxy;
+    return chat;
+  }
   return new ChatOpenAI({
     ...tuning,
     model: model.apiModel,
@@ -59,7 +69,10 @@ export function configuredChatModel(
     streaming: true,
     streamUsage: false,
     useResponsesApi: false,
-    configuration: { baseURL: provider.baseUrl },
+    configuration: {
+      baseURL: provider.baseUrl,
+      fetch: providerFetch(provider.proxy),
+    },
   });
 }
 
@@ -150,13 +163,16 @@ export async function refreshConfiguredProviders(
         catalogProvider,
         models: [info],
         generate: (params) =>
-          implementation.generate({
-            ...params,
-            model:
-              provider.protocol === "gemini" && model.adapter !== "agnes"
-                ? model.key
-                : nativeId,
-          }),
+          withProviderProxy(provider.proxy, async () => ({
+            ...(await implementation.generate({
+              ...params,
+              model:
+                provider.protocol === "gemini" && model.adapter !== "agnes"
+                  ? model.key
+                  : nativeId,
+            })),
+            networkProxy: provider.proxy,
+          })),
       });
     }
     if (model.kind === "video") {
@@ -179,7 +195,13 @@ export async function refreshConfiguredProviders(
           catalogProvider,
           models: [info],
           generate: (params) =>
-            implementation.generate({ ...params, model: nativeId }),
+            withProviderProxy(provider.proxy, async () => ({
+              ...(await implementation.generate({
+                ...params,
+                model: nativeId,
+              })),
+              networkProxy: provider.proxy,
+            })),
         });
       } else if (provider.protocol === "gemini" || model.adapter === "veo") {
         const max = info.limits.maxResolution;
@@ -206,64 +228,70 @@ export async function refreshConfiguredProviders(
           name,
           catalogProvider,
           models: [info],
-          generate: (params) => implementation.generate(params),
+          generate: (params) =>
+            withProviderProxy(provider.proxy, async () => ({
+              ...(await implementation.generate(params)),
+              networkProxy: provider.proxy,
+            })),
         });
       } else {
         videos.push({
           name,
           catalogProvider,
           models: [info],
-          generate: async (params) => {
-            // OpenAI-compatible Videos API (asynchronous create/status/content).
-            const headers = { Authorization: `Bearer ${provider.apiKey}` };
-            const size =
-              params.aspectRatio === "9:16" ? "720x1280" : "1280x720";
-            const body = new FormData();
-            body.set("model", model.apiModel);
-            body.set("prompt", params.prompt);
-            body.set("size", size);
-            body.set("seconds", String(params.duration ?? 8));
-            const response = await fetch(`${provider.baseUrl}/videos`, {
-              method: "POST",
-              headers,
-              body,
-              signal: AbortSignal.timeout(60_000),
-            });
-            if (!response.ok)
-              throw new ModelConfigError(
-                `视频任务创建失败（HTTP ${response.status}）。`,
+          generate: (params) =>
+            withProviderProxy(provider.proxy, async () => {
+              // OpenAI-compatible Videos API (asynchronous create/status/content).
+              const headers = { Authorization: `Bearer ${provider.apiKey}` };
+              const size =
+                params.aspectRatio === "9:16" ? "720x1280" : "1280x720";
+              const body = new FormData();
+              body.set("model", model.apiModel);
+              body.set("prompt", params.prompt);
+              body.set("size", size);
+              body.set("seconds", String(params.duration ?? 8));
+              const response = await fetch(`${provider.baseUrl}/videos`, {
+                method: "POST",
+                headers,
+                body,
+                signal: AbortSignal.timeout(60_000),
+              });
+              if (!response.ok)
+                throw new ModelConfigError(
+                  `视频任务创建失败（HTTP ${response.status}）。`,
+                );
+              let task = (await response.json()) as {
+                id: string;
+                status: string;
+                error?: { message?: string };
+              };
+              const deadline = Date.now() + 600_000;
+              while (task.status !== "completed") {
+                if (task.status === "failed" || Date.now() > deadline)
+                  throw new ModelConfigError("视频生成失败或超时。");
+                await new Promise((resolve) => setTimeout(resolve, 5000));
+                const status = await fetch(
+                  `${provider.baseUrl}/videos/${encodeURIComponent(task.id)}`,
+                  { headers, signal: AbortSignal.timeout(30_000) },
+                );
+                if (!status.ok)
+                  throw new ModelConfigError("视频状态查询失败。");
+                task = (await status.json()) as typeof task;
+              }
+              const content = await fetch(
+                `${provider.baseUrl}/videos/${encodeURIComponent(task.id)}/content`,
+                { headers, signal: AbortSignal.timeout(60_000) },
               );
-            let task = (await response.json()) as {
-              id: string;
-              status: string;
-              error?: { message?: string };
-            };
-            const deadline = Date.now() + 600_000;
-            while (task.status !== "completed") {
-              if (task.status === "failed" || Date.now() > deadline)
-                throw new ModelConfigError("视频生成失败或超时。");
-              await new Promise((resolve) => setTimeout(resolve, 5000));
-              const status = await fetch(
-                `${provider.baseUrl}/videos/${encodeURIComponent(task.id)}`,
-                { headers, signal: AbortSignal.timeout(30_000) },
-              );
-              if (!status.ok) throw new ModelConfigError("视频状态查询失败。");
-              task = (await status.json()) as typeof task;
-            }
-            const content = await fetch(
-              `${provider.baseUrl}/videos/${encodeURIComponent(task.id)}/content`,
-              { headers, signal: AbortSignal.timeout(60_000) },
-            );
-            if (!content.ok) throw new ModelConfigError("视频文件下载失败。");
-            const bytes = Buffer.from(await content.arrayBuffer());
-            return {
-              url: `data:video/mp4;base64,${bytes.toString("base64")}`,
-              mimeType: "video/mp4",
-              width: params.aspectRatio === "9:16" ? 720 : 1280,
-              height: params.aspectRatio === "9:16" ? 1280 : 720,
-              durationSeconds: params.duration ?? 8,
-            };
-          },
+              if (!content.ok) throw new ModelConfigError("视频文件下载失败。");
+              const bytes = Buffer.from(await content.arrayBuffer());
+              return {
+                url: `data:video/mp4;base64,${bytes.toString("base64")}`,
+                mimeType: "video/mp4",
+                width: params.aspectRatio === "9:16" ? 720 : 1280,
+                height: params.aspectRatio === "9:16" ? 1280 : 720,
+                durationSeconds: params.duration ?? 8,
+              };
+            }),
         });
       }
     }
