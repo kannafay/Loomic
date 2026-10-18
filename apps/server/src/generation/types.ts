@@ -11,6 +11,8 @@ export interface ModelInfo {
   providerName?: string;
   /** URL to the model owner's avatar/icon */
   iconUrl?: string;
+  /** Administrator-selected default for a newly created generator. */
+  isDefault?: boolean;
 }
 
 /**

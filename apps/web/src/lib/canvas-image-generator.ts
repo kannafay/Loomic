@@ -93,7 +93,7 @@ export function createImageGeneratorElement(
     type: "image-generator",
     status: "idle",
     prompt: "",
-    model: options?.model ?? "google/nano-banana-2",
+    model: options?.model ?? "",
     aspectRatio,
     quality: options?.quality ?? "hd",
   };

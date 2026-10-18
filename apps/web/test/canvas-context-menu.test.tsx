@@ -47,6 +47,58 @@ afterEach(() => {
 });
 
 describe("native canvas context menu", () => {
+  it("initializes a different image generator from its own saved settings", async () => {
+    const elements = ["first", "second"].map((id, index) => ({
+      id,
+      x: 0,
+      y: 0,
+      width: 400,
+      height: 400,
+      customData: {
+        type: "image-generator",
+        status: "idle",
+        prompt: index === 0 ? "第一个框的提示词" : "",
+        model: index === 0 ? "saved-image" : "",
+        aspectRatio: index === 0 ? "16:9" : "1:1",
+        quality: index === 0 ? "standard" : "hd",
+      },
+    }));
+    const listeners = new Set<(elements: unknown[], state: unknown) => void>();
+    let state = {
+      selectedElementIds: { first: true } as Record<string, boolean>,
+      scrollX: 0,
+      scrollY: 0,
+      zoom: { value: 1 },
+      contextMenu: null,
+    };
+    const api = {
+      getAppState: () => state,
+      getSceneElements: () => elements,
+      updateScene: vi.fn(),
+      onChange: (callback: (elements: unknown[], state: unknown) => void) => {
+        listeners.add(callback);
+        return () => listeners.delete(callback);
+      },
+    } as unknown as ExcalidrawImperativeAPI;
+    const emitChange = () => {
+      for (const callback of listeners) callback(elements, state);
+    };
+    render(<CanvasToolMenu excalidrawApi={api} accessToken="token" />);
+    act(emitChange);
+    const firstPrompt = screen.getByPlaceholderText("今天我们要创作什么");
+    expect(firstPrompt).toHaveValue("第一个框的提示词");
+    state = { ...state, selectedElementIds: { second: true } };
+    act(emitChange);
+    expect(screen.getByPlaceholderText("今天我们要创作什么")).toHaveValue("");
+    expect(
+      screen.getByRole("combobox", { name: "图片比例" }),
+    ).toHaveTextContent("1:1");
+    expect(
+      screen.getByRole("combobox", { name: "图片清晰度" }),
+    ).toHaveTextContent("2K");
+    await act(async () => {});
+  });
+
   it("immediately hides the empty hint and its shortcut while the menu is open, then restores them", async () => {
     vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
       callback(0);

@@ -574,6 +574,7 @@ export function CanvasToolMenu({
         generatorData &&
         generatorBounds && (
           <ImageGeneratorPanel
+            key={activeGeneratorId}
             hidden={contextMenuOpen}
             elementId={activeGeneratorId}
             elementBounds={generatorBounds}

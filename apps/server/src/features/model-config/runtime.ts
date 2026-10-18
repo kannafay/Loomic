@@ -73,6 +73,7 @@ export function videoMetadata(model: ConfiguredModel): VideoModelInfo {
     | undefined;
   return {
     id: model.key,
+    isDefault: model.isDefault,
     displayName: model.name,
     description: model.description,
     capabilities: {
@@ -121,6 +122,7 @@ export async function refreshConfiguredProviders(
           : undefined;
     const info = {
       id: model.key,
+      isDefault: model.isDefault,
       displayName: model.name,
       description: model.description,
       providerId: provider.id,

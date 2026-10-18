@@ -77,6 +77,7 @@ it("routes a configured Agnes image model by its saved API ID and advertises its
   expect(getAvailableImageModels()).toEqual([
     expect.objectContaining({
       id: model.key,
+      isDefault: true,
       displayName: model.name,
       provider: "agnes",
       providerId: provider.id,

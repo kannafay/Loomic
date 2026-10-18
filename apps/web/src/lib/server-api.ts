@@ -435,6 +435,7 @@ export type ImageModelInfo = {
   providerId?: string;
   providerName?: string;
   iconUrl?: string;
+  isDefault?: boolean;
   creditCost?: number;
   accessible?: boolean;
   minTier?: string;
@@ -465,6 +466,7 @@ export type VideoModelInfo = {
   providerId?: string;
   providerName?: string;
   iconUrl?: string;
+  isDefault?: boolean;
   creditCost?: number;
   accessible?: boolean;
   minTier?: string;

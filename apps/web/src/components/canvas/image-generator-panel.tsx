@@ -74,6 +74,10 @@ export function ImageGeneratorPanel({
   const [loading, setLoading] = useState(data.status === "generating");
   const [error, setError] = useState<string | null>(data.errorMessage ?? null);
   const [models, setModels] = useState<ImageModelInfo[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsLoadError, setModelsLoadError] = useState(false);
+  const modelRef = useRef(model);
+  modelRef.current = model;
   const [refImages, setRefImages] = useState<
     Array<{ id: string; dataUrl: string; file: File }>
   >([]);
@@ -89,17 +93,38 @@ export function ImageGeneratorPanel({
   // Fetch available models with error logging
   useEffect(() => {
     let cancelled = false;
+    setModelsLoading(true);
+    setModelsLoadError(false);
     fetchImageModels()
       .then((r) => {
-        if (!cancelled) setModels(r.models);
+        if (cancelled) return;
+        setModels(r.models);
+        const current = modelRef.current;
+        if (r.models.some((candidate) => candidate.id === current)) return;
+        // Older unconfigured generators used this fixed default; do not replace
+        // other saved choices when an administrator disables their model.
+        if (current && current !== "google/nano-banana-2") return;
+        const initial =
+          r.models.find((candidate) => candidate.isDefault) ?? r.models[0];
+        if (!initial) return;
+        modelRef.current = initial.id;
+        setModel(initial.id);
+        updateImageGeneratorElement(excalidrawApi, elementId, {
+          model: initial.id,
+        });
       })
       .catch((err) => {
+        if (cancelled) return;
+        setModelsLoadError(true);
         console.warn("[image-gen] Failed to fetch models:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setModelsLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [excalidrawApi, elementId]);
 
   // Cancel in-flight generation on unmount to prevent memory leaks
   useEffect(() => {
@@ -122,6 +147,14 @@ export function ImageGeneratorPanel({
   const screenY = (elementBounds.y + elementBounds.height + scrollY) * zoom + 8;
 
   const currentModel = models.find((m) => m.id === model);
+  const modelLabel = modelsLoading
+    ? "正在加载模型…"
+    : (currentModel?.displayName ??
+      (modelsLoadError
+        ? "模型加载失败"
+        : models.length
+          ? "请选择模型"
+          : "暂无可用模型"));
 
   const handleAspectRatioChange = useCallback(
     (ratio: string) => {
@@ -151,7 +184,7 @@ export function ImageGeneratorPanel({
   );
 
   const handleGenerate = useCallback(async () => {
-    if (!prompt.trim() || loading) return;
+    if (!prompt.trim() || loading || modelsLoading || !currentModel) return;
 
     // Cancel any previous in-flight request
     abortRef.current?.abort();
@@ -227,6 +260,8 @@ export function ImageGeneratorPanel({
   }, [
     prompt,
     loading,
+    modelsLoading,
+    currentModel,
     model,
     aspectRatio,
     quality,
@@ -278,7 +313,7 @@ export function ImageGeneratorPanel({
             onValueChange={(value) => {
               if (value) handleModelChange(value);
             }}
-            disabled={loading || !models.length}
+            disabled={loading || modelsLoading || !models.length}
             items={models.map((candidate) => ({
               value: candidate.id,
               label: candidate.displayName,
@@ -295,9 +330,7 @@ export function ImageGeneratorPanel({
                   className="size-3.5 rounded-full"
                 />
               )}
-              <SelectValue>
-                {currentModel?.displayName ?? model.split("/").pop()}
-              </SelectValue>
+              <SelectValue>{modelLabel}</SelectValue>
             </SelectTrigger>
             <SelectContent
               side="top"
@@ -458,7 +491,9 @@ export function ImageGeneratorPanel({
             type="button"
             onClick={() => void handleGenerate()}
             aria-label={loading ? "正在生成图片" : "生成图片"}
-            disabled={!prompt.trim() || loading}
+            disabled={
+              !prompt.trim() || loading || modelsLoading || !currentModel
+            }
             className="flex h-8 min-w-12 items-center justify-center gap-1 rounded-full bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/80 hover:accent-glow disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
           >
             {loading ? (
