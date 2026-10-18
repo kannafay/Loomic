@@ -729,14 +729,14 @@ export function VideoGeneratorPanel({
                 />
               )}
               <SelectValue>
-                {modelsLoading
-                  ? "正在加载模型…"
-                  : (currentModel?.displayName ??
-                    (modelsLoadError
+                {currentModel?.displayName ??
+                  (modelsLoading
+                    ? "正在加载模型…"
+                    : modelsLoadError
                       ? "模型加载失败"
                       : models.length
                         ? "请选择模型"
-                        : "暂无可用模型"))}
+                        : "暂无可用模型")}
               </SelectValue>
             </SelectTrigger>
             <SelectContent

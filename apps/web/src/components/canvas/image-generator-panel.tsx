@@ -148,14 +148,15 @@ export function ImageGeneratorPanel({
   const screenY = (elementBounds.y + elementBounds.height + scrollY) * zoom + 8;
 
   const currentModel = models.find((m) => m.id === model);
-  const modelLabel = modelsLoading
-    ? "正在加载模型…"
-    : (currentModel?.displayName ??
-      (modelsLoadError
+  const modelLabel =
+    currentModel?.displayName ??
+    (modelsLoading
+      ? "正在加载模型…"
+      : modelsLoadError
         ? "模型加载失败"
         : models.length
           ? "请选择模型"
-          : "暂无可用模型"));
+          : "暂无可用模型");
 
   const handleAspectRatioChange = useCallback(
     (ratio: string) => {

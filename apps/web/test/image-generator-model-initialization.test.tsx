@@ -170,6 +170,34 @@ it("groups image models by saved provider identity and keeps the catalog order w
   expect(requests.generate).not.toHaveBeenCalled();
 });
 
+it("keeps the model name and icon visible while refreshing the open menu", async () => {
+  const fixture = generator("configured/google");
+  const selector = screen.getByRole("combobox", { name: "图片模型" });
+  await waitFor(() => expect(selector).toHaveTextContent("Nano Banana 2"));
+  const icon = selector.querySelector("img");
+  let finish!: (result: { models: ImageModelInfo[] }) => void;
+  requests.catalog.mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const user = userEvent.setup();
+  await user.click(selector);
+  expect(selector).toHaveTextContent("Nano Banana 2");
+  expect(selector.querySelector("img")).toBe(icon);
+  await user.click(screen.getByRole("option", { name: "团队默认图片模型" }));
+  expect(selector).toHaveTextContent("团队默认图片模型");
+  expect(fixture.saved()?.model).toBe("configured/agnes");
+  await act(async () =>
+    finish({
+      models: [models[0], { ...models[1], displayName: "更新后的图片模型" }],
+    }),
+  );
+  expect(selector).toHaveTextContent("更新后的图片模型");
+  expect(fixture.saved()?.model).toBe("configured/agnes");
+  expect(requests.generate).not.toHaveBeenCalled();
+});
+
 it.each([undefined, "google/nano-banana-2"])(
   "initializes a new or legacy default (%s) with the personal model and icon before generation",
   async (initial) => {

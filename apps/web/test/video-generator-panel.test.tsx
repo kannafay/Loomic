@@ -1,6 +1,7 @@
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@testing-library/jest-dom/vitest";
 import {
+  act,
   cleanup,
   render,
   screen,
@@ -184,6 +185,34 @@ it("groups video models by configured account in catalog order and preserves the
     ).toEqual([["Veo 3.1"], ["备用模型"], ["Agnes Z", "Agnes A"]]),
   );
   expect(selector).toHaveTextContent("Veo 3.1");
+  expect(generateVideoDirect).not.toHaveBeenCalled();
+});
+
+it("keeps the model name and icon visible while refreshing the open menu", async () => {
+  const current = { ...model, iconUrl: "/providers/google.svg" };
+  vi.mocked(fetchVideoModels).mockResolvedValue({ models: [current, agnes] });
+  panel();
+  const selector = screen.getByRole("combobox", { name: "视频模型" });
+  await waitFor(() => expect(selector).toHaveTextContent("Veo 3.1"));
+  const icon = selector.querySelector("img");
+  let finish!: (result: { models: VideoModelInfo[] }) => void;
+  vi.mocked(fetchVideoModels).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const user = userEvent.setup();
+  await user.click(selector);
+  expect(selector).toHaveTextContent("Veo 3.1");
+  expect(selector.querySelector("img")).toBe(icon);
+  await user.click(screen.getByRole("option", { name: "Agnes Video 2.5" }));
+  expect(selector).toHaveTextContent("Agnes Video 2.5");
+  await act(async () =>
+    finish({
+      models: [current, { ...agnes, displayName: "更新后的视频模型" }],
+    }),
+  );
+  expect(selector).toHaveTextContent("更新后的视频模型");
   expect(generateVideoDirect).not.toHaveBeenCalled();
 });
 
