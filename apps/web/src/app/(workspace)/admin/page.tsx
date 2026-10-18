@@ -884,10 +884,10 @@ export default function AdminPage() {
                         <TabsTrigger
                           key={item.id}
                           value={item.id}
-                          className="gap-1 px-1.5 text-xs sm:gap-1.5 sm:px-3"
+                          className="min-w-0 gap-1 px-1.5 text-xs sm:px-3"
                         >
                           {item.name}
-                          <span className="min-w-3 rounded bg-background/70 px-0.5 py-0.5 text-center text-[10px] leading-3 text-muted-foreground tabular-nums sm:min-w-4 sm:px-1">
+                          <span className="text-[10px] tabular-nums text-muted-foreground">
                             {item.id === "all"
                               ? providerModels.length
                               : providerModels.filter(
