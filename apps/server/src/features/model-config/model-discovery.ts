@@ -28,6 +28,19 @@ const strings = (value: unknown): string[] =>
     ? value.filter((item): item is string => typeof item === "string")
     : [];
 
+function fallbackModelName(id: string): string {
+  return (
+    id
+      .replace(/[-_]+/g, " ")
+      .replace(/\b[a-z]+/g, (word) =>
+        /^(?:gpt|tts|stt|asr|llm|vl|hd)$/.test(word)
+          ? word.toUpperCase()
+          : word.charAt(0).toUpperCase() + word.slice(1),
+      )
+      .trim() || id
+  );
+}
+
 function suggestKind(
   provider: DiscoveryProvider,
   id: string,
@@ -170,7 +183,7 @@ export async function discoverProviderModels(
         (provider.protocol !== "gemini" ? string(item.name) : "");
       models.set(id, {
         apiModel: id,
-        name: safeText(displayName || id, 120),
+        name: safeText(displayName || fallbackModelName(id), 120),
         description: safeText(string(item.description), 2000),
         kind: suggestKind(provider, id, item),
       });

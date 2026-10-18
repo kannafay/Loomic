@@ -176,7 +176,7 @@ describe("provider model discovery", () => {
       });
     },
   );
-  it("classifies current Agnes model IDs without adding preset names or models", async () => {
+  it("classifies live Agnes model IDs and keeps upstream names without adding preset models", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
@@ -205,7 +205,7 @@ describe("provider model discovery", () => {
     expect(result.models).toEqual([
       {
         apiModel: "agnes-next-flash",
-        name: "agnes-next-flash",
+        name: "Agnes Next Flash",
         description: "",
         kind: "text",
       },
@@ -217,10 +217,44 @@ describe("provider model discovery", () => {
       },
       {
         apiModel: "agnes-video-next",
-        name: "agnes-video-next",
+        name: "Agnes Video Next",
         description: "",
         kind: "video",
       },
+    ]);
+  });
+  it("formats missing names while preserving model IDs, versions and upstream labels", async () => {
+    const entries = [
+      { id: "agnes-2.5-flash" },
+      { id: "agnes-3.0-flash", name: " " },
+      { id: "agnes-image-2.1-flash", display_name: "" },
+      { id: "agnes-image-2.5-flash", displayName: null },
+      { id: "agnes-video-2.5-flash" },
+      { id: "gpt-4.1-mini" },
+      { id: "tts_1_hd" },
+      { id: "team/DeepSeek-v3.2" },
+      { id: "custom-model", name: "我的自定义模型" },
+      { id: "labelled-model", displayName: "official-label-v2" },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json({ data: entries })),
+    );
+    const result = await discoverProviderModels(provider);
+    expect(result.models.map((model) => model.apiModel)).toEqual(
+      entries.map((entry) => entry.id),
+    );
+    expect(result.models.map((model) => model.name)).toEqual([
+      "Agnes 2.5 Flash",
+      "Agnes 3.0 Flash",
+      "Agnes Image 2.1 Flash",
+      "Agnes Image 2.5 Flash",
+      "Agnes Video 2.5 Flash",
+      "GPT 4.1 Mini",
+      "TTS 1 HD",
+      "Team/DeepSeek V3.2",
+      "我的自定义模型",
+      "official-label-v2",
     ]);
   });
   it("prefers live modality metadata over model ID heuristics", async () => {
