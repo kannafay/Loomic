@@ -121,7 +121,9 @@ export class GoogleImageProvider implements ImageProvider {
 
     if (params.inputImages?.length) {
       const fetched = await Promise.all(
-        params.inputImages.map((url) => fetchAsBase64(PROVIDER_NAME, url)),
+        params.inputImages.map((url) =>
+          fetchAsBase64(PROVIDER_NAME, url, params.signal),
+        ),
       );
       for (const img of fetched) {
         parts.push({
@@ -136,6 +138,7 @@ export class GoogleImageProvider implements ImageProvider {
         model: apiModel,
         contents: [{ role: "user", parts }],
         config: {
+          ...(params.signal ? { abortSignal: params.signal } : {}),
           responseModalities: ["IMAGE"],
           imageConfig: {
             aspectRatio,
@@ -144,6 +147,7 @@ export class GoogleImageProvider implements ImageProvider {
         },
       });
     } catch (err) {
+      params.signal?.throwIfAborted();
       throw new GenerationError(
         PROVIDER_NAME,
         "api_error",

@@ -37,7 +37,9 @@ export function aspectRatioToDimensions(
 export async function fetchAsBase64(
   providerName: string,
   url: string,
+  signal?: AbortSignal,
 ): Promise<{ data: string; mimeType: string }> {
+  signal?.throwIfAborted();
   // Already a data URI — extract inline.
   if (url.startsWith("data:")) {
     const match = url.match(/^data:([^;]+);base64,(.+)$/);
@@ -54,8 +56,9 @@ export async function fetchAsBase64(
   // HTTP(S) URL — fetch and convert.
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await fetch(url, { signal: signal ?? null });
   } catch (err) {
+    signal?.throwIfAborted();
     throw new GenerationError(
       providerName,
       "input_fetch_error",

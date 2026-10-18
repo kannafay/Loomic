@@ -115,7 +115,9 @@ export class GoogleVertexImageProvider implements ImageProvider {
 
     if (params.inputImages?.length) {
       const fetched = await Promise.all(
-        params.inputImages.map((url) => fetchAsBase64(PROVIDER_NAME, url)),
+        params.inputImages.map((url) =>
+          fetchAsBase64(PROVIDER_NAME, url, params.signal),
+        ),
       );
       for (const img of fetched) {
         parts.push({
@@ -128,29 +130,25 @@ export class GoogleVertexImageProvider implements ImageProvider {
     const VERTEX_IMAGE_TIMEOUT = 120_000;
     let response: GenerateContentResponse;
     try {
-      response = await Promise.race([
-        this.client.models.generateContent({
-          model: apiModel,
-          contents: [{ role: "user", parts }],
-          config: {
-            responseModalities: ["IMAGE"],
-            imageConfig: {
-              aspectRatio,
-              imageSize,
-            },
+      response = await this.client.models.generateContent({
+        model: apiModel,
+        contents: [{ role: "user", parts }],
+        config: {
+          abortSignal: params.signal
+            ? AbortSignal.any([
+                params.signal,
+                AbortSignal.timeout(VERTEX_IMAGE_TIMEOUT),
+              ])
+            : AbortSignal.timeout(VERTEX_IMAGE_TIMEOUT),
+          responseModalities: ["IMAGE"],
+          imageConfig: {
+            aspectRatio,
+            imageSize,
           },
-        }),
-        new Promise<never>((_, reject) =>
-          setTimeout(
-            () =>
-              reject(
-                new Error("Vertex AI image generation timed out after 120s"),
-              ),
-            VERTEX_IMAGE_TIMEOUT,
-          ),
-        ),
-      ]);
+        },
+      });
     } catch (err) {
+      params.signal?.throwIfAborted();
       throw new GenerationError(
         PROVIDER_NAME,
         "api_error",

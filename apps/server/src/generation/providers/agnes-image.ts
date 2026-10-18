@@ -49,7 +49,7 @@ export class AgnesImageProvider implements ImageProvider {
       // Inline inputs also work with local Supabase: Agnes never has to fetch a private URL.
       const images = await Promise.all(
         (params.inputImages ?? []).map(async (url) => {
-          const input = await fetchAsBase64(this.name, url);
+          const input = await fetchAsBase64(this.name, url, params.signal);
           return `data:${input.mimeType};base64,${input.data}`;
         }),
       );
@@ -57,6 +57,7 @@ export class AgnesImageProvider implements ImageProvider {
         "images/generations",
         {
           method: "POST",
+          signal: params.signal ?? null,
           body: JSON.stringify({
             model: params.model.slice("agnes/".length),
             prompt: params.prompt,
@@ -87,7 +88,9 @@ export class AgnesImageProvider implements ImageProvider {
         );
       } else if (typeof image?.url === "string" && image.url) {
         const response = await fetch(image.url, {
-          signal: AbortSignal.timeout(60_000),
+          signal: params.signal
+            ? AbortSignal.any([params.signal, AbortSignal.timeout(60_000)])
+            : AbortSignal.timeout(60_000),
         });
         if (!response.ok)
           throw new AgnesApiError("no_output", "Agnes 图片下载失败。");
@@ -111,6 +114,7 @@ export class AgnesImageProvider implements ImageProvider {
         height: metadata.height,
       };
     } catch (error) {
+      params.signal?.throwIfAborted();
       if (error instanceof GenerationError) throw error;
       throw new AgnesApiError(
         "api_error",

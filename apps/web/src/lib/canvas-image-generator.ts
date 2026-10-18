@@ -31,7 +31,7 @@ export type ImageGeneratorData = {
   aspectRatio: string;
   quality: string;
   inputImages?: string[];
-  errorMessage?: string;
+  errorMessage?: string | undefined;
 };
 
 function generateId(): string {

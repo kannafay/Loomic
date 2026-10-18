@@ -38,9 +38,12 @@ export class AgnesClient {
           Authorization: `Bearer ${this.apiKey.trim()}`,
           "Content-Type": "application/json",
         },
-        signal: AbortSignal.timeout(timeoutMs),
+        signal: init.signal
+          ? AbortSignal.any([init.signal, AbortSignal.timeout(timeoutMs)])
+          : AbortSignal.timeout(timeoutMs),
       });
     } catch (error) {
+      init.signal?.throwIfAborted();
       const timedOut =
         error instanceof Error &&
         ["TimeoutError", "AbortError"].includes(error.name);

@@ -26,6 +26,7 @@ export type ImageQuality = "standard" | "hd" | "ultra";
 export type OutputFormat = "png" | "jpg" | "webp";
 
 export interface ImageGenerateParams {
+  signal?: AbortSignal;
   prompt: string;
   model: string;
   aspectRatio?: string;

@@ -38,6 +38,7 @@ export class VolcesImageProvider implements ImageProvider {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
+      signal: params.signal ?? null,
     });
 
     if (!response.ok) {

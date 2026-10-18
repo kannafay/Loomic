@@ -520,11 +520,13 @@ export async function generateImageDirect(
   accessToken: string,
   prompt: string,
   options?: { model?: string; aspectRatio?: string; quality?: string },
+  signal?: AbortSignal,
 ): Promise<GenerateImageResponse> {
   const response = await fetch(
     `${getServerBaseUrl()}/api/agent/generate-image`,
     {
       method: "POST",
+      signal: signal ?? null,
       headers: authJsonHeaders(accessToken),
       body: JSON.stringify({
         prompt,

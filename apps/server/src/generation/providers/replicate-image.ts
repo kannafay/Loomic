@@ -324,7 +324,9 @@ export class ReplicateImageProvider implements ImageProvider {
           Prefer: "wait",
         },
         body: JSON.stringify({ input }),
-        signal: AbortSignal.timeout(120_000), // 120s — guard against Replicate hanging
+        signal: params.signal
+          ? AbortSignal.any([params.signal, AbortSignal.timeout(120_000)])
+          : AbortSignal.timeout(120_000),
       },
     );
 

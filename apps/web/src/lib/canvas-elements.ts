@@ -127,10 +127,13 @@ export function createExcalidrawImageElement(opts: {
  * Fetch an image URL and convert it to a data URL string.
  * Routes through the server proxy to bypass browser CORS restrictions.
  */
-export async function fetchAsDataURL(url: string): Promise<string> {
+export async function fetchAsDataURL(
+  url: string,
+  signal?: AbortSignal,
+): Promise<string> {
   const proxyUrl = `${getServerBaseUrl()}/api/proxy-image?url=${encodeURIComponent(url)}`;
 
-  const response = await fetch(proxyUrl);
+  const response = await fetch(proxyUrl, { signal: signal ?? null });
   if (!response.ok) {
     throw new Error(`图片加载失败：${response.status}`);
   }

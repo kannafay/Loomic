@@ -85,7 +85,6 @@ function generator(model?: string) {
       accessToken="token"
       elementBounds={{ x: 0, y: 0, width: 400, height: 400 }}
       canvasScrollZoom={{ scrollX: 0, scrollY: 0, zoom: 1 }}
-      onClose={vi.fn()}
     />,
   );
   return {
@@ -123,6 +122,7 @@ it.each([undefined, "google/nano-banana-2"])(
       "token",
       "雪山日出",
       { model: "configured/agnes", aspectRatio: "1:1", quality: "hd" },
+      expect.any(AbortSignal),
     );
   },
 );

@@ -54,6 +54,7 @@ describe("OpenAIImageProvider", () => {
         quality: "high",
         output_format: "png",
       }),
+      undefined,
     );
     expect(result).toEqual({
       url: `data:image/png;base64,${png.toString("base64")}`,
@@ -94,6 +95,7 @@ describe("OpenAIImageProvider", () => {
           }),
         ],
       }),
+      undefined,
     );
   });
 

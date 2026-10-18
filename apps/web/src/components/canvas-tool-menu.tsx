@@ -22,6 +22,7 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { isVideoUrl } from "../lib/canvas-elements";
+import { stopCanvasImageGenerations } from "../lib/canvas-image-generation";
 import {
   type ImageGeneratorData,
   createImageGeneratorElement,
@@ -258,6 +259,11 @@ export function CanvasToolMenu({
   // careful to avoid unnecessary state updates that trigger re-renders.
   useEffect(() => {
     if (!excalidrawApi) return;
+    return () => stopCanvasImageGenerations(excalidrawApi);
+  }, [excalidrawApi]);
+
+  useEffect(() => {
+    if (!excalidrawApi) return;
     setContextMenuOpen(Boolean(excalidrawApi.getAppState().contextMenu));
 
     const unsubscribe = excalidrawApi.onChange(
@@ -296,6 +302,11 @@ export function CanvasToolMenu({
           const sel = selectedElements[0];
 
           if (isImageGeneratorElement(sel)) {
+            setGeneratorData((previous) =>
+              previous === sel.customData
+                ? previous
+                : getImageGeneratorData(sel),
+            );
             // Only update if the selected generator changed
             if (currentId !== sel.id) {
               const data = getImageGeneratorData(sel);
@@ -453,12 +464,6 @@ export function CanvasToolMenu({
     }
   }, [excalidrawApi]);
 
-  const handleCloseGenerator = useCallback(() => {
-    setActiveGeneratorId(null);
-    setGeneratorData(null);
-    setGeneratorBounds(null);
-  }, []);
-
   const handleCreateVideoGenerator = useCallback(() => {
     if (!excalidrawApi) return;
     const videoId = createVideoGeneratorElement(excalidrawApi, {
@@ -582,7 +587,6 @@ export function CanvasToolMenu({
             excalidrawApi={excalidrawApi}
             accessToken={accessToken}
             canvasScrollZoom={canvasScrollZoom}
-            onClose={handleCloseGenerator}
           />
         )}
 

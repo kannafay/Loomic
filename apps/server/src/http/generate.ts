@@ -91,12 +91,22 @@ export async function registerGenerateRoutes(
       );
     }
 
-    const model = options.modelConfigService
-      ? (await options.modelConfigService.resolve("image", payload.model)).model
-          .key
-      : (payload.model ?? "black-forest-labs/flux-kontext-pro");
+    const controller = new AbortController();
+    const { signal } = controller;
+    const onDisconnect = () => {
+      // IncomingMessage.close also fires after reading a normal POST body.
+      // The response closing before it has ended identifies a disconnected client.
+      if (!reply.raw.writableEnded) controller.abort();
+    };
+    reply.raw.on("close", onDisconnect);
+    if (reply.raw.destroyed || request.raw.aborted) controller.abort();
 
     try {
+      const model = options.modelConfigService
+        ? (await options.modelConfigService.resolve("image", payload.model))
+            .model.key
+        : (payload.model ?? "black-forest-labs/flux-kontext-pro");
+      signal.throwIfAborted();
       // ── Tier guard + credit checks ──
       const viewer = await options.viewerService.ensureViewer(user);
       let creditsCost = 0;
@@ -129,12 +139,15 @@ export async function registerGenerateRoutes(
       }
 
       const providerName = resolveImageProviderName(model);
+      signal.throwIfAborted();
       const result = await generateImage(providerName, {
+        signal,
         prompt: payload.prompt,
         model,
         aspectRatio: payload.aspectRatio ?? "1:1",
         ...(payload.quality ? { quality: payload.quality } : {}),
       });
+      signal.throwIfAborted();
 
       // Download and persist to Supabase Storage
       const { signedUrl, assetId } = await downloadAndUpload(
@@ -143,7 +156,9 @@ export async function registerGenerateRoutes(
         payload.prompt,
         user,
         options,
+        signal,
       );
+      signal.throwIfAborted();
 
       return reply.code(200).send({
         url: signedUrl,
@@ -154,6 +169,11 @@ export async function registerGenerateRoutes(
         height: result.height,
       });
     } catch (error) {
+      if (signal.aborted) {
+        return reply
+          .code(499)
+          .send({ error: { code: "cancelled", message: "已停止生成图片。" } });
+      }
       // Handle tier/credit errors
       if (error instanceof TierGuardError) {
         return reply.code(error.statusCode).send(
@@ -192,6 +212,8 @@ export async function registerGenerateRoutes(
           },
         }),
       );
+    } finally {
+      reply.raw.off("close", onDisconnect);
     }
   });
 
@@ -605,8 +627,9 @@ async function downloadAndUpload(
   prompt: string,
   user: AuthenticatedUser,
   deps: { uploadService: UploadService; viewerService: ViewerService },
+  signal?: AbortSignal,
 ): Promise<{ signedUrl: string; assetId: string }> {
-  const response = await fetch(sourceUrl);
+  const response = await fetch(sourceUrl, { signal: signal ?? null });
   if (!response.ok) {
     throw new Error(`Failed to download generated image: ${response.status}`);
   }
@@ -620,6 +643,7 @@ async function downloadAndUpload(
   const fileName = `gen-${slug}-${Date.now()}.${ext}`;
 
   const viewer = await deps.viewerService.ensureViewer(user);
+  signal?.throwIfAborted();
 
   const result = await deps.uploadService.uploadFile(user, {
     bucket: "project-assets",

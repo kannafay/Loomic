@@ -95,27 +95,37 @@ export class OpenAIImageProvider implements ImageProvider {
         output_format: "png" as const,
         n: 1,
       };
+      const requestOptions = params.signal
+        ? { signal: params.signal }
+        : undefined;
       const response = params.inputImages?.length
-        ? await this.client.images.edit({
-            ...request,
-            image: await Promise.all(
-              params.inputImages.map(async (url, index) => {
-                const { data, mimeType } = await fetchAsBase64(this.name, url);
-                const extension =
-                  mimeType === "image/webp"
-                    ? "webp"
-                    : mimeType === "image/jpeg"
-                      ? "jpg"
-                      : "png";
-                return toFile(
-                  Buffer.from(data, "base64"),
-                  `reference-${index}.${extension}`,
-                  { type: mimeType },
-                );
-              }),
-            ),
-          })
-        : await this.client.images.generate(request);
+        ? await this.client.images.edit(
+            {
+              ...request,
+              image: await Promise.all(
+                params.inputImages.map(async (url, index) => {
+                  const { data, mimeType } = await fetchAsBase64(
+                    this.name,
+                    url,
+                    params.signal,
+                  );
+                  const extension =
+                    mimeType === "image/webp"
+                      ? "webp"
+                      : mimeType === "image/jpeg"
+                        ? "jpg"
+                        : "png";
+                  return toFile(
+                    Buffer.from(data, "base64"),
+                    `reference-${index}.${extension}`,
+                    { type: mimeType },
+                  );
+                }),
+              ),
+            },
+            requestOptions,
+          )
+        : await this.client.images.generate(request, requestOptions);
 
       const base64 = response.data?.[0]?.b64_json;
       if (!base64) {
@@ -140,6 +150,7 @@ export class OpenAIImageProvider implements ImageProvider {
         height: metadata.height,
       };
     } catch (error) {
+      params.signal?.throwIfAborted();
       if (error instanceof GenerationError) throw error;
       throw new GenerationError(
         "openai",

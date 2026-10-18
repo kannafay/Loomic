@@ -1,7 +1,5 @@
 "use client";
 
-import type { BinaryFileData } from "@excalidraw/excalidraw/types";
-
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import {
@@ -16,22 +14,23 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
-import { ImageUp } from "lucide-react";
+import { ImageUp, Square } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { useGenerationErrorHandler } from "../../hooks/use-generation-error-handler";
 import {
-  createExcalidrawImageElement,
-  fetchAsDataURL,
-} from "../../lib/canvas-elements";
+  generateCanvasImage,
+  isCanvasImageGenerating,
+  stopCanvasImageGeneration,
+} from "../../lib/canvas-image-generation";
 import {
   type ImageGeneratorData,
   resizeImageGeneratorElement,
   updateImageGeneratorElement,
 } from "../../lib/canvas-image-generator";
 import type { ImageModelInfo } from "../../lib/server-api";
-import { fetchImageModels, generateImageDirect } from "../../lib/server-api";
+import { fetchImageModels } from "../../lib/server-api";
 
 type ImageGeneratorPanelProps = {
   hidden?: boolean;
@@ -41,7 +40,6 @@ type ImageGeneratorPanelProps = {
   excalidrawApi: ExcalidrawImperativeAPI;
   accessToken: string;
   canvasScrollZoom: { scrollX: number; scrollY: number; zoom: number };
-  onClose: () => void;
 };
 
 const ASPECT_RATIOS = ["1:1", "16:9", "9:16", "4:3", "3:4"] as const;
@@ -65,7 +63,6 @@ export function ImageGeneratorPanel({
   excalidrawApi,
   accessToken,
   canvasScrollZoom,
-  onClose,
 }: ImageGeneratorPanelProps) {
   const [prompt, setPrompt] = useState(data.prompt);
   const [model, setModel] = useState(data.model);
@@ -87,8 +84,6 @@ export function ImageGeneratorPanel({
   const accessTokenRef = useRef(accessToken);
   accessTokenRef.current = accessToken;
   const { handleGenerationError } = useGenerationErrorHandler();
-  // AbortController for in-flight generation requests so we can cancel on unmount
-  const abortRef = useRef<AbortController | null>(null);
 
   // Fetch available models with error logging
   useEffect(() => {
@@ -126,12 +121,10 @@ export function ImageGeneratorPanel({
     };
   }, [excalidrawApi, elementId]);
 
-  // Cancel in-flight generation on unmount to prevent memory leaks
   useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
+    setLoading(data.status === "generating");
+    setError(data.errorMessage ?? null);
+  }, [data.status, data.errorMessage]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -159,7 +152,12 @@ export function ImageGeneratorPanel({
   const handleAspectRatioChange = useCallback(
     (ratio: string) => {
       setAspectRatio(ratio);
-      resizeImageGeneratorElement(excalidrawApi, elementId, ratio);
+      const element = excalidrawApi
+        .getSceneElements()
+        .find((el) => el.id === elementId);
+      if (element?.type !== "image") {
+        resizeImageGeneratorElement(excalidrawApi, elementId, ratio);
+      }
       updateImageGeneratorElement(excalidrawApi, elementId, {
         aspectRatio: ratio,
       });
@@ -186,76 +184,21 @@ export function ImageGeneratorPanel({
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim() || loading || modelsLoading || !currentModel) return;
 
-    // Cancel any previous in-flight request
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     setLoading(true);
     setError(null);
-    updateImageGeneratorElement(excalidrawApi, elementId, {
-      status: "generating",
-      prompt: prompt.trim(),
-      model,
-      aspectRatio,
-      quality,
-    });
-
     try {
-      const result = await generateImageDirect(
+      await generateCanvasImage(
+        excalidrawApi,
+        elementId,
         accessTokenRef.current,
-        prompt.trim(),
-        { model, aspectRatio, quality },
+        { prompt: prompt.trim(), model, aspectRatio, quality },
       );
-
-      // Check if this generation was cancelled while awaiting
-      if (controller.signal.aborted) return;
-
-      // Download and insert as real image element at same position
-      const dataURL = await fetchAsDataURL(result.url);
-      if (controller.signal.aborted) return;
-
-      const fileId = generateId();
-      excalidrawApi.addFiles([
-        {
-          id: fileId as BinaryFileData["id"],
-          dataURL: dataURL as BinaryFileData["dataURL"],
-          mimeType: result.mimeType as BinaryFileData["mimeType"],
-          created: Date.now(),
-        },
-      ]);
-
-      const imageElement = createExcalidrawImageElement({
-        fileId,
-        x: elementBounds.x,
-        y: elementBounds.y,
-        width: elementBounds.width,
-        height: elementBounds.height,
-        title: prompt.trim().slice(0, 60),
-      });
-
-      // Replace: delete placeholder, add image
-      const elements = excalidrawApi.getSceneElements().map((el) => {
-        if (el.id === elementId) return { ...el, isDeleted: true };
-        return el;
-      });
-      excalidrawApi.updateScene({
-        elements: [...elements, imageElement],
-        captureUpdate: "IMMEDIATELY",
-      });
-
-      onClose();
     } catch (err) {
-      // Ignore aborted requests (user cancelled or component unmounted)
-      if (controller.signal.aborted) return;
-
       console.error("[image-gen] Generation error:", err);
       handleGenerationError(err, "图片生成失败，请重试或更换模型。");
-      setLoading(false);
-      updateImageGeneratorElement(excalidrawApi, elementId, {
-        status: "error",
-        errorMessage: "生成失败",
-      });
+      setError("生成失败，请重试或更换模型。");
+    } finally {
+      if (!isCanvasImageGenerating(excalidrawApi, elementId)) setLoading(false);
     }
   }, [
     prompt,
@@ -267,10 +210,14 @@ export function ImageGeneratorPanel({
     quality,
     excalidrawApi,
     elementId,
-    elementBounds,
-    onClose,
     handleGenerationError,
   ]);
+
+  const handleStop = () => {
+    stopCanvasImageGeneration(excalidrawApi, elementId);
+    setLoading(false);
+    setError(null);
+  };
 
   return createPortal(
     <div
@@ -286,6 +233,14 @@ export function ImageGeneratorPanel({
         ref={textareaRef}
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
+        onBlur={() => {
+          const element = excalidrawApi
+            .getSceneElements()
+            .find((el) => el.id === elementId);
+          if (element?.customData?.prompt !== prompt) {
+            updateImageGeneratorElement(excalidrawApi, elementId, { prompt });
+          }
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -387,6 +342,7 @@ export function ImageGeneratorPanel({
             variant="ghost"
             type="button"
             onClick={() => refInputRef.current?.click()}
+            disabled={loading}
             className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-muted ${
               refImages.length > 0
                 ? "text-foreground"
@@ -489,15 +445,16 @@ export function ImageGeneratorPanel({
             size="icon"
             variant="default"
             type="button"
-            onClick={() => void handleGenerate()}
-            aria-label={loading ? "正在生成图片" : "生成图片"}
+            onClick={() => (loading ? handleStop() : void handleGenerate())}
+            aria-label={loading ? "停止生成图片" : "生成图片"}
+            title={loading ? "停止生成" : "生成图片"}
             disabled={
-              !prompt.trim() || loading || modelsLoading || !currentModel
+              !loading && (!prompt.trim() || modelsLoading || !currentModel)
             }
             className="flex h-8 min-w-12 items-center justify-center gap-1 rounded-full bg-primary p-2 text-primary-foreground transition-colors hover:bg-primary/80 hover:accent-glow disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
           >
             {loading ? (
-              <div className="h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-white/30 border-t-white" />
+              <Square className="size-3.5" fill="currentColor" />
             ) : (
               <svg
                 aria-hidden="true"
