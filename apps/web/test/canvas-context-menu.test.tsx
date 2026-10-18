@@ -8,6 +8,9 @@ import { CanvasEmptyHint } from "../src/components/canvas-empty-hint";
 import { CanvasToolMenu } from "../src/components/canvas-tool-menu";
 
 vi.mock("../src/lib/server-api", () => ({
+  fetchModelPreferences: async () => ({
+    preferences: { image: null, video: null },
+  }),
   fetchVideoModels: async () => ({
     models: [
       {

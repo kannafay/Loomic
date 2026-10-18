@@ -12,3 +12,4 @@ export * from "./skill-contracts.js";
 export * from "./ws-protocol.js";
 export * from "./model-config-contracts.js";
 export * from "./admin-user-contracts.js";
+export * from "./model-preferences.js";

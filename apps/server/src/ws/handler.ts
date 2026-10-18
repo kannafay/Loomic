@@ -14,8 +14,14 @@ import type { AgentRunMetadataService } from "../features/agent-runs/agent-run-s
 import type { ViewerService } from "../features/bootstrap/ensure-user-foundation.js";
 import type { ChatService } from "../features/chat/chat-service.js";
 import type { ThreadService } from "../features/chat/thread-service.js";
-import type { ModelConfigService } from "../features/model-config/model-config-service.js";
-import type { SettingsService } from "../features/settings/settings-service.js";
+import {
+  ModelConfigError,
+  type ModelConfigService,
+} from "../features/model-config/model-config-service.js";
+import {
+  type SettingsService,
+  SettingsServiceError,
+} from "../features/settings/settings-service.js";
 import type {
   AuthenticatedUser,
   RequestAuthenticator,
@@ -195,7 +201,25 @@ async function authenticateAndBind(
           agentRuns,
           connectionManager,
           options,
-        );
+        ).catch((error) => {
+          log.warn("run_rejected", {
+            reason: error instanceof Error ? error.message : "unknown",
+          });
+          if (socket.readyState === 1)
+            socket.send(
+              JSON.stringify({
+                type: "command.ack",
+                action: "agent.run",
+                payload: {
+                  error:
+                    error instanceof ModelConfigError ||
+                    error instanceof SettingsServiceError
+                      ? error.message
+                      : "无法开始对话，请重试。",
+                },
+              }),
+            );
+        });
       } else if (msg.action === "agent.cancel") {
         log.info("run_cancel", {
           userId: authenticatedUser.id,
@@ -295,33 +319,21 @@ async function handleRunCommand(
       }
     })(),
     (async (): Promise<string | undefined> => {
-      if (!services.settingsService || !services.viewerService)
-        return undefined;
-      try {
-        const viewer =
-          await services.viewerService.ensureViewer(authenticatedUser);
-        const settings = await services.settingsService.getWorkspaceSettings(
-          authenticatedUser,
-          viewer.workspace.id,
-        );
-        return settings.defaultModel;
-      } catch (error) {
-        log.warn("model_resolve_failed", {
-          error: error instanceof Error ? error.message : String(error),
-        });
-        return undefined;
-      }
+      return services.settingsService?.resolveModelPreference(
+        authenticatedUser,
+        "text",
+        payload.model,
+      );
     })(),
   ]);
-  // Client-provided model takes priority over workspace default
+  // Client-provided model takes priority over the personal default.
   let resolvedModel = payload.model ?? model;
   if (services.modelConfigService) {
     const catalog = await services.modelConfigService.catalog();
     const preferred =
       payload.model ??
-      (catalog.models.some((m) => m.kind === "text" && m.key === model)
-        ? model
-        : undefined);
+      model ??
+      catalog.models.find((m) => m.kind === "text")?.key;
     resolvedModel = (
       await services.modelConfigService.resolve("text", preferred)
     ).model.key;

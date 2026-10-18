@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
-import { AgentSection } from "../src/components/agent-section";
+import { ModelPreferencesSection } from "../src/components/model-preferences-section";
 import { ProfileSection } from "../src/components/profile-section";
 import { ToastProvider, useToast } from "../src/components/toast";
 
@@ -93,8 +93,13 @@ it("keeps the agent model draft after a failed save and notifies again on retry"
   try {
     render(
       <ToastProvider>
-        <AgentSection
-          defaultModel="model-a"
+        <ModelPreferencesSection
+          preferences={{
+            text: "model-a",
+            audio: null,
+            image: null,
+            video: null,
+          }}
           fetchModels={vi.fn().mockResolvedValue({
             models: [
               { id: "model-a", name: "模型 A", provider: "测试提供商" },
@@ -105,20 +110,29 @@ it("keeps the agent model draft after a failed save and notifies again on retry"
         />
       </ToastProvider>,
     );
-    await user.click(await screen.findByRole("combobox", { name: "默认模型" }));
-    await user.click(
-      await screen.findByRole("option", { name: "模型 B (测试提供商)" }),
+    const selector = await screen.findByRole("combobox", {
+      name: "默认对话模型",
+    });
+    await waitFor(() => expect(selector).toBeEnabled());
+    await user.click(selector);
+    await user.click(await screen.findByRole("option", { name: "模型 B" }));
+    await user.click(screen.getByRole("button", { name: "保存偏好" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "模型偏好保存失败",
     );
-    await user.click(screen.getByRole("button", { name: "保存" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("设置更新失败");
     expect(
-      screen.getByRole("combobox", { name: "默认模型" }),
+      screen.getByRole("combobox", { name: "默认对话模型" }),
     ).toHaveTextContent("模型 B");
-    await user.click(screen.getByRole("button", { name: "保存" }));
+    await user.click(screen.getByRole("button", { name: "保存偏好" }));
     expect(await screen.findByRole("status")).toHaveTextContent(
-      "助手设置已更新",
+      "模型偏好已更新",
     );
-    expect(onSave).toHaveBeenLastCalledWith("model-b");
+    expect(onSave).toHaveBeenLastCalledWith({
+      text: "model-b",
+      audio: null,
+      image: null,
+      video: null,
+    });
   } finally {
     vi.unstubAllGlobals();
   }

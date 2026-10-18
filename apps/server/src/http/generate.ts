@@ -18,7 +18,9 @@ import type { TierGuard } from "../features/credits/tier-guard.js";
 import { TierGuardError } from "../features/credits/tier-guard.js";
 import type { JobService } from "../features/jobs/job-service.js";
 import { JobServiceError } from "../features/jobs/job-service.js";
+import { ModelConfigError } from "../features/model-config/errors.js";
 import type { ModelConfigService } from "../features/model-config/model-config-service.js";
+import type { SettingsService } from "../features/settings/settings-service.js";
 import type { UploadService } from "../features/uploads/upload-service.js";
 import { generateImage } from "../generation/image-generation.js";
 import { buildAgnesVideoRequest } from "../generation/providers/agnes-video.js";
@@ -57,6 +59,7 @@ const generateVideoRequestSchema = z.object({
 export async function registerGenerateRoutes(
   app: FastifyInstance,
   options: {
+    settingsService?: SettingsService;
     modelConfigService?: ModelConfigService;
     auth: RequestAuthenticator;
     creditService?: CreditService;
@@ -104,10 +107,16 @@ export async function registerGenerateRoutes(
     if (reply.raw.destroyed || request.raw.aborted) controller.abort();
 
     try {
-      const model = options.modelConfigService
-        ? (await options.modelConfigService.resolve("image", payload.model))
-            .model.key
-        : (payload.model ?? "black-forest-labs/flux-kontext-pro");
+      const model = options.settingsService
+        ? await options.settingsService.resolveModelPreference(
+            user,
+            "image",
+            payload.model,
+          )
+        : options.modelConfigService
+          ? (await options.modelConfigService.resolve("image", payload.model))
+              .model.key
+          : (payload.model ?? "black-forest-labs/flux-kontext-pro");
       signal.throwIfAborted();
       // ── Tier guard + credit checks ──
       const viewer = await options.viewerService.ensureViewer(user);
@@ -172,6 +181,10 @@ export async function registerGenerateRoutes(
         height: result.height,
       });
     } catch (error) {
+      if (error instanceof ModelConfigError)
+        return reply
+          .code(error.statusCode)
+          .send({ error: { code: error.code, message: error.message } });
       if (signal.aborted) {
         return reply
           .code(499)
@@ -319,10 +332,16 @@ export async function registerGenerateRoutes(
 
       try {
         signal.throwIfAborted();
-        const model = options.modelConfigService
-          ? (await options.modelConfigService.resolve("video", payload.model))
-              .model.key
-          : (payload.model ?? "google-official/veo-3.1-generate-preview");
+        const model = options.settingsService
+          ? await options.settingsService.resolveModelPreference(
+              user,
+              "video",
+              payload.model,
+            )
+          : options.modelConfigService
+            ? (await options.modelConfigService.resolve("video", payload.model))
+                .model.key
+            : (payload.model ?? "google-official/veo-3.1-generate-preview");
         // ── Tier guard + credit checks ──
         const viewer = await options.viewerService.ensureViewer(user);
         const workspaceId = viewer.workspace.id;
@@ -555,6 +574,10 @@ export async function registerGenerateRoutes(
           durationSeconds: result.duration_seconds,
         });
       } catch (error) {
+        if (error instanceof ModelConfigError)
+          return reply
+            .code(error.statusCode)
+            .send({ error: { code: error.code, message: error.message } });
         if (signal.aborted) {
           await cancel();
           return reply.code(499).send({

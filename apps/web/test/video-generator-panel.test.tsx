@@ -11,6 +11,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VideoGeneratorPanel } from "../src/components/canvas/video-generator-panel";
 import {
+  fetchModelPreferences,
   fetchVideoModels,
   fetchVideoSources,
   generateVideoDirect,
@@ -21,6 +22,7 @@ vi.mock("../src/lib/server-api", () => ({
   fetchVideoModels: vi.fn(),
   fetchVideoSources: vi.fn(),
   generateVideoDirect: vi.fn(),
+  fetchModelPreferences: vi.fn(),
 }));
 vi.mock("../src/hooks/use-generation-error-handler", () => ({
   useGenerationErrorHandler: () => ({ handleGenerationError: () => false }),
@@ -85,6 +87,9 @@ beforeEach(() => {
     },
   );
   vi.mocked(fetchVideoModels).mockResolvedValue({ models: [model] });
+  vi.mocked(fetchModelPreferences).mockResolvedValue({
+    preferences: { text: null, audio: null, image: null, video: null },
+  });
   vi.mocked(fetchVideoSources).mockResolvedValue({
     sources: [
       {
@@ -181,6 +186,32 @@ it("groups video models by configured account in catalog order and preserves the
   expect(selector).toHaveTextContent("Veo 3.1");
   expect(generateVideoDirect).not.toHaveBeenCalled();
 });
+
+it.each([null, "agnes/agnes-video-2.5", "removed"])(
+  "initializes a new video frame from personal preference %s instead of the administrator default",
+  async (selected) => {
+    vi.mocked(fetchVideoModels).mockResolvedValue({
+      models: [{ ...model, isDefault: true }, agnes],
+    });
+    vi.mocked(fetchModelPreferences).mockResolvedValue({
+      preferences: { text: null, audio: null, image: null, video: selected },
+    });
+    panel("");
+    const selector = screen.getByRole("combobox", { name: "视频模型" });
+    await waitFor(() =>
+      expect(selector).toHaveTextContent(
+        selected === "removed"
+          ? "请选择模型"
+          : selected
+            ? agnes.displayName
+            : model.displayName,
+      ),
+    );
+    if (selected === "removed")
+      expect(screen.getByRole("button", { name: "生成视频" })).toBeDisabled();
+    expect(generateVideoDirect).not.toHaveBeenCalled();
+  },
+);
 
 describe("Agnes video modes", () => {
   it("sends eight image URLs plus audio/video references at 6s and 1080p without Veo restrictions", async () => {

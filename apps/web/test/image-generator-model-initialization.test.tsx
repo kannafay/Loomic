@@ -21,10 +21,12 @@ const requests = vi.hoisted(() => ({
   catalog: vi.fn(),
   generate: vi.fn(),
   error: vi.fn(),
+  preferences: vi.fn(),
 }));
 vi.mock("../src/lib/server-api", () => ({
   fetchImageModels: requests.catalog,
   generateImageDirect: requests.generate,
+  fetchModelPreferences: requests.preferences,
 }));
 vi.mock("../src/hooks/use-generation-error-handler", () => ({
   useGenerationErrorHandler: () => ({ handleGenerationError: requests.error }),
@@ -53,6 +55,14 @@ beforeEach(() => {
   requests.catalog.mockReset().mockResolvedValue({ models });
   requests.generate.mockReset().mockImplementation(() => new Promise(() => {}));
   requests.error.mockReset();
+  requests.preferences.mockReset().mockResolvedValue({
+    preferences: {
+      text: null,
+      audio: null,
+      image: "configured/agnes",
+      video: null,
+    },
+  });
 });
 afterEach(() => {
   cleanup();
@@ -161,7 +171,7 @@ it("groups image models by saved provider identity and keeps the catalog order w
 });
 
 it.each([undefined, "google/nano-banana-2"])(
-  "initializes a new or legacy default (%s) with the administrator's model and icon before generation",
+  "initializes a new or legacy default (%s) with the personal model and icon before generation",
   async (initial) => {
     let finish: ((result: { models: ImageModelInfo[] }) => void) | undefined;
     requests.catalog.mockImplementationOnce(
@@ -225,6 +235,7 @@ it("does not silently replace a disabled saved model and requires an explicit se
 });
 
 it("uses an available model when no default is set and keeps generation disabled for an empty catalog", async () => {
+  requests.preferences.mockResolvedValue({ preferences: { image: null } });
   requests.catalog.mockResolvedValueOnce({
     models: [{ ...models[0], isDefault: false }],
   });
@@ -241,6 +252,23 @@ it("uses an available model when no default is set and keeps generation disabled
   expect(screen.getByRole("button", { name: "生成图片" })).toBeDisabled();
   expect(empty.saved()?.model).toBe("");
   expect(empty.updateScene).not.toHaveBeenCalled();
+});
+
+it("uses the first available image model in automatic mode even when a different administrator default exists", async () => {
+  requests.preferences.mockResolvedValue({ preferences: { image: null } });
+  const fixture = generator();
+  await waitFor(() => expect(fixture.saved()?.model).toBe("configured/google"));
+  expect(requests.generate).not.toHaveBeenCalled();
+});
+
+it("requires explicit selection when the personal image default is unavailable", async () => {
+  requests.preferences.mockResolvedValue({ preferences: { image: "removed" } });
+  const fixture = generator();
+  await waitFor(() => expect(fixture.saved()?.model).toBe("removed"));
+  expect(screen.getByRole("combobox", { name: "图片模型" })).toHaveTextContent(
+    "请选择模型",
+  );
+  expect(screen.getByRole("button", { name: "生成图片" })).toBeDisabled();
 });
 
 it("reports catalog failure without persisting a guessed model", async () => {

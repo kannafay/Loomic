@@ -1,4 +1,13 @@
-import type { WorkspaceSettings } from "@loomic/shared";
+import {
+  type ModelInfo,
+  type ModelKind,
+  type ModelPreferences,
+  type WorkspaceSettings,
+  modelPreferenceKinds,
+  modelPreferencesSchema,
+  resolvePreferredModel,
+} from "@loomic/shared";
+import { ModelConfigError } from "../model-config/errors.js";
 
 import type {
   AuthenticatedUser,
@@ -29,6 +38,16 @@ export class SettingsServiceError extends Error {
 }
 
 export type SettingsService = {
+  getModelPreferences(user: AuthenticatedUser): Promise<ModelPreferences>;
+  updateModelPreferences(
+    user: AuthenticatedUser,
+    preferences: ModelPreferences,
+  ): Promise<ModelPreferences>;
+  resolveModelPreference(
+    user: AuthenticatedUser,
+    kind: ModelKind,
+    override?: string,
+  ): Promise<string>;
   getWorkspaceSettings(
     user: AuthenticatedUser,
     workspaceId: string,
@@ -45,10 +64,74 @@ export function createSettingsService(options: {
   /** Override the fallback model when no workspace setting exists. */
   defaultModel?: string;
   resolveModel?: (key?: string) => Promise<string>;
+  listModels: (kind: ModelKind) => Promise<ModelInfo[]>;
 }): SettingsService {
   const defaultModel = options.defaultModel ?? FALLBACK_MODEL;
 
-  return {
+  const service: SettingsService = {
+    async getModelPreferences(user) {
+      const { data, error } = await options
+        .createUserClient(user.accessToken)
+        .from("profiles")
+        .select("model_preferences")
+        .eq("id", user.id)
+        .single();
+      if (error)
+        throw new SettingsServiceError(
+          "settings_read_failed",
+          "模型偏好加载失败，请重试。",
+          500,
+        );
+      return modelPreferencesSchema.parse(data.model_preferences);
+    },
+    async updateModelPreferences(user, preferences) {
+      const previous = await service.getModelPreferences(user);
+      // An unchanged unavailable selection can be retained while another type is edited.
+      // Newly selected models must belong to the requested type and be enabled.
+      await Promise.all(
+        modelPreferenceKinds.map(async (kind) => {
+          const key = preferences[kind];
+          if (key && key !== previous[kind]) {
+            const models = await options.listModels(kind);
+            if (!resolvePreferredModel(models, key))
+              throw new ModelConfigError(
+                "所选模型已停用或不存在，请重新选择。",
+                400,
+              );
+          }
+        }),
+      );
+      const { error } = await options
+        .createUserClient(user.accessToken)
+        .from("profiles")
+        .update({ model_preferences: preferences })
+        .eq("id", user.id)
+        .select("id")
+        .single();
+      if (error)
+        throw new SettingsServiceError(
+          "settings_update_failed",
+          "模型偏好保存失败，请重试。",
+          500,
+        );
+      return preferences;
+    },
+    async resolveModelPreference(user, kind, override) {
+      const preference =
+        override ?? (await service.getModelPreferences(user))[kind];
+      const model = resolvePreferredModel(
+        await options.listModels(kind),
+        preference,
+      );
+      if (!model)
+        throw new ModelConfigError(
+          preference
+            ? "默认模型已停用或不存在，请到个人中心重新选择模型。"
+            : "暂无可用模型，请联系管理员。",
+          400,
+        );
+      return model.id;
+    },
     async getWorkspaceSettings(user, workspaceId) {
       const client = options.createUserClient(user.accessToken);
       const { data, error } = await client
@@ -101,4 +184,5 @@ export function createSettingsService(options: {
       return settings;
     },
   };
+  return service;
 }

@@ -17,6 +17,7 @@ const requests = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 vi.mock("../src/lib/server-api", () => ({
+  fetchModelPreferences: async () => ({ preferences: { image: null } }),
   fetchImageModels: async () => ({
     models: [
       {

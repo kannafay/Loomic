@@ -13,7 +13,7 @@ import { encryptApiKey } from "./secrets.js";
 
 const uuid = (value: number) =>
   `00000000-0000-4000-8000-${String(value).padStart(12, "0")}`;
-const kinds = ["text", "image", "video"] as const;
+const kinds = ["text", "audio", "image", "video"] as const;
 const secret = Buffer.alloc(32, 7).toString("base64");
 
 function setup() {
@@ -117,6 +117,9 @@ it("publishes a reordered catalog consistently through chat, image and video end
   await registerVideoModelRoutes(app);
   const endpoints: Array<[ModelKind, string]> = [
     ["text", "/api/models"],
+    ["audio", "/api/models?kind=audio"],
+    ["image", "/api/models?kind=image"],
+    ["video", "/api/models?kind=video"],
     ["image", "/api/image-models"],
     ["video", "/api/video-models"],
   ];

@@ -63,6 +63,7 @@ const agnes: VideoModelInfo = {
   },
 };
 vi.mock("../src/lib/server-api", () => ({
+  fetchModelPreferences: async () => ({ preferences: { video: null } }),
   fetchVideoModels: requests.catalog,
   fetchVideoSources: async () => ({
     sources: [

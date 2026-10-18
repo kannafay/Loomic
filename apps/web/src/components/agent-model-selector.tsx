@@ -93,7 +93,7 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
         if (value) setModel(value === automatic ? null : value);
       }}
       items={[
-        { value: automatic, label: "自动（工作空间默认）" },
+        { value: automatic, label: "自动（个人默认）" },
         ...models.map((candidate) => ({
           value: candidate.id,
           label: candidate.name,
@@ -123,7 +123,7 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
       >
         <SelectGroup>
           <SelectLabel>对话模型</SelectLabel>
-          <SelectItem value={automatic}>自动（工作空间默认）</SelectItem>
+          <SelectItem value={automatic}>自动（个人默认）</SelectItem>
         </SelectGroup>
         {groups.map((group) => (
           <SelectGroup key={group.key}>

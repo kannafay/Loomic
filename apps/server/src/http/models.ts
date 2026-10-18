@@ -1,8 +1,17 @@
 import type { FastifyInstance } from "fastify";
 
-import { type ModelInfo, modelListResponseSchema } from "@loomic/shared";
+import {
+  type ModelInfo,
+  type ModelKind,
+  modelKindSchema,
+  modelListResponseSchema,
+} from "@loomic/shared";
 import type { ServerEnv } from "../config/env.js";
 import type { ModelConfigService } from "../features/model-config/model-config-service.js";
+import {
+  getAvailableImageModels,
+  getAvailableVideoModels,
+} from "../generation/providers/registry.js";
 
 const OPENAI_MODELS: ModelInfo[] = [
   { id: "openai:gpt-6-astra", name: "GPT-6 Astra", provider: "openai" },
@@ -67,28 +76,48 @@ export async function registerModelRoutes(
   service?: ModelConfigService,
 ) {
   app.get("/api/models", async (_request, reply) => {
-    if (service) {
-      const catalog = await service.catalog();
-      return reply.code(200).send(
-        modelListResponseSchema.parse({
-          models: catalog.models
-            .filter((m) => m.kind === "text")
-            .map((m) => ({
-              id: m.key,
-              name: m.name,
-              providerId: m.providerId,
-              provider:
-                catalog.providers.find((p) => p.id === m.providerId)?.name ??
-                "未知提供商",
-            })),
-        }),
-      );
-    }
-    const models: ModelInfo[] = [];
-    if (env.openAIApiKey) models.push(...OPENAI_MODELS);
-    if (env.googleApiKey || env.googleVertexProject)
-      models.push(...GOOGLE_MODELS);
-    if (env.agnesApiKey) models.push(...AGNES_MODELS);
+    const { kind = "text" } = _request.query as { kind?: unknown };
+    const parsed = modelKindSchema.safeParse(kind);
+    if (!parsed.success)
+      return reply.code(400).send({ message: "模型类型无效。" });
+    const models = await listPublicModels(env, service, parsed.data);
     return reply.code(200).send(modelListResponseSchema.parse({ models }));
   });
+}
+
+/** The same ordered, enabled catalog is used by preferences and run resolution. */
+export async function listPublicModels(
+  env: ServerEnv,
+  service: ModelConfigService | undefined,
+  kind: ModelKind,
+): Promise<ModelInfo[]> {
+  if (service) {
+    const catalog = await service.catalog();
+    return catalog.models
+      .filter((model) => model.kind === kind)
+      .map((model) => ({
+        id: model.key,
+        name: model.name,
+        providerId: model.providerId,
+        provider:
+          catalog.providers.find((provider) => provider.id === model.providerId)
+            ?.name ?? "未知提供商",
+      }));
+  }
+  if (kind === "audio") return [];
+  if (kind === "image" || kind === "video") {
+    const models =
+      kind === "image" ? getAvailableImageModels() : getAvailableVideoModels();
+    return models.map((model) => ({
+      id: model.id,
+      name: model.displayName,
+      provider: model.provider,
+    }));
+  }
+  const models: ModelInfo[] = [];
+  if (env.openAIApiKey) models.push(...OPENAI_MODELS);
+  if (env.googleApiKey || env.googleVertexProject)
+    models.push(...GOOGLE_MODELS);
+  if (env.agnesApiKey) models.push(...AGNES_MODELS);
+  return models;
 }

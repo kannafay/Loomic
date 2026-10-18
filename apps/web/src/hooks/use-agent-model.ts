@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "loomic:agent-model";
 
-type AgentModel = string | null; // null = auto (workspace default)
+type AgentModel = string | null; // null = personal preference, then catalog order
 
 // Listeners for cross-component reactivity
 const listeners = new Set<() => void>();

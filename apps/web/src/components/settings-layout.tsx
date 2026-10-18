@@ -21,7 +21,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
 
   const sections: Array<{ id: SettingsSection; label: string }> = [
     { id: "profile", label: "个人资料" },
-    { id: "agent", label: "智能助手" },
+    { id: "agent", label: "模型偏好" },
   ];
 
   return (

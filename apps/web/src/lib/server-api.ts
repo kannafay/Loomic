@@ -10,7 +10,9 @@ import type {
   MarketplaceSearchResponse,
   MessageCreateResponse,
   MessageListResponse,
+  ModelKind,
   ModelListResponse,
+  ModelPreferences,
   ProfileUpdateResponse,
   ProjectCreateRequest,
   ProjectCreateResponse,
@@ -272,12 +274,45 @@ export async function updateWorkspaceSettings(
   return (await response.json()) as WorkspaceSettingsResponse;
 }
 
-export async function fetchModels(): Promise<ModelListResponse> {
-  const response = await fetch(`${getServerBaseUrl()}/api/models`);
+export async function fetchModels(
+  kind: ModelKind = "text",
+): Promise<ModelListResponse> {
+  const response = await fetch(
+    `${getServerBaseUrl()}/api/models${kind === "text" ? "" : `?kind=${kind}`}`,
+  );
   if (!response.ok) {
     throw new Error(`模型加载失败：${response.status}`);
   }
   return (await response.json()) as ModelListResponse;
+}
+
+export function fetchModelPreferences(
+  accessToken: string,
+): Promise<{ preferences: ModelPreferences }> {
+  return dedupeRequest(`model-preferences:${accessToken}`, async () => {
+    const response = await fetch(
+      `${getServerBaseUrl()}/api/viewer/model-preferences`,
+      { headers: authHeaders(accessToken) },
+    );
+    if (!response.ok) return handleErrorResponse(response);
+    return response.json();
+  });
+}
+
+export async function updateModelPreferences(
+  accessToken: string,
+  preferences: ModelPreferences,
+): Promise<{ preferences: ModelPreferences }> {
+  const response = await fetch(
+    `${getServerBaseUrl()}/api/viewer/model-preferences`,
+    {
+      method: "PUT",
+      headers: authJsonHeaders(accessToken),
+      body: JSON.stringify(preferences),
+    },
+  );
+  if (!response.ok) return handleErrorResponse(response);
+  return response.json();
 }
 
 // --- Chat Session API ---

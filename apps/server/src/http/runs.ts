@@ -62,33 +62,23 @@ export async function registerRunRoutes(
             )
           : null;
 
-      // Resolve per-workspace model if auth context is available
+      // An explicit run choice wins over personal preferences and catalog order.
       let model: string | undefined;
-      if (
-        authenticatedUser &&
-        options.settingsService &&
-        options.viewerService
-      ) {
-        try {
-          const viewer =
-            await options.viewerService.ensureViewer(authenticatedUser);
-          const settings = await options.settingsService.getWorkspaceSettings(
-            authenticatedUser,
-            viewer.workspace.id,
-          );
-          model = settings.defaultModel;
-        } catch {
-          // Fall through to server default model if settings lookup fails
-        }
+      if (authenticatedUser && options.settingsService) {
+        model = await options.settingsService.resolveModelPreference(
+          authenticatedUser,
+          "text",
+          payload.model,
+        );
       }
 
       if (options.modelConfigService) {
-        const catalog = await options.modelConfigService.catalog();
         const preferred =
           payload.model ??
-          (catalog.models.some((m) => m.kind === "text" && m.key === model)
-            ? model
-            : undefined);
+          model ??
+          (await options.modelConfigService.catalog()).models.find(
+            (m) => m.kind === "text",
+          )?.key;
         model = (await options.modelConfigService.resolve("text", preferred))
           .model.key;
       } else if (payload.model) model = payload.model;

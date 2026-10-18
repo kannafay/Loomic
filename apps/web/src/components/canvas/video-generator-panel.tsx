@@ -21,7 +21,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
-import type { VideoResolution } from "@loomic/shared";
+import { type VideoResolution, resolvePreferredModel } from "@loomic/shared";
 import { Download, Square } from "lucide-react";
 import {
   useCallback,
@@ -49,7 +49,11 @@ import type {
   VideoExtensionSource,
   VideoModelInfo,
 } from "../../lib/server-api";
-import { fetchVideoModels, fetchVideoSources } from "../../lib/server-api";
+import {
+  fetchModelPreferences,
+  fetchVideoModels,
+  fetchVideoSources,
+} from "../../lib/server-api";
 import {
   type VideoFrame,
   VideoGenerationInputs,
@@ -161,19 +165,22 @@ export function VideoGeneratorPanel({
     let cancelled = false;
     setModelsLoading(true);
     setModelsLoadError(false);
-    fetchVideoModels()
-      .then((r) => {
+    Promise.all([
+      fetchVideoModels(),
+      fetchModelPreferences(accessTokenRef.current),
+    ])
+      .then(([r, { preferences }]) => {
         if (cancelled) return;
         setModels(r.models);
         const current = modelRef.current;
-        if (current || !r.models.length) return;
-        const initial =
-          r.models.find((candidate) => candidate.isDefault) ?? r.models[0];
-        if (!initial) return;
-        modelRef.current = initial.id;
-        setModel(initial.id);
+        if (current) return;
+        const initial = resolvePreferredModel(r.models, preferences.video);
+        const initialId = initial?.id ?? preferences.video;
+        if (!initialId) return;
+        modelRef.current = initialId;
+        setModel(initialId);
         updateVideoGeneratorElement(excalidrawApi, elementId, {
-          model: initial.id,
+          model: initialId,
         });
       })
       .catch((err) => {

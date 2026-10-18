@@ -69,7 +69,7 @@ import { registerImageModelRoutes } from "./http/image-models.js";
 import { registerImageProxyRoute } from "./http/image-proxy.js";
 import { registerJobRoutes } from "./http/jobs.js";
 import { registerModelAdminRoutes } from "./http/model-admin.js";
-import { registerModelRoutes } from "./http/models.js";
+import { listPublicModels, registerModelRoutes } from "./http/models.js";
 import { registerProjectRoutes } from "./http/projects.js";
 import { registerRunRoutes } from "./http/runs.js";
 import { registerSettingsRoutes } from "./http/settings.js";
@@ -176,6 +176,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     createSettingsService({
       createUserClient,
       defaultModel: env.agentModel,
+      listModels: (kind) => listPublicModels(env, modelConfigService, kind),
       ...(modelConfigService
         ? {
             resolveModel: async (key?: string) =>
@@ -210,6 +211,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   const eventBuffer = new CanvasEventBuffer();
   setInterval(() => eventBuffer.cleanup(), 5 * 60 * 1000);
   const agentRuns = createAgentRunService({
+    getModelPreferences: (user) => settingsService.getModelPreferences(user),
     ...(modelConfigService
       ? {
           prepareModels: () => refreshConfiguredProviders(modelConfigService),
@@ -331,6 +333,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
     viewerService,
   });
   void registerGenerateRoutes(app, {
+    settingsService,
     ...(modelConfigService ? { modelConfigService } : {}),
     auth,
     uploadService,
@@ -339,6 +342,7 @@ export function buildApp(options: BuildAppOptions = {}): FastifyInstance {
   });
   if (jobService) {
     void registerJobRoutes(app, {
+      settingsService,
       auth,
       jobService,
       viewerService,

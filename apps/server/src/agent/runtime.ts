@@ -2,7 +2,7 @@
 import { randomUUID } from "node:crypto";
 import { rm } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
-import type { VideoResolution } from "@loomic/shared";
+import type { ModelPreferences, VideoResolution } from "@loomic/shared";
 
 import type { BaseLanguageModel } from "@langchain/core/language_models/base";
 import { HumanMessage } from "@langchain/core/messages";
@@ -271,6 +271,7 @@ type RuntimeRunRecord = RunCreateRequest & {
 };
 
 type CreateAgentRuntimeOptions = {
+  getModelPreferences?: (user: AuthenticatedUser) => Promise<ModelPreferences>;
   prepareModels?: () => Promise<unknown>;
   resolveModel?: (key?: string) => Promise<BaseLanguageModel>;
   agentPersistenceService?: AgentPersistenceService;
@@ -1013,6 +1014,15 @@ export function createAgentRunService(options: CreateAgentRuntimeOptions) {
         let agent: LoomicAgent;
         try {
           await options.prepareModels?.();
+          const personalDefaults =
+            run.userId && run.accessToken && options.getModelPreferences
+              ? await options.getModelPreferences({
+                  id: run.userId,
+                  accessToken: run.accessToken,
+                  email: "",
+                  userMetadata: {},
+                })
+              : undefined;
           const resolvedModel = options.resolveModel
             ? await options.resolveModel(run.modelOverride ?? run.model)
             : run.modelOverride
@@ -1157,10 +1167,13 @@ export function createAgentRunService(options: CreateAgentRuntimeOptions) {
               getAvailableImageModels(),
               run.imageGenerationPreference,
               run.mentions,
+              personalDefaults?.image,
             ),
             availableVideoModels: selectedGenerationModels(
               getAvailableVideoModels(),
               run.videoGenerationPreference,
+              [],
+              personalDefaults?.video,
             ),
             backendResult,
             ...(brandKitId ? { brandKitId } : {}),

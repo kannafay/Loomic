@@ -5,45 +5,55 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { AgentSection } from "@/components/agent-section";
+import { ModelPreferencesSection } from "@/components/model-preferences-section";
 import { ProfileSection } from "@/components/profile-section";
 import { SettingsSkeleton } from "@/components/skeletons/settings-skeleton";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import { usePageDataState } from "@/lib/page-data-context";
 import {
   ApiAuthError,
+  fetchModelPreferences,
   fetchModels,
   fetchViewer,
-  fetchWorkspaceSettings,
+  updateModelPreferences,
   updateProfile,
-  updateWorkspaceSettings,
 } from "@/lib/server-api";
+import { type ModelPreferences, modelPreferencesSchema } from "@loomic/shared";
 
-type SettingsTab = "profile" | "agent";
+type SettingsTab = "profile" | "models";
 
 const tabs: Array<{ id: SettingsTab; label: string }> = [
   { id: "profile", label: "个人资料" },
-  { id: "agent", label: "智能助手" },
+  { id: "models", label: "模型偏好" },
 ];
 
 export default function SettingsPage() {
   const { session } = useAuth();
   const searchParams = useSearchParams();
 
-  const initialTab = (searchParams.get("tab") as SettingsTab) ?? "profile";
+  const requestedTab = searchParams.get("tab");
+  const initialTab =
+    requestedTab === "agent" ? "models" : (requestedTab ?? "profile");
   const [activeTab, setActiveTab] = useState<SettingsTab>(
-    tabs.some((t) => t.id === initialTab) ? initialTab : "profile",
+    tabs.some((t) => t.id === initialTab)
+      ? (initialTab as SettingsTab)
+      : "profile",
   );
   const [profile, setProfile, hasProfile] = usePageDataState<{
     displayName: string;
     email: string;
   } | null>("settings:profile", null);
-  const [defaultModel, setDefaultModel] = usePageDataState(
-    "settings:default-model",
-    "gpt-5.4-mini",
+  const [preferences, setPreferences, hasPreferences] =
+    usePageDataState<ModelPreferences>(
+      "settings:model-preferences",
+      modelPreferencesSchema.parse({}),
+    );
+  const [pageLoading, setPageLoading] = useState(
+    !hasProfile || !hasPreferences,
   );
-  const [pageLoading, setPageLoading] = useState(!hasProfile);
+  const [pageError, setPageError] = useState(false);
 
   // Ref pattern: prevent token refresh from cascading through dependency arrays
   const accessTokenRef = useRef(session?.access_token);
@@ -55,28 +65,30 @@ export default function SettingsPage() {
   const loadData = useCallback(async () => {
     const token = getToken();
     if (!token) return;
-    setPageLoading(!hasProfile);
+    setPageLoading(!hasProfile || !hasPreferences);
+    setPageError(false);
 
     try {
       const [viewer, settings] = await Promise.all([
         fetchViewer(token),
-        fetchWorkspaceSettings(token),
+        fetchModelPreferences(token),
       ]);
 
       setProfile({
         displayName: viewer.profile.displayName,
         email: viewer.profile.email,
       });
-      setDefaultModel(settings.settings.defaultModel);
+      setPreferences(settings.preferences);
     } catch (err) {
       if (err instanceof ApiAuthError) {
         // Workspace layout handles auth redirect
         return;
       }
+      setPageError(true);
     } finally {
       setPageLoading(false);
     }
-  }, [getToken, hasProfile, setProfile, setDefaultModel]);
+  }, [getToken, hasProfile, hasPreferences, setProfile, setPreferences]);
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -98,24 +110,29 @@ export default function SettingsPage() {
     [getToken, setProfile],
   );
 
-  const handleAgentSave = useCallback(
-    async (model: string) => {
+  const handlePreferencesSave = useCallback(
+    async (value: ModelPreferences) => {
       const token = getToken();
-      if (!token) return;
-      const result = await updateWorkspaceSettings(token, {
-        defaultModel: model,
-      });
-      setDefaultModel(result.settings.defaultModel);
+      if (!token) throw new Error("请重新登录。");
+      const result = await updateModelPreferences(token, value);
+      setPreferences(result.preferences);
     },
-    [getToken, setDefaultModel],
+    [getToken, setPreferences],
   );
-
-  const stableFetchModels = useCallback(() => fetchModels(), []);
 
   if (pageLoading) {
     return <SettingsSkeleton />;
   }
 
+  if (pageError)
+    return (
+      <div className="p-8" role="alert">
+        <p className="mb-4 text-sm">个人中心加载失败，请重试。</p>
+        <Button variant="outline" onClick={() => void loadData()}>
+          重新加载
+        </Button>
+      </div>
+    );
   if (!profile) return null;
 
   return (
@@ -149,11 +166,11 @@ export default function SettingsPage() {
               onSave={handleProfileSave}
             />
           </TabsContent>
-          <TabsContent value="agent">
-            <AgentSection
-              defaultModel={defaultModel}
-              onSave={handleAgentSave}
-              fetchModels={stableFetchModels}
+          <TabsContent value="models">
+            <ModelPreferencesSection
+              preferences={preferences}
+              onSave={handlePreferencesSave}
+              fetchModels={fetchModels}
             />
           </TabsContent>
         </div>

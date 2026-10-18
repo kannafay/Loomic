@@ -1,6 +1,7 @@
 "use client";
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
+import { resolvePreferredModel } from "@loomic/shared";
 
 import {
   Select,
@@ -32,7 +33,7 @@ import {
 } from "../../lib/canvas-image-generator";
 import { groupModelsByProvider } from "../../lib/model-groups";
 import type { ImageModelInfo } from "../../lib/server-api";
-import { fetchImageModels } from "../../lib/server-api";
+import { fetchImageModels, fetchModelPreferences } from "../../lib/server-api";
 
 type ImageGeneratorPanelProps = {
   hidden?: boolean;
@@ -93,8 +94,11 @@ export function ImageGeneratorPanel({
     let cancelled = false;
     setModelsLoading(true);
     setModelsLoadError(false);
-    fetchImageModels()
-      .then((r) => {
+    Promise.all([
+      fetchImageModels(),
+      fetchModelPreferences(accessTokenRef.current),
+    ])
+      .then(([r, { preferences }]) => {
         if (cancelled) return;
         setModels(r.models);
         const current = modelRef.current;
@@ -102,13 +106,14 @@ export function ImageGeneratorPanel({
         // Older unconfigured generators used this fixed default; do not replace
         // other saved choices when an administrator disables their model.
         if (current && current !== "google/nano-banana-2") return;
-        const initial =
-          r.models.find((candidate) => candidate.isDefault) ?? r.models[0];
-        if (!initial) return;
-        modelRef.current = initial.id;
-        setModel(initial.id);
+        const initial = resolvePreferredModel(r.models, preferences.image);
+        // Persist an unavailable personal choice so it requires explicit re-selection.
+        const initialId = initial?.id ?? preferences.image;
+        if (!initialId) return;
+        modelRef.current = initialId;
+        setModel(initialId);
         updateImageGeneratorElement(excalidrawApi, elementId, {
-          model: initial.id,
+          model: initialId,
         });
       })
       .catch((err) => {

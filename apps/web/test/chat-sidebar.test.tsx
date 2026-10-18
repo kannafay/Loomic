@@ -258,6 +258,31 @@ describe("ChatSidebar", () => {
     );
   });
 
+  it("shows an unavailable personal default immediately and releases streaming state and listeners for retry", async () => {
+    vi.mocked(mockWs.startRun).mockImplementation((_payload, onAck) =>
+      onAck?.({
+        type: "command.ack",
+        action: "agent.run",
+        payload: { error: "默认模型已停用，请到个人中心重新选择模型。" },
+      }),
+    );
+    renderSidebar();
+    const input = await screen.findByPlaceholderText(
+      "描述你的想法，或输入“@”引用内容",
+    );
+    await userEvent.type(input, "hello{Enter}");
+    expect(
+      await screen.findByText("默认模型已停用，请到个人中心重新选择模型。"),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "停止生成" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "发送消息" }),
+    ).toBeInTheDocument();
+    expect(listeners.size).toBe(0);
+  });
+
   it("cancels the current run and retains its partial reply", async () => {
     renderSidebar();
     await sendMessage();

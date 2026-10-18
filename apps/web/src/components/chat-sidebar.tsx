@@ -568,6 +568,12 @@ export function ChatSidebar({
             },
             (ack) => {
               clearTimeout(timeout);
+              if (typeof ack.payload.error === "string") {
+                cleanup();
+                showToast(ack.payload.error, "error");
+                reject(new Error(ack.payload.error));
+                return;
+              }
               perf.tAck = performance.now();
               console.log(
                 `[perf] send → ack: ${(perf.tAck - perf.t0Send).toFixed(0)}ms`,
@@ -583,7 +589,9 @@ export function ChatSidebar({
 
         await streamDone;
         cleanup();
-      } catch {
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "获取回复失败，请重试。";
         updateSessionMessages(currentSessionId, (prev) =>
           prev.map((m) => {
             if (m.id !== assistantId) return m;
@@ -593,7 +601,7 @@ export function ChatSidebar({
               ...m,
               contentBlocks: [
                 ...m.contentBlocks,
-                { type: "text" as const, text: "获取回复失败，请重试。" },
+                { type: "text" as const, text: message },
               ],
             };
           }),

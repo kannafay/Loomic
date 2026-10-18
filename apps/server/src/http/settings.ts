@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 
 import {
   applicationErrorResponseSchema,
+  modelPreferencesResponseSchema,
+  modelPreferencesSchema,
   unauthenticatedErrorResponseSchema,
   workspaceSettingsResponseSchema,
   workspaceSettingsUpdateRequestSchema,
@@ -23,6 +25,34 @@ export async function registerSettingsRoutes(
     viewerService: ViewerService;
   },
 ) {
+  app.get("/api/viewer/model-preferences", async (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    try {
+      const user = await options.auth.authenticate(request);
+      if (!user) return sendUnauthorized(reply);
+      await options.viewerService.ensureViewer(user);
+      const preferences =
+        await options.settingsService.getModelPreferences(user);
+      return reply.send(modelPreferencesResponseSchema.parse({ preferences }));
+    } catch (error) {
+      return sendSettingsError(error, reply);
+    }
+  });
+  app.put("/api/viewer/model-preferences", async (request, reply) => {
+    try {
+      const user = await options.auth.authenticate(request);
+      if (!user) return sendUnauthorized(reply);
+      const payload = modelPreferencesSchema.strict().parse(request.body);
+      await options.viewerService.ensureViewer(user);
+      const preferences = await options.settingsService.updateModelPreferences(
+        user,
+        payload,
+      );
+      return reply.send(modelPreferencesResponseSchema.parse({ preferences }));
+    } catch (error) {
+      return sendSettingsError(error, reply);
+    }
+  });
   app.get("/api/workspace/settings", async (request, reply) => {
     try {
       const user = await options.auth.authenticate(request);

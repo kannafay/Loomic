@@ -19,6 +19,34 @@ const models: [AvailableModel, AvailableModel] = [
 ];
 afterEach(() => vi.restoreAllMocks());
 
+it("uses the personal generation default or the first model while preserving independent explicit assistant choices", () => {
+  expect(selectedGenerationModels(models, undefined, [], null)).toEqual([
+    models[0],
+  ]);
+  expect(selectedGenerationModels(models, undefined, [], models[1].id)).toEqual(
+    [models[1]],
+  );
+  expect(
+    selectedGenerationModels(
+      models,
+      { mode: "manual", models: [models[0].id] },
+      [],
+      models[1].id,
+    ),
+  ).toEqual([models[0]]);
+  expect(
+    selectedGenerationModels(
+      models,
+      { mode: "manual", models: models.map((m) => m.id) },
+      [],
+      models[1].id,
+    ),
+  ).toEqual(models);
+  expect(selectedGenerationModels(models, undefined, [], "disabled")).toEqual(
+    [],
+  );
+});
+
 it("restricts manual image selection to Agnes and rejects a Google tool call", async () => {
   const selected = selectedGenerationModels(models, {
     mode: "manual",

@@ -33,11 +33,13 @@ import {
   ModelConfigError,
   type ModelConfigService,
 } from "../features/model-config/model-config-service.js";
+import type { SettingsService } from "../features/settings/settings-service.js";
 import type { RequestAuthenticator } from "../supabase/user.js";
 
 export async function registerJobRoutes(
   app: FastifyInstance,
   options: {
+    settingsService?: SettingsService;
     modelConfigService?: ModelConfigService;
     auth: RequestAuthenticator;
     creditService?: CreditService;
@@ -56,10 +58,16 @@ export async function registerJobRoutes(
       const viewer = await options.viewerService.ensureViewer(user);
 
       // Credit checks (skip if credit system not configured)
-      const model = options.modelConfigService
-        ? (await options.modelConfigService.resolve("image", payload.model))
-            .model.key
-        : (payload.model ?? "black-forest-labs/flux-kontext-pro");
+      const model = options.settingsService
+        ? await options.settingsService.resolveModelPreference(
+            user,
+            "image",
+            payload.model,
+          )
+        : options.modelConfigService
+          ? (await options.modelConfigService.resolve("image", payload.model))
+              .model.key
+          : (payload.model ?? "black-forest-labs/flux-kontext-pro");
       let creditsCost = 0;
       let quality: ImageQualityLevel = payload.quality ?? "hd";
 
@@ -143,10 +151,16 @@ export async function registerJobRoutes(
       const viewer = await options.viewerService.ensureViewer(user);
 
       // Credit checks (skip if credit system not configured)
-      const model = options.modelConfigService
-        ? (await options.modelConfigService.resolve("video", payload.model))
-            .model.key
-        : (payload.model ?? "wan-video/wan-2.6");
+      const model = options.settingsService
+        ? await options.settingsService.resolveModelPreference(
+            user,
+            "video",
+            payload.model,
+          )
+        : options.modelConfigService
+          ? (await options.modelConfigService.resolve("video", payload.model))
+              .model.key
+          : (payload.model ?? "wan-video/wan-2.6");
       let creditsCost = 0;
 
       if (options.creditService && options.tierGuard) {

@@ -1,7 +1,13 @@
 import { AIMessageChunk } from "@langchain/core/messages";
 import { InMemoryStore, MemorySaver } from "@langchain/langgraph-checkpoint";
+import { modelPreferencesSchema } from "@loomic/shared";
 import { expect, it, vi } from "vitest";
 import { loadServerEnv } from "../config/env.js";
+import {
+  clearProviders,
+  registerImageProvider,
+  registerVideoProvider,
+} from "../generation/providers/registry.js";
 import type { LoomicAgent } from "./deep-agent.js";
 import { createAgentRunService } from "./runtime.js";
 
@@ -46,6 +52,69 @@ function setup(eventDelayMs = 0) {
   );
   return { service, runId, updateRun };
 }
+
+it("loads personal media defaults into automatic assistant tools without making a model request", async () => {
+  const imageModels = ["image-first", "image-personal"].map((id) => ({
+    id,
+    displayName: id,
+    description: "",
+  }));
+  const videoModels = ["video-first", "video-other"].map((id) => ({
+    id,
+    displayName: id,
+    description: "",
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: false,
+      videoToVideo: false,
+      audio: false,
+    },
+    limits: {
+      maxDuration: 8,
+      maxResolution: "720p" as const,
+      maxInputImages: 0,
+    },
+  }));
+  const generate = vi.fn();
+  registerImageProvider({ name: "test-images", models: imageModels, generate });
+  registerVideoProvider({ name: "test-videos", models: videoModels, generate });
+  const getModelPreferences = vi
+    .fn()
+    .mockResolvedValue(
+      modelPreferencesSchema.parse({ image: "image-personal" }),
+    );
+  const agentFactory = vi.fn(
+    () => ({ streamEvents: async function* () {} }) as unknown as LoomicAgent,
+  );
+  const service = createAgentRunService({
+    env: loadServerEnv({}, {}),
+    getModelPreferences,
+    agentFactory,
+  });
+  try {
+    const { runId } = service.createRun(
+      { sessionId: "session", conversationId: "conversation", prompt: "hello" },
+      { accessToken: "token", userId: "one" },
+    );
+    const events = [];
+    for await (const event of service.streamRun(runId)) events.push(event);
+    expect(events.some((event) => event.type === "run.failed")).toBe(false);
+    expect(agentFactory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        availableImageModels: [
+          expect.objectContaining({ id: "image-personal" }),
+        ],
+        availableVideoModels: [expect.objectContaining({ id: "video-first" })],
+      }),
+    );
+    expect(getModelPreferences).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "one", accessToken: "token" }),
+    );
+    expect(generate).not.toHaveBeenCalled();
+  } finally {
+    clearProviders();
+  }
+});
 
 it("cancels a partial reply and persists a terminal cancellation when the provider closes normally", async () => {
   const { service, runId, updateRun } = setup();

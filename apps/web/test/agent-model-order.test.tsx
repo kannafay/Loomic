@@ -50,7 +50,7 @@ it("preserves server provider and model order, separates identically named confi
         .map((option) => option.textContent),
     ),
   ).toEqual([
-    ["自动（工作空间默认）"],
+    ["自动（个人默认）"],
     ["Agnes Z", "Agnes A"],
     ["Gemini"],
     ["备用模型"],
@@ -70,7 +70,7 @@ it("preserves server provider and model order, separates identically named confi
         .map((option) => option.textContent),
     ),
   ).toEqual([
-    ["自动（工作空间默认）"],
+    ["自动（个人默认）"],
     ["备用模型"],
     ["Gemini"],
     ["Agnes Z", "Agnes A"],
