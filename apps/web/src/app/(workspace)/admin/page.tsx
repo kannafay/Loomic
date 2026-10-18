@@ -69,6 +69,11 @@ const KINDS: Array<{ id: ModelKind; name: string }> = [
   { id: "image", name: "图片" },
   { id: "video", name: "视频生成" },
 ];
+type ModelFilter = ModelKind | "all";
+const MODEL_FILTERS: Array<{ id: ModelFilter; name: string }> = [
+  { id: "all", name: "全部" },
+  ...KINDS,
+];
 const CATEGORIES = [
   { id: "manufacturer", name: "模型厂商" },
   { id: "third_party", name: "第三方" },
@@ -114,7 +119,7 @@ export default function AdminPage() {
   const [providerDraft, setProviderDraft] =
     useState<ProviderWrite>(EMPTY_PROVIDER);
   const [apiKeyRevision, setApiKeyRevision] = useState(0);
-  const [kind, setKind] = useState<ModelKind>("text");
+  const [kind, setKind] = useState<ModelFilter>("all");
   const [modelDraft, setModelDraft] = useState<ModelDraft | null>(null);
   const [modelEditorOpen, setModelEditorOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -188,7 +193,9 @@ export default function AdminPage() {
   const providerModels = adding
     ? pendingModels
     : (data?.models.filter((model) => model.providerId === selectedId) ?? []);
-  const visibleModels = providerModels.filter((model) => model.kind === kind);
+  const visibleModels = providerModels.filter(
+    (model) => kind === "all" || model.kind === kind,
+  );
 
   function usePreset(presetId: string) {
     const preset = data?.presets.find((item) => item.id === presetId);
@@ -209,10 +216,11 @@ export default function AdminPage() {
   }
   function editModel(model?: ConfiguredModel) {
     if (!adding && !selectedId) return;
+    const modelKind = model?.kind ?? (kind === "all" ? "text" : kind);
     setModelEditorOpen(true);
     const options =
       model?.options ??
-      (kind === "video"
+      (modelKind === "video"
         ? {
             capabilities: {
               textToVideo: true,
@@ -242,12 +250,13 @@ export default function AdminPage() {
           }
         : {
             providerId: selectedId ?? DRAFT_PROVIDER_ID,
-            kind,
+            kind: modelKind,
             apiModel: "",
             name: "",
             description: "",
             adapter:
-              providerDraft.preset === "agnes" && kind !== "text"
+              providerDraft.preset === "agnes" &&
+              (modelKind === "image" || modelKind === "video")
                 ? "agnes"
                 : "auto",
             enabled: false,
@@ -772,14 +781,14 @@ export default function AdminPage() {
                 <Tabs
                   value={kind}
                   onValueChange={(value) => {
-                    setKind(value as ModelKind);
+                    setKind(value as ModelFilter);
                     setModelDraft(null);
                   }}
                   className="gap-0"
                 >
                   <div className="border-b border-border px-4 py-2 sm:px-5">
                     <TabsList aria-label="模型类型" className="w-full sm:w-fit">
-                      {KINDS.map((item) => (
+                      {MODEL_FILTERS.map((item) => (
                         <TabsTrigger
                           key={item.id}
                           value={item.id}
@@ -787,11 +796,11 @@ export default function AdminPage() {
                         >
                           {item.name}
                           <span className="min-w-3 rounded bg-background/70 px-0.5 py-0.5 text-center text-[10px] leading-3 text-muted-foreground tabular-nums sm:min-w-4 sm:px-1">
-                            {
-                              providerModels.filter(
-                                (model) => model.kind === item.id,
-                              ).length
-                            }
+                            {item.id === "all"
+                              ? providerModels.length
+                              : providerModels.filter(
+                                  (model) => model.kind === item.id,
+                                ).length}
                           </span>
                         </TabsTrigger>
                       ))}
@@ -842,6 +851,14 @@ export default function AdminPage() {
                             >
                               {model.name}
                             </span>
+                            {kind === "all" && (
+                              <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                {
+                                  KINDS.find((item) => item.id === model.kind)
+                                    ?.name
+                                }
+                              </span>
+                            )}
                             {model.isDefault && (
                               <span className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                                 默认
@@ -1080,7 +1097,8 @@ export default function AdminPage() {
                                 }
                               />
                             </label>
-                            {(kind === "image" || kind === "video") && (
+                            {(modelDraft.value.kind === "image" ||
+                              modelDraft.value.kind === "video") && (
                               <label
                                 htmlFor="page-3"
                                 className="block space-y-1.5 text-sm"
@@ -1096,7 +1114,7 @@ export default function AdminPage() {
                                       value: "agnes",
                                       label: "Agnes 图片／视频接口",
                                     },
-                                    ...(kind === "video"
+                                    ...(modelDraft.value.kind === "video"
                                       ? [
                                           {
                                             value: "veo",
@@ -1132,7 +1150,7 @@ export default function AdminPage() {
                                       <SelectItem value="agnes">
                                         Agnes 图片／视频接口
                                       </SelectItem>
-                                      {kind === "video" && (
+                                      {modelDraft.value.kind === "video" && (
                                         <SelectItem value="veo">
                                           Gemini Veo 接口
                                         </SelectItem>

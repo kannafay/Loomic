@@ -304,6 +304,83 @@ it("allows retrying a failed saved-key read without exposing error details", asy
     expect(screen.getByLabelText(/API Key/)).toHaveValue("saved-test-key"),
   );
 });
+it("defaults to all model types, filters by type and edits media using its own kind", async () => {
+  const image = {
+    ...model,
+    id: "image-1",
+    key: "agnes:image",
+    apiModel: "agnes-image-next",
+    name: "图片测试模型",
+    kind: "image",
+    adapter: "agnes",
+  };
+  const video = {
+    ...model,
+    id: "video-1",
+    key: "agnes:video",
+    apiModel: "agnes-video-next",
+    name: "视频测试模型",
+    kind: "video",
+    adapter: "agnes",
+    options: { limits: { maxDuration: 8, maxResolution: "720p" } },
+  };
+  const audio = {
+    ...model,
+    id: "audio-1",
+    key: "agnes:audio",
+    apiModel: "tts-next",
+    name: "语音测试模型",
+    kind: "audio",
+  };
+  state.fetch.mockResolvedValue({
+    providers: [provider],
+    models: [model, image, video, audio],
+    presets: [],
+  });
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  const all = await screen.findByRole("tab", { name: /^全部/ });
+  expect(all).toHaveAttribute("aria-selected", "true");
+  expect(all).toHaveTextContent("4");
+  for (const item of [model, image, video, audio]) {
+    expect(
+      screen.getByRole("checkbox", { name: `启用 ${item.name}` }),
+    ).toBeInTheDocument();
+  }
+  await user.click(screen.getByRole("tab", { name: /^图片/ }));
+  expect(
+    screen.getByRole("checkbox", { name: `启用 ${image.name}` }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("checkbox", { name: `启用 ${model.name}` }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("checkbox", { name: `启用 ${video.name}` }),
+  ).not.toBeInTheDocument();
+  await user.click(all);
+  await user.click(screen.getByRole("button", { name: `编辑 ${video.name}` }));
+  const editor = within(
+    await screen.findByRole("dialog", { name: "编辑模型" }),
+  );
+  expect(editor.getByRole("combobox", { name: "媒体接口" })).toHaveTextContent(
+    "Agnes 图片／视频接口",
+  );
+  expect(editor.getByLabelText(/高级参数/)).toHaveValue(
+    JSON.stringify(video.options, null, 2),
+  );
+  await user.click(editor.getByRole("button", { name: "保存模型" }));
+  await waitFor(() =>
+    expect(state.saveModel).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        kind: "video",
+        adapter: "agnes",
+        options: video.options,
+      }),
+      video.id,
+    ),
+  );
+});
 it("opens manual addition directly in a focused dialog without fetching models", async () => {
   const user = userEvent.setup();
   render(<AdminPage />);
@@ -442,6 +519,7 @@ it("adds, edits and removes a new provider's staged model without a database mut
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
   );
+  expect(screen.getByRole("tab", { name: /^全部/ })).toHaveTextContent("1");
   await user.click(screen.getByRole("button", { name: "编辑 待保存图片模型" }));
   editor = within(await screen.findByRole("dialog", { name: "编辑模型" }));
   await user.clear(editor.getByLabelText("显示名称"));
@@ -461,6 +539,7 @@ it("adds, edits and removes a new provider's staged model without a database mut
   expect(
     screen.queryByRole("checkbox", { name: "启用 已编辑图片模型" }),
   ).not.toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: /^全部/ })).toHaveTextContent("0");
   expect(state.saveModel).not.toHaveBeenCalled();
   expect(state.deleteModel).not.toHaveBeenCalled();
   expect(state.discoverDraft).not.toHaveBeenCalled();
