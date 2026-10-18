@@ -39,6 +39,9 @@ export function ScrollArea({
       },
       {
         ...scrollbarOptions,
+        // Native form viewports fill their host; avoid shifting their text
+        // with the padding compensation used for ordinary content wrappers.
+        paddingAbsolute: !!viewportRef,
         overflow: {
           x: orientation === "vertical" ? "hidden" : "scroll",
           y: orientation === "horizontal" ? "hidden" : "scroll",

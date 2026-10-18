@@ -435,6 +435,7 @@ export type Database = {
           model_key: string;
           name: string;
           options: NonNullable<Json>;
+          protocol: string | null;
           provider_id: string;
           updated_at: string;
         };
@@ -451,6 +452,7 @@ export type Database = {
           model_key: string;
           name: string;
           options?: NonNullable<Json>;
+          protocol?: string | null;
           provider_id: string;
           updated_at?: string;
         };
@@ -466,6 +468,7 @@ export type Database = {
           model_key?: string;
           name?: string;
           options?: NonNullable<Json>;
+          protocol?: string | null;
           provider_id?: string;
           updated_at?: string;
         };

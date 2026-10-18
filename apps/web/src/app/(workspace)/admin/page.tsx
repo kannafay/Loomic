@@ -43,6 +43,7 @@ import type {
   ConfiguredModelWrite,
   ModelAdminResponse,
   ModelKind,
+  ModelProtocol,
   ProviderConfig,
   ProviderWrite,
 } from "@loomic/shared";
@@ -69,7 +70,12 @@ const KINDS: Array<{ id: ModelKind; name: string }> = [
   { id: "text", name: "文本" },
   { id: "audio", name: "语音" },
   { id: "image", name: "图片" },
-  { id: "video", name: "视频生成" },
+  { id: "video", name: "视频" },
+];
+const MODEL_PROTOCOLS: Array<{ id: ModelProtocol; name: string }> = [
+  { id: "openai", name: "OpenAI" },
+  { id: "anthropic", name: "Anthropic" },
+  { id: "gemini", name: "Gemini" },
 ];
 type ModelFilter = ModelKind | "all";
 const MODEL_FILTERS: Array<{ id: ModelFilter; name: string }> = [
@@ -141,7 +147,7 @@ export default function AdminPage() {
   const [pendingModels, setPendingModels] = useState<ConfiguredModel[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const modelNameInput = useRef<HTMLInputElement>(null);
+  const modelIdInput = useRef<HTMLInputElement>(null);
 
   const chooseProvider = useCallback((provider: ProviderConfig) => {
     setApiKeyRevision((revision) => revision + 1);
@@ -291,6 +297,7 @@ export default function AdminPage() {
         ? {
             providerId: model.providerId,
             kind: model.kind,
+            protocol: model.protocol ?? providerDraft.protocol,
             apiModel: model.apiModel,
             name: model.name,
             description: model.description,
@@ -301,6 +308,7 @@ export default function AdminPage() {
         : {
             providerId: selectedId ?? DRAFT_PROVIDER_ID,
             kind: modelKind,
+            protocol: providerDraft.protocol,
             apiModel: "",
             name: "",
             description: "",
@@ -1030,7 +1038,7 @@ export default function AdminPage() {
                     >
                       <DialogContent
                         scrollable
-                        initialFocus={modelNameInput}
+                        initialFocus={modelIdInput}
                         showCloseButton={!busy}
                         className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl"
                       >
@@ -1099,6 +1107,7 @@ export default function AdminPage() {
                                     : [...current, value],
                                 );
                                 setModelEditorOpen(false);
+                                if (kind !== "all") setKind(value.kind);
                                 success(
                                   "模型已加入待保存列表，保存提供商后生效。",
                                 );
@@ -1114,6 +1123,8 @@ export default function AdminPage() {
                               );
                               await load();
                               setModelEditorOpen(false);
+                              if (kind !== "all")
+                                setKind(modelDraft.value.kind);
                               success("模型配置已保存。");
                             });
                           }}
@@ -1124,14 +1135,46 @@ export default function AdminPage() {
                           >
                             <div className="grid gap-4 sm:grid-cols-2">
                               <label
+                                htmlFor="page-model-draft-value-api-model"
+                                className="space-y-1.5 text-sm"
+                              >
+                                <span>模型 ID</span>
+                                <Input
+                                  ref={modelIdInput}
+                                  id="page-model-draft-value-api-model"
+                                  required
+                                  maxLength={200}
+                                  value={modelDraft.value.apiModel}
+                                  onChange={(event) =>
+                                    setModelDraft({
+                                      ...modelDraft,
+                                      value: {
+                                        ...modelDraft.value,
+                                        apiModel: event.target.value,
+                                        name:
+                                          !modelDraft.value.name ||
+                                          modelDraft.value.name ===
+                                            modelDraft.value.apiModel.slice(
+                                              0,
+                                              120,
+                                            )
+                                            ? event.target.value.slice(0, 120)
+                                            : modelDraft.value.name,
+                                      },
+                                    })
+                                  }
+                                  spellCheck={false}
+                                />
+                              </label>
+                              <label
                                 htmlFor="page-model-draft-value-name"
                                 className="space-y-1.5 text-sm"
                               >
                                 <span>显示名称</span>
                                 <Input
-                                  ref={modelNameInput}
                                   id="page-model-draft-value-name"
                                   required
+                                  maxLength={120}
                                   value={modelDraft.value.name}
                                   onChange={(event) =>
                                     setModelDraft({
@@ -1144,48 +1187,102 @@ export default function AdminPage() {
                                   }
                                 />
                               </label>
-                              <label
-                                htmlFor="page-model-draft-value-api-model"
-                                className="space-y-1.5 text-sm"
-                              >
-                                <span>模型 ID</span>
-                                <Input
-                                  id="page-model-draft-value-api-model"
-                                  required
-                                  value={modelDraft.value.apiModel}
-                                  onChange={(event) =>
+                            </div>
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              <div className="space-y-1.5">
+                                <Label htmlFor="model-purpose">模型用途</Label>
+                                <Select
+                                  items={KINDS.map((item) => ({
+                                    value: item.id,
+                                    label: item.name,
+                                  }))}
+                                  value={modelDraft.value.kind}
+                                  onValueChange={(value) => {
+                                    if (!value) return;
+                                    const media =
+                                      value === "image" || value === "video";
+                                    let adapter = modelDraft.value.adapter;
+                                    if (
+                                      !media ||
+                                      (adapter === "veo" && value !== "video")
+                                    )
+                                      adapter = "auto";
+                                    else if (
+                                      providerDraft.preset === "agnes" &&
+                                      modelDraft.value.protocol === "openai"
+                                    )
+                                      adapter = "agnes";
                                     setModelDraft({
                                       ...modelDraft,
                                       value: {
                                         ...modelDraft.value,
-                                        apiModel: event.target.value,
+                                        kind: value as ModelKind,
+                                        adapter,
                                       },
-                                    })
-                                  }
-                                  placeholder="接口实际接受的模型名称"
-                                  spellCheck={false}
-                                />
-                              </label>
+                                    });
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    id="model-purpose"
+                                    className="w-full"
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      {KINDS.map((item) => (
+                                        <SelectItem
+                                          key={item.id}
+                                          value={item.id}
+                                        >
+                                          {item.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1.5">
+                                <Label htmlFor="model-protocol">API 协议</Label>
+                                <Select
+                                  items={MODEL_PROTOCOLS.map((item) => ({
+                                    value: item.id,
+                                    label: item.name,
+                                  }))}
+                                  value={modelDraft.value.protocol}
+                                  onValueChange={(value) => {
+                                    if (!value) return;
+                                    setModelDraft({
+                                      ...modelDraft,
+                                      value: {
+                                        ...modelDraft.value,
+                                        protocol: value as ModelProtocol,
+                                        adapter: "auto",
+                                      },
+                                    });
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    id="model-protocol"
+                                    className="w-full"
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      {MODEL_PROTOCOLS.map((item) => (
+                                        <SelectItem
+                                          key={item.id}
+                                          value={item.id}
+                                        >
+                                          {item.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              </div>
                             </div>
-                            <label
-                              htmlFor="page-model-draft-value-description"
-                              className="block space-y-1.5 text-sm"
-                            >
-                              <span>说明</span>
-                              <Input
-                                id="page-model-draft-value-description"
-                                value={modelDraft.value.description}
-                                onChange={(event) =>
-                                  setModelDraft({
-                                    ...modelDraft,
-                                    value: {
-                                      ...modelDraft.value,
-                                      description: event.target.value,
-                                    },
-                                  })
-                                }
-                              />
-                            </label>
                             {(modelDraft.value.kind === "image" ||
                               modelDraft.value.kind === "video") && (
                               <label
@@ -1197,7 +1294,7 @@ export default function AdminPage() {
                                   items={[
                                     {
                                       value: "auto",
-                                      label: "跟随提供商接口类型",
+                                      label: "跟随 API 协议",
                                     },
                                     {
                                       value: "agnes",
@@ -1234,7 +1331,7 @@ export default function AdminPage() {
                                   <SelectContent>
                                     <SelectGroup>
                                       <SelectItem value="auto">
-                                        跟随提供商接口类型
+                                        跟随 API 协议
                                       </SelectItem>
                                       <SelectItem value="agnes">
                                         Agnes 图片／视频接口
@@ -1256,7 +1353,8 @@ export default function AdminPage() {
                               <span>高级参数（JSON）</span>
                               <Textarea
                                 id="page-model-draft-options-text"
-                                className={"min-h-28 font-mono text-xs"}
+                                rows={6}
+                                className="field-sizing-fixed min-h-28 font-mono text-xs"
                                 value={modelDraft.optionsText}
                                 onChange={(event) =>
                                   setModelDraft({

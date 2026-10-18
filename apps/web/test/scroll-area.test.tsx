@@ -110,6 +110,8 @@ it("keeps textarea labels, refs, scrolling and editing on the native input while
   await userEvent.type(input, "新的内容");
   expect(input).toHaveValue("新的内容");
   expect(changed).toHaveBeenCalled();
+  fireEvent.change(input, { target: { value: '{\n  "temperature": 0.3\n}' } });
+  expect(input).toHaveValue('{\n  "temperature": 0.3\n}');
 });
 
 it("initializes document scrolling without moving React-owned body children", () => {

@@ -26,9 +26,11 @@ function Textarea({
       ...props,
       "data-slot": "textarea",
       rows,
-      style: scrollable ? undefined : style,
+      style: scrollable
+        ? { position: "absolute", inset: 0, height: "100%" }
+        : style,
       className: scrollable
-        ? "block min-h-full w-full resize-none rounded-[inherit] border-0 bg-transparent px-2.5 py-2 text-inherit [font:inherit] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+        ? "block w-full resize-none rounded-[inherit] border-0 bg-transparent [padding:inherit]! text-inherit [font:inherit] outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
         : classes,
     },
   });
@@ -44,8 +46,7 @@ function Textarea({
       aria-invalid={props["aria-invalid"]}
       className={cn(
         "resize-y",
-        className?.includes("field-sizing-fixed") &&
-          "h-[calc(var(--textarea-rows)*1lh+1rem)]",
+        "h-[calc(var(--textarea-rows)*1lh+1rem)]",
         classes,
         "block focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 data-disabled:cursor-not-allowed data-disabled:opacity-50",
       )}

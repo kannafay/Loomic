@@ -4,9 +4,13 @@ import type { PrivateProvider } from "./model-config-service.js";
 import { configuredChatModel } from "./runtime.js";
 
 afterEach(() => vi.unstubAllGlobals());
-it.each(["openai", "anthropic", "gemini"] as const)(
-  "uses the saved model and custom endpoint for the %s protocol",
-  async (protocol) => {
+it.each(
+  (["openai", "anthropic", "gemini"] as const).flatMap((protocol) =>
+    [false, true].map((override) => ({ protocol, override })),
+  ),
+)(
+  "uses $protocol wire format with a model override of $override",
+  async ({ protocol, override }) => {
     const model: ConfiguredModel = {
       id: "model-1",
       key: "configured/model-1",
@@ -14,6 +18,7 @@ it.each(["openai", "anthropic", "gemini"] as const)(
       name: "自定义模型",
       apiModel: "gemini-custom",
       kind: "text",
+      protocol: override ? protocol : undefined,
       adapter: "auto",
       enabled: true,
       isDefault: true,
@@ -26,7 +31,11 @@ it.each(["openai", "anthropic", "gemini"] as const)(
       name: "自定义",
       category: "custom",
       preset: "custom",
-      protocol,
+      protocol: override
+        ? protocol === "openai"
+          ? "gemini"
+          : "openai"
+        : protocol,
       baseUrl: "https://model-proxy.example.test/v1",
       apiKey: "test-private-key",
       hasApiKey: true,
@@ -95,6 +104,11 @@ it.each(["openai", "anthropic", "gemini"] as const)(
     expect(inference).toHaveLength(1);
     if (protocol === "gemini")
       expect(inference[0]?.url).toContain(model.apiModel);
-    else expect(inference[0]?.body.model).toBe(model.apiModel);
+    else {
+      expect(inference[0]?.body.model).toBe(model.apiModel);
+      expect(inference[0]?.url).toContain(
+        protocol === "openai" ? "/chat/completions" : "/messages",
+      );
+    }
   },
 );

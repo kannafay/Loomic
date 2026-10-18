@@ -135,3 +135,74 @@ it("publishes saved provider identities for video model grouping", async () => {
     ),
   );
 });
+
+it.each(["openai", "gemini"] as const)(
+  "uses the image model's %s protocol instead of its provider's default",
+  async (protocol) => {
+    const provider: PrivateProvider = {
+      id: "provider-1",
+      createdBy: "admin-1",
+      name: "内部网关",
+      category: "custom",
+      preset: "custom",
+      protocol: protocol === "openai" ? "gemini" : "openai",
+      baseUrl: "https://api.example.test/v1",
+      apiKey: "test-key",
+      hasApiKey: true,
+      enabled: true,
+    };
+    const model: ConfiguredModel = {
+      id: "image-1",
+      providerId: provider.id,
+      key: "configured/image-1",
+      apiModel: "custom-image",
+      name: "内部图片模型",
+      kind: "image",
+      protocol,
+      adapter: "auto",
+      description: "",
+      enabled: true,
+      isDefault: false,
+      options: {},
+    };
+    const image =
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jKu0AAAAASUVORK5CYII=";
+    const requests: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL | Request) => {
+        requests.push(input instanceof Request ? input.url : String(input));
+        return new Response(
+          JSON.stringify({
+            data: [{ b64_json: image }],
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    { inlineData: { mimeType: "image/png", data: image } },
+                  ],
+                },
+              },
+            ],
+          }),
+          { headers: { "Content-Type": "application/json" } },
+        );
+      }),
+    );
+    await refreshConfiguredProviders({
+      syncNetworkSettings: async () => {},
+      catalog: async () => ({ providers: [provider], models: [model] }),
+    } as unknown as ModelConfigService);
+    const result = await generateImage(resolveImageProviderName(model.key), {
+      model: model.key,
+      prompt: "雪山日出",
+    });
+    expect(result.width).toBeGreaterThan(0);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toContain(
+      protocol === "openai"
+        ? "/images/generations"
+        : "custom-image:generateContent",
+    );
+  },
+);

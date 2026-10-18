@@ -111,6 +111,7 @@ function publicModel(
     providerId: row.provider_id,
     key: row.model_key,
     kind: row.kind,
+    protocol: row.protocol ?? undefined,
     apiModel: row.api_model,
     name: row.name,
     description: row.description,
@@ -319,8 +320,11 @@ export function createModelConfigService(options: {
       if (!provider.apiKey && provider.category !== "custom")
         throw new ModelConfigError("请填写 API Key。");
       if (
-        provider.protocol === "anthropic" &&
-        models.some((model) => model.kind !== "text")
+        models.some(
+          (model) =>
+            (model.protocol ?? provider.protocol) === "anthropic" &&
+            model.kind !== "text",
+        )
       )
         throw new ModelConfigError("Anthropic 接口目前只支持文本模型。");
       const identities = new Set(
@@ -351,6 +355,7 @@ export function createModelConfigService(options: {
       const rows = models.map((model) => ({
         id: randomUUID(),
         kind: model.kind,
+        protocol: model.protocol ?? null,
         api_model: model.apiModel,
         name: model.name,
         description: model.description,
@@ -385,10 +390,6 @@ export function createModelConfigService(options: {
         .maybeSingle();
       if (error || !provider)
         throw new ModelConfigError("请先保存提供商配置。");
-      if (provider.protocol === "anthropic" && value.kind !== "text")
-        throw new ModelConfigError(
-          "Anthropic Messages 接口只支持文本模型；媒体生成请选择 OpenAI 或 Gemini 接口。",
-        );
       const modelId = id ?? randomUUID();
       let oldModel: ConfiguredModel | undefined;
       if (id) {
@@ -402,6 +403,14 @@ export function createModelConfigService(options: {
         if (oldModel.providerId !== value.providerId)
           throw new ModelConfigError("请在原提供商内编辑模型。");
       }
+      const protocol = value.protocol ?? oldModel?.protocol ?? null;
+      if (
+        (protocol ?? provider.protocol) === "anthropic" &&
+        value.kind !== "text"
+      )
+        throw new ModelConfigError(
+          "Anthropic Messages 接口只支持文本模型；媒体生成请选择 OpenAI 或 Gemini 接口。",
+        );
       const result = await client
         .from("configured_models")
         .upsert({
@@ -409,6 +418,7 @@ export function createModelConfigService(options: {
           provider_id: value.providerId,
           model_key: oldModel?.key ?? legacyKey ?? `configured/${modelId}`,
           kind: value.kind,
+          protocol,
           api_model: value.apiModel,
           name: value.name,
           description: value.description,

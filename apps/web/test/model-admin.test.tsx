@@ -172,7 +172,7 @@ it("keeps saved keys masked and exposes the four model types", async () => {
   render(<AdminPage />);
   await screen.findByRole("checkbox", { name: "启用 Agnes 测试模型" });
   expect(screen.getByLabelText(/API Key/)).toHaveValue("");
-  for (const name of [/文本/, /语音/, /图片/, /视频生成/])
+  for (const name of [/文本/, /语音/, /图片/, /视频/])
     expect(screen.getByRole("tab", { name })).toBeInTheDocument();
   expect(state.revealKey).not.toHaveBeenCalled();
   expect(screen.getByRole("button", { name: "添加提供商" })).toHaveTextContent(
@@ -498,7 +498,7 @@ it("opens manual addition directly in a focused dialog without fetching models",
     await screen.findByRole("dialog", { name: "添加模型" }),
   );
   const name = editor.getByLabelText("显示名称");
-  await waitFor(() => expect(name).toHaveFocus());
+  await waitFor(() => expect(editor.getByLabelText("模型 ID")).toHaveFocus());
   await user.type(name, "内部文本模型");
   await user.type(editor.getByLabelText("模型 ID"), "private-latest");
   await user.click(editor.getByRole("button", { name: "保存模型" }));
@@ -522,10 +522,62 @@ it("opens manual addition directly in a focused dialog without fetching models",
     screen.queryByRole("button", { name: "补充预设" }),
   ).not.toBeInTheDocument();
 });
+it("fills the name from the first ID field without overwriting a custom name or changing the ID from the name", async () => {
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  await user.click(await screen.findByRole("button", { name: "手动添加" }));
+  const editor = within(
+    await screen.findByRole("dialog", { name: "添加模型" }),
+  );
+  const id = editor.getByLabelText("模型 ID");
+  const name = editor.getByLabelText("显示名称");
+  expect(editor.getAllByRole("textbox")[0]).toBe(id);
+  expect(editor.queryByLabelText("说明")).not.toBeInTheDocument();
+  await user.type(id, "custom-image-v1");
+  expect(name).toHaveValue("custom-image-v1");
+  await user.clear(id);
+  await user.type(id, "custom-image-v2");
+  expect(name).toHaveValue("custom-image-v2");
+  await user.clear(name);
+  await user.type(name, "内部图片模型");
+  expect(id).toHaveValue("custom-image-v2");
+  await user.clear(id);
+  await user.type(id, "custom-image-v3");
+  expect(name).toHaveValue("内部图片模型");
+  await user.click(editor.getByRole("combobox", { name: "模型用途" }));
+  for (const kind of ["文本", "语音", "图片", "视频"])
+    expect(screen.getByRole("option", { name: kind })).toBeInTheDocument();
+  await user.click(screen.getByRole("option", { name: "图片" }));
+  await user.click(editor.getByRole("combobox", { name: "API 协议" }));
+  for (const protocol of ["OpenAI", "Anthropic", "Gemini"])
+    expect(screen.getByRole("option", { name: protocol })).toBeInTheDocument();
+  await user.click(screen.getByRole("option", { name: "Gemini" }));
+  await user.click(editor.getByRole("button", { name: "保存模型" }));
+  await waitFor(() =>
+    expect(state.saveModel).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        apiModel: "custom-image-v3",
+        name: "内部图片模型",
+        kind: "image",
+        protocol: "gemini",
+        adapter: "auto",
+      }),
+      undefined,
+    ),
+  );
+});
 it("edits a model in a dialog, discards cancelled changes and preserves its options on save", async () => {
   state.fetch.mockResolvedValue({
     providers: [provider],
-    models: [{ ...model, options: { temperature: 0.3 } }],
+    models: [
+      {
+        ...model,
+        protocol: "anthropic",
+        description: "已有说明",
+        options: { temperature: 0.3 },
+      },
+    ],
     presets: [],
   });
   const user = userEvent.setup();
@@ -544,6 +596,16 @@ it("edits a model in a dialog, discards cancelled changes and preserves its opti
   editor = within(await screen.findByRole("dialog", { name: "编辑模型" }));
   expect(editor.getByLabelText("显示名称")).toHaveValue(model.name);
   expect(editor.getByLabelText("模型 ID")).toHaveValue(model.apiModel);
+  expect(editor.getByRole("combobox", { name: "模型用途" })).toHaveTextContent(
+    "文本",
+  );
+  expect(editor.getByRole("combobox", { name: "API 协议" })).toHaveTextContent(
+    "Anthropic",
+  );
+  await user.click(editor.getByRole("combobox", { name: "模型用途" }));
+  await user.click(screen.getByRole("option", { name: "语音" }));
+  await user.click(editor.getByRole("combobox", { name: "API 协议" }));
+  await user.click(screen.getByRole("option", { name: "OpenAI" }));
   await user.clear(editor.getByLabelText("显示名称"));
   await user.type(editor.getByLabelText("显示名称"), "新的显示名称");
   await user.click(editor.getByRole("button", { name: "保存模型" }));
@@ -555,6 +617,9 @@ it("edits a model in a dialog, discards cancelled changes and preserves its opti
     expect.objectContaining({
       name: "新的显示名称",
       apiModel: model.apiModel,
+      kind: "audio",
+      protocol: "openai",
+      description: "已有说明",
       options: { temperature: 0.3 },
     }),
     model.id,
@@ -768,6 +833,46 @@ it("adds, edits and removes a new provider's staged model without a database mut
     ),
   );
 });
+it("saves a staged model's chosen purpose and protocol together with its new provider", async () => {
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  await user.click(await screen.findByRole("button", { name: "添加提供商" }));
+  await user.type(screen.getByLabelText("配置名称"), "内部网关");
+  await user.type(
+    screen.getByLabelText("API Key", { exact: true }),
+    "test-only-key",
+  );
+  await user.click(screen.getByRole("button", { name: "手动添加" }));
+  const editor = within(
+    await screen.findByRole("dialog", { name: "添加模型" }),
+  );
+  await user.type(editor.getByLabelText("模型 ID"), "private-video-next");
+  await user.click(editor.getByRole("combobox", { name: "模型用途" }));
+  await user.click(screen.getByRole("option", { name: "视频" }));
+  await user.click(editor.getByRole("combobox", { name: "API 协议" }));
+  await user.click(screen.getByRole("option", { name: "OpenAI" }));
+  await user.click(editor.getByRole("button", { name: "加入待保存模型" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await user.click(screen.getByRole("button", { name: "保存提供商" }));
+  await waitFor(() =>
+    expect(state.createProvider).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        models: [
+          expect.objectContaining({
+            apiModel: "private-video-next",
+            name: "private-video-next",
+            kind: "video",
+            protocol: "openai",
+          }),
+        ],
+      }),
+    ),
+  );
+  expect(state.saveModel).not.toHaveBeenCalled();
+});
 it("enables a model explicitly through the administrator API", async () => {
   render(<AdminPage />);
   await userEvent.click(
@@ -911,13 +1016,13 @@ it("updates classification filters, clears empty searches and can clear all sele
     await screen.findByRole("dialog", { name: "获取模型列表" }),
   );
   await screen.findByRole("checkbox", { name: "导入 remote-image" });
-  await user.click(dialog.getByRole("tab", { name: /^待分类/ }));
+  await user.click(dialog.getByRole("tab", { name: /^未分类/ }));
   await user.click(
     dialog.getByRole("combobox", { name: "private-id 模型类型" }),
   );
   await user.click(await screen.findByRole("option", { name: "图片" }));
   expect(dialog.getByText("没有匹配的模型。")).toBeInTheDocument();
-  expect(dialog.getByRole("tab", { name: /^待分类/ })).toHaveAttribute(
+  expect(dialog.getByRole("tab", { name: /^未分类/ })).toHaveAttribute(
     "aria-selected",
     "true",
   );
@@ -1007,7 +1112,9 @@ it("falls back to manual addition when the saved provider model list fails", asy
     await screen.findByRole("dialog", { name: "添加模型" }),
   ).toBeInTheDocument();
   const name = screen.getByLabelText("显示名称", { exact: true });
-  await waitFor(() => expect(name).toHaveFocus());
+  await waitFor(() =>
+    expect(screen.getByLabelText("模型 ID", { exact: true })).toHaveFocus(),
+  );
   await userEvent.type(name, "私有模型");
   await userEvent.type(
     screen.getByLabelText("模型 ID", { exact: true }),

@@ -92,6 +92,7 @@ export const networkSettingsSchema = z
 export const configuredModelWriteSchema = z.object({
   providerId: z.string().uuid(),
   kind: modelKindSchema,
+  protocol: modelProtocolSchema.optional(),
   apiModel: z.string().trim().min(1).max(200),
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000).default(""),

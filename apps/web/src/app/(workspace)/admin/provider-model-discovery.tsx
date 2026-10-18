@@ -50,7 +50,7 @@ const KINDS: Array<{ id: ModelKind; name: string }> = [
   { id: "text", name: "文本" },
   { id: "audio", name: "语音" },
   { id: "image", name: "图片" },
-  { id: "video", name: "视频生成" },
+  { id: "video", name: "视频" },
 ];
 type ModelChoice = DiscoveredModel & { selected: boolean };
 type ModelFilter = ModelKind | "all" | "unknown";
@@ -152,12 +152,11 @@ export function ProviderModelDiscovery({
     { id: "all", name: "全部", count: models.length },
     ...KINDS.map((kind) => ({
       ...kind,
-      name: kind.id === "video" ? "视频" : kind.name,
       count: models.filter((model) => model.kind === kind.id).length,
     })),
     {
       id: "unknown",
-      name: "待分类",
+      name: "未分类",
       count: models.filter((model) => !model.kind).length,
     },
   ];

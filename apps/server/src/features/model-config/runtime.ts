@@ -32,6 +32,7 @@ export function configuredChatModel(
   provider: PrivateProvider,
 ) {
   const apiKey = provider.apiKey || "not-required";
+  const protocol = model.protocol ?? provider.protocol;
   const request = model.options;
   const tuning = {
     ...(typeof request.temperature === "number"
@@ -42,7 +43,7 @@ export function configuredChatModel(
       : {}),
     maxRetries: 1,
   };
-  if (provider.protocol === "anthropic")
+  if (protocol === "anthropic")
     return new ChatAnthropic({
       ...tuning,
       model: model.apiModel,
@@ -52,7 +53,7 @@ export function configuredChatModel(
         fetch: providerFetch(provider.proxy),
       },
     });
-  if (provider.protocol === "gemini") {
+  if (protocol === "gemini") {
     const chat = new LoomicGoogleChatModel({
       ...tuning,
       model: model.apiModel,
@@ -118,10 +119,11 @@ export async function refreshConfiguredProviders(
     const provider = catalog.providers.find((p) => p.id === model.providerId);
     if (!provider) throw new Error(`Provider not found for model ${model.key}`);
     const apiKey = provider.apiKey || "not-required";
+    const protocol = model.protocol ?? provider.protocol;
     const catalogProvider =
       model.adapter === "agnes"
         ? "agnes"
-        : provider.protocol === "gemini"
+        : protocol === "gemini"
           ? "google"
           : provider.preset === "custom"
             ? provider.name
@@ -151,7 +153,7 @@ export async function refreshConfiguredProviders(
           ? new AgnesImageProvider(provider.apiKey, provider.baseUrl, [
               nativeInfo,
             ])
-          : provider.protocol === "gemini"
+          : protocol === "gemini"
             ? new GoogleImageProvider(apiKey, {
                 baseUrl: provider.baseUrl,
                 models: [info],
@@ -167,7 +169,7 @@ export async function refreshConfiguredProviders(
             ...(await implementation.generate({
               ...params,
               model:
-                provider.protocol === "gemini" && model.adapter !== "agnes"
+                protocol === "gemini" && model.adapter !== "agnes"
                   ? model.key
                   : nativeId,
             })),
@@ -203,7 +205,7 @@ export async function refreshConfiguredProviders(
               networkProxy: provider.proxy,
             })),
         });
-      } else if (provider.protocol === "gemini" || model.adapter === "veo") {
+      } else if (protocol === "gemini" || model.adapter === "veo") {
         const max = info.limits.maxResolution;
         const implementation = new GoogleVideoProvider(provider.apiKey, {
           baseUrl: provider.baseUrl,
