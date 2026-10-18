@@ -1,11 +1,11 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { ConfiguredModel, ProviderConfig } from "@loomic/shared";
 import { Reorder, useDragControls, useReducedMotion } from "framer-motion";
 import { GripVerticalIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
+import { ProviderAvatar } from "./provider-avatar";
 
 const CATEGORY_LABELS = {
   manufacturer: "模型厂商",
@@ -136,12 +136,6 @@ function ProviderListItem({
 }) {
   const controls = useDragControls();
   const reducedMotion = useReducedMotion();
-  const icon =
-    provider.preset === "google"
-      ? "/providers/google.svg"
-      : provider.preset === "agnes"
-        ? "/providers/agnes.ico"
-        : undefined;
   const status = provider.enabled ? "提供商已启用" : "提供商已停用";
   return (
     <Reorder.Item
@@ -187,21 +181,7 @@ function ProviderListItem({
         aria-pressed={active}
         className="h-auto min-w-0 flex-1 justify-start gap-2.5 rounded-lg border-0 bg-transparent p-2.5 text-left hover:bg-transparent active:translate-y-0"
       >
-        <Avatar
-          aria-hidden="true"
-          className="rounded-lg bg-background after:rounded-lg"
-        >
-          {icon && (
-            <AvatarImage
-              src={icon}
-              alt=""
-              className="rounded-lg object-contain p-1.5 dark:invert"
-            />
-          )}
-          <AvatarFallback className="rounded-lg bg-background font-medium text-foreground">
-            {Array.from(provider.name)[0]?.toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
+        <ProviderAvatar preset={provider.preset} name={provider.name} />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex items-center justify-between gap-2">
             <span

@@ -49,6 +49,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { NetworkSettingsPanel } from "./network-settings-panel";
 import { ProviderApiKeyInput } from "./provider-api-key-input";
+import { ProviderAvatar } from "./provider-avatar";
 import { ProviderList } from "./provider-list";
 import { ProviderModelDiscovery } from "./provider-model-discovery";
 import { ProviderNetworkSettings } from "./provider-network-settings";
@@ -376,7 +377,7 @@ export default function AdminPage() {
               </div>
               {adding && (
                 <Tabs
-                  className="gap-2 border-b border-border bg-muted/20 px-5 py-3"
+                  className="gap-3 border-b border-border bg-muted/20 px-5 py-3"
                   value={providerDraft.category}
                   onValueChange={(value) => {
                     const category = CATEGORIES.find(
@@ -408,7 +409,7 @@ export default function AdminPage() {
                   </TabsList>
                   <TabsContent
                     value={providerDraft.category}
-                    className="flex flex-wrap gap-2"
+                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
                   >
                     {data?.presets
                       .filter(
@@ -421,13 +422,21 @@ export default function AdminPage() {
                           type="button"
                           onClick={() => usePreset(preset.id)}
                           aria-pressed={providerDraft.preset === preset.id}
-                          className={`gap-2 px-3 text-xs transition-colors active:translate-y-0 ${providerDraft.preset === preset.id ? "border-foreground/25 bg-muted hover:bg-muted" : "bg-background"}`}
+                          title={preset.name}
+                          className="h-12 min-w-0 justify-start gap-2 rounded-lg px-2.5 text-xs transition-colors aria-pressed:border-foreground/35 aria-pressed:bg-muted aria-pressed:hover:bg-muted active:translate-y-0"
                         >
-                          {preset.name}
-                          <CheckIcon
-                            aria-hidden="true"
-                            className={`size-3.5 ${providerDraft.preset === preset.id ? "" : "invisible"}`}
+                          <ProviderAvatar
+                            preset={preset.id}
+                            name={preset.name}
+                            className="bg-transparent after:border-0"
                           />
+                          <span className="truncate">{preset.name}</span>
+                          <span
+                            aria-hidden="true"
+                            className={`ml-auto flex size-4 shrink-0 items-center justify-center rounded-full bg-foreground text-background ${providerDraft.preset === preset.id ? "" : "invisible"}`}
+                          >
+                            <CheckIcon className="size-2.5" />
+                          </span>
                         </Button>
                       ))}
                   </TabsContent>
