@@ -344,7 +344,7 @@ it("keeps configuration loading failures on the page", async () => {
 it("fetches the saved provider list without enabling or overwriting existing models", async () => {
   render(<AdminPage />);
   await userEvent.click(
-    await screen.findByRole("button", { name: "获取模型列表" }),
+    await screen.findByRole("button", { name: "添加模型" }),
   );
   const image = await screen.findByRole("checkbox", {
     name: "导入 remote-image",
@@ -359,7 +359,7 @@ it("fetches the saved provider list without enabling or overwriting existing mod
   ).toHaveAttribute("aria-disabled", "true");
   await userEvent.click(image);
   await userEvent.click(
-    screen.getByRole("button", { name: "导入所选模型（1）" }),
+    screen.getByRole("button", { name: "添加所选模型（1）" }),
   );
   await waitFor(() =>
     expect(state.importModels).toHaveBeenCalledWith("token", provider.id, {
@@ -374,14 +374,14 @@ it("fetches the saved provider list without enabling or overwriting existing mod
     }),
   );
   expect(await screen.findByRole("status")).toHaveTextContent(
-    "已导入 1 个模型",
+    "已添加 1 个模型",
   );
   expect(state.saveModel).not.toHaveBeenCalled();
 });
 it("lets administrators classify unknown models and select only matching search results", async () => {
   render(<AdminPage />);
   await userEvent.click(
-    await screen.findByRole("button", { name: "获取模型列表" }),
+    await screen.findByRole("button", { name: "添加模型" }),
   );
   await userEvent.click(
     await screen.findByRole("combobox", { name: "private-id 模型类型" }),
@@ -396,7 +396,7 @@ it("lets administrators classify unknown models and select only matching search 
     screen.getByRole("checkbox", { name: "导入 private-id" }),
   ).toBeChecked();
   await userEvent.click(
-    screen.getByRole("button", { name: "导入所选模型（1）" }),
+    screen.getByRole("button", { name: "添加所选模型（1）" }),
   );
   await waitFor(() =>
     expect(state.importModels).toHaveBeenCalledWith("token", provider.id, {
@@ -410,7 +410,7 @@ it("recovers from a provider discovery failure through retry", async () => {
   state.discover.mockRejectedValueOnce(new Error("模型列表鉴权失败"));
   render(<AdminPage />);
   await userEvent.click(
-    await screen.findByRole("button", { name: "获取模型列表" }),
+    await screen.findByRole("button", { name: "添加模型" }),
   );
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "模型列表鉴权失败",
@@ -420,6 +420,40 @@ it("recovers from a provider discovery failure through retry", async () => {
     await screen.findByRole("checkbox", { name: "导入 remote-image" }),
   ).toBeInTheDocument();
   expect(state.discover).toHaveBeenCalledTimes(2);
+  expect(state.importModels).not.toHaveBeenCalled();
+});
+it("falls back to manual addition when the saved provider model list fails", async () => {
+  state.discover.mockRejectedValueOnce(new Error("这个接口未提供模型列表。"));
+  render(<AdminPage />);
+  await userEvent.click(
+    await screen.findByRole("button", { name: "添加模型" }),
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent("未提供模型列表");
+  await userEvent.click(screen.getByRole("button", { name: "手动添加" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  const name = screen.getByLabelText("显示名称", { exact: true });
+  await waitFor(() => expect(name).toHaveFocus());
+  await userEvent.type(name, "私有模型");
+  await userEvent.type(
+    screen.getByLabelText("模型 ID", { exact: true }),
+    "private-chat-model",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "保存模型" }));
+  await waitFor(() =>
+    expect(state.saveModel).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        providerId: provider.id,
+        apiModel: "private-chat-model",
+        name: "私有模型",
+        kind: "text",
+        enabled: false,
+      }),
+      undefined,
+    ),
+  );
   expect(state.importModels).not.toHaveBeenCalled();
 });
 it("can switch providers during discovery without showing stale results or locking configuration", async () => {
@@ -438,14 +472,12 @@ it("can switch providers during discovery without showing stale results or locki
   );
   render(<AdminPage />);
   await userEvent.click(
-    await screen.findByRole("button", { name: "获取模型列表" }),
+    await screen.findByRole("button", { name: "添加模型" }),
   );
   expect(await screen.findByRole("status")).toHaveTextContent(
     "正在获取模型列表",
   );
-  expect(
-    screen.getByRole("dialog", { name: "获取模型列表" }),
-  ).toBeInTheDocument();
+  expect(screen.getByRole("dialog", { name: "添加模型" })).toBeInTheDocument();
   await userEvent.click(screen.getByRole("button", { name: "取消" }));
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -485,15 +517,15 @@ it("fetches and stages models before a new provider exists, then saves them toge
     screen.getByLabelText("API Key", { exact: true }),
     "draft-only-key",
   );
-  await userEvent.click(screen.getByRole("button", { name: "获取模型列表" }));
+  await userEvent.click(screen.getByRole("button", { name: "添加模型" }));
   expect(
-    await screen.findByRole("dialog", { name: "获取模型列表" }),
+    await screen.findByRole("dialog", { name: "添加模型" }),
   ).toBeInTheDocument();
   await userEvent.click(
     await screen.findByRole("checkbox", { name: "导入 draft-chat" }),
   );
   await userEvent.click(
-    screen.getByRole("button", { name: "导入所选模型（1）" }),
+    screen.getByRole("button", { name: "添加所选模型（1）" }),
   );
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -524,12 +556,20 @@ it("fetches and stages models before a new provider exists, then saves them toge
   );
   expect(state.importModels).not.toHaveBeenCalled();
 });
-it("stages a manually added model before creating a provider", async () => {
+it("falls back to manual staging when a new provider returns an empty list", async () => {
+  state.discoverDraft.mockResolvedValueOnce({ models: [], truncated: false });
   render(<AdminPage />);
   await userEvent.click(
     await screen.findByRole("button", { name: "添加提供商" }),
   );
   await userEvent.click(screen.getByRole("button", { name: "添加模型" }));
+  expect(
+    await screen.findByText(/提供商没有返回可获取的模型/),
+  ).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "手动添加" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
   await userEvent.type(
     screen.getByLabelText("显示名称", { exact: true }),
     "手动模型",
@@ -544,6 +584,92 @@ it("stages a manually added model before creating a provider", async () => {
   ).not.toBeChecked();
   expect(state.saveModel).not.toHaveBeenCalled();
   expect(state.createProvider).not.toHaveBeenCalled();
+});
+it("uses manufacturer presets for connection defaults and saves only models selected from discovery", async () => {
+  const presetModel = {
+    kind: "text",
+    apiModel: "preset-chat",
+    name: "厂商预设模型",
+    description: "",
+    adapter: "auto",
+    enabled: false,
+    options: {},
+  };
+  state.fetch.mockResolvedValue({
+    providers: [provider],
+    models: [model],
+    presets: [
+      {
+        id: "deepseek",
+        name: "DeepSeek",
+        category: "manufacturer",
+        protocol: "openai",
+        baseUrl: "https://api.deepseek.com",
+        models: [presetModel],
+      },
+      {
+        id: "minimax",
+        name: "MiniMax",
+        category: "manufacturer",
+        protocol: "openai",
+        baseUrl: "https://api.minimax.cn/v1",
+        models: [presetModel],
+      },
+    ],
+  });
+  render(<AdminPage />);
+  await userEvent.click(
+    await screen.findByRole("button", { name: "添加提供商" }),
+  );
+  await userEvent.click(screen.getByRole("button", { name: "MiniMax" }));
+  expect(screen.getByLabelText("配置名称", { exact: true })).toHaveValue(
+    "MiniMax",
+  );
+  expect(screen.getByLabelText("接口地址", { exact: true })).toHaveValue(
+    "https://api.minimax.cn/v1",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "DeepSeek" }));
+  expect(screen.getByLabelText("配置名称", { exact: true })).toHaveValue(
+    "DeepSeek",
+  );
+  expect(
+    screen.queryByRole("checkbox", { name: "启用 厂商预设模型" }),
+  ).not.toBeInTheDocument();
+  expect(state.discoverDraft).not.toHaveBeenCalled();
+  await userEvent.type(
+    screen.getByLabelText("API Key", { exact: true }),
+    "draft-deepseek-key",
+  );
+  await userEvent.click(screen.getByRole("button", { name: "添加模型" }));
+  await userEvent.click(
+    await screen.findByRole("checkbox", { name: "导入 draft-chat" }),
+  );
+  expect(state.discoverDraft).toHaveBeenCalledWith(
+    "token",
+    expect.objectContaining({
+      preset: "deepseek",
+      baseUrl: "https://api.deepseek.com",
+      apiKey: "draft-deepseek-key",
+    }),
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "添加所选模型（1）" }),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await userEvent.click(screen.getByRole("button", { name: "保存提供商" }));
+  await waitFor(() =>
+    expect(state.createProvider).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({
+        provider: expect.objectContaining({ preset: "deepseek" }),
+        models: [
+          expect.objectContaining({ apiModel: "draft-chat", enabled: false }),
+        ],
+      }),
+    ),
+  );
 });
 it("tests the current unsaved connection without saving or invoking generation", async () => {
   render(<AdminPage />);

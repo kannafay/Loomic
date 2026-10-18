@@ -67,7 +67,7 @@ function suggestKind(
   )
     return "text";
   if (
-    /^(?:gpt-|o[134](?:-|$)|claude-|gemini-|deepseek|qwen|llama|mistral|agnes-)/i.test(
+    /^(?:gpt-|o[134](?:-|$)|claude-|gemini-|deepseek|minimax-(?:m\d|text-|vl-)|qwen|llama|mistral|agnes-)/i.test(
       id,
     )
   )
@@ -126,7 +126,7 @@ export async function discoverProviderModels(
         await response.body?.cancel();
         const message =
           response.status === 401 || response.status === 403
-            ? "模型列表鉴权失败，请检查已保存的 API Key 和账号权限。"
+            ? "模型列表鉴权失败，请检查 API Key 和账号权限。"
             : response.status === 404 ||
                 response.status === 405 ||
                 response.status === 501

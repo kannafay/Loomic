@@ -7,6 +7,8 @@ const PROVIDER_ICONS: Record<string, string> = {
   openai: "/providers/openai.svg",
   anthropic: "/providers/anthropic.svg",
   agnes: "/providers/agnes.ico",
+  deepseek: "/providers/deepseek.svg",
+  minimax: "/providers/minimax.svg",
   openrouter: "/providers/openrouter.svg",
   azure: "/providers/azure.svg",
 };

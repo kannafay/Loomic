@@ -39,14 +39,13 @@ import type {
 } from "@loomic/shared";
 import {
   CheckIcon,
-  DownloadIcon,
   ListPlusIcon,
   PencilIcon,
   PlugZapIcon,
   PlusIcon,
   SaveIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NetworkSettingsPanel } from "./network-settings-panel";
 import { ProviderApiKeyInput } from "./provider-api-key-input";
 import { ProviderAvatar } from "./provider-avatar";
@@ -112,6 +111,12 @@ export default function AdminPage() {
   const [pendingModels, setPendingModels] = useState<ConfiguredModel[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const modelNameInput = useRef<HTMLInputElement>(null);
+  const modelEditorOpen = modelDraft !== null;
+
+  useEffect(() => {
+    if (modelEditorOpen) modelNameInput.current?.focus();
+  }, [modelEditorOpen]);
 
   const chooseProvider = useCallback((provider: ProviderConfig) => {
     setApiKeyRevision((revision) => revision + 1);
@@ -178,9 +183,7 @@ export default function AdminPage() {
     const preset = data?.presets.find((item) => item.id === presetId);
     if (!preset) return;
     setApiKeyRevision((revision) => revision + 1);
-    setPendingModels(
-      preset.models.map((model) => stagedModel({ ...model, enabled: false })),
-    );
+    setPendingModels([]);
     setModelDraft(null);
     setShowDiscovery(false);
     setProviderDraft({
@@ -310,14 +313,7 @@ export default function AdminPage() {
                   setAdding(true);
                   setSelectedId(null);
                   setProviderDraft(EMPTY_PROVIDER);
-                  const preset = data?.presets.find(
-                    (item) => item.id === "google",
-                  );
-                  setPendingModels(
-                    preset?.models.map((model) =>
-                      stagedModel({ ...model, enabled: false }),
-                    ) ?? [],
-                  );
+                  setPendingModels([]);
                   setModelDraft(null);
                   setShowDiscovery(false);
                 }}
@@ -409,7 +405,7 @@ export default function AdminPage() {
                   </TabsList>
                   <TabsContent
                     value={providerDraft.category}
-                    className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                    className="grid grid-cols-2 gap-2 sm:grid-cols-3"
                   >
                     {data?.presets
                       .filter(
@@ -661,25 +657,11 @@ export default function AdminPage() {
                     <h2 className="text-sm font-semibold">可用模型</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {adding
-                        ? "可先获取或添加模型，保存提供商时一起生效。"
+                        ? "先获取模型列表并选择添加，保存提供商时一起生效。"
                         : "只有勾选启用的模型，才会出现在前台。"}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      disabled={busy}
-                      onClick={() => {
-                        setError("");
-                        setModelDraft(null);
-                        setShowDiscovery(true);
-                      }}
-                    >
-                      <DownloadIcon aria-hidden="true" className="size-3.5" />
-                      获取模型列表
-                    </Button>
                     {providerDraft.preset !== "custom" && (
                       <Button
                         variant="ghost"
@@ -723,11 +705,15 @@ export default function AdminPage() {
                       </Button>
                     )}
                     <Button
-                      variant="outline"
+                      variant="default"
                       size="sm"
                       type="button"
                       disabled={busy}
-                      onClick={() => editModel()}
+                      onClick={() => {
+                        setError("");
+                        setModelDraft(null);
+                        setShowDiscovery(true);
+                      }}
                     >
                       <PlusIcon aria-hidden="true" className="size-3.5" />
                       添加模型
@@ -795,12 +781,16 @@ export default function AdminPage() {
                     busy={busy}
                     onBusyChange={setBusy}
                     onClose={() => setShowDiscovery(false)}
+                    onManualAdd={() => {
+                      setShowDiscovery(false);
+                      editModel();
+                    }}
                     onImported={async (result) => {
                       if (!adding) await load();
                       success(
                         adding
                           ? `已加入 ${result.imported} 个待保存模型。保存提供商时一起生效。`
-                          : `已导入 ${result.imported} 个模型${result.skipped ? `，跳过 ${result.skipped} 个已有模型` : ""}。请在对应标签中勾选启用。`,
+                          : `已添加 ${result.imported} 个模型${result.skipped ? `，跳过 ${result.skipped} 个已有模型` : ""}。请在对应标签中勾选启用。`,
                       );
                       setShowDiscovery(false);
                     }}
@@ -931,7 +921,7 @@ export default function AdminPage() {
                     {visibleModels.length === 0 && (
                       <p className="px-5 py-8 text-center text-xs leading-5 text-muted-foreground">
                         暂无{KINDS.find((item) => item.id === kind)?.name}
-                        模型，可添加预设或自定义模型。
+                        模型，点击“添加模型”获取列表并选择。
                       </p>
                     )}
                   </TabsContent>
@@ -1006,6 +996,7 @@ export default function AdminPage() {
                         >
                           <span>显示名称</span>
                           <Input
+                            ref={modelNameInput}
                             id="page-model-draft-value-name"
                             required
                             value={modelDraft.value.name}

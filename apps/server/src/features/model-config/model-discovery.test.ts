@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { discoverProviderModels } from "./model-discovery.js";
+import { MODEL_PRESETS } from "./presets.js";
 
 const provider = {
   protocol: "openai" as const,
@@ -57,6 +58,40 @@ describe("provider model discovery", () => {
       }),
     );
   });
+  it.each([
+    ["deepseek", "deepseek-next", "DeepSeek Next"],
+    ["minimax", "MiniMax-M4", "MiniMax M4"],
+  ])(
+    "discovers new %s text models through its preset endpoint",
+    async (presetId, apiModel, name) => {
+      const preset = MODEL_PRESETS.find((item) => item.id === presetId);
+      if (!preset) throw new Error(`Missing preset: ${presetId}`);
+      const fetcher = vi.fn(async (_url: URL, _init: RequestInit) =>
+        json({ data: [{ id: apiModel, name }] }),
+      );
+      vi.stubGlobal("fetch", fetcher);
+      const result = await discoverProviderModels({
+        ...provider,
+        protocol: preset.protocol,
+        baseUrl: preset.baseUrl,
+        preset: preset.id,
+      });
+      expect(String(fetcher.mock.calls[0]?.[0])).toBe(
+        `${preset.baseUrl}/models`,
+      );
+      expect(fetcher).toHaveBeenCalledWith(
+        expect.any(URL),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            Authorization: `Bearer ${provider.apiKey}`,
+          }),
+        }),
+      );
+      expect(result.models).toEqual([
+        { apiModel, name, description: "", kind: "text" },
+      ]);
+    },
+  );
   it("follows Gemini pagination on the saved endpoint, strips models/ and sends the key only in a header", async () => {
     const urls: URL[] = [];
     const fetcher = vi.fn(async (url: URL, init: RequestInit) => {

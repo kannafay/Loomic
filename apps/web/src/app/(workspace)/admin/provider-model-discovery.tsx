@@ -32,7 +32,8 @@ import type {
   ModelKind,
   ProviderConnection,
 } from "@loomic/shared";
-import { useEffect, useState } from "react";
+import { DownloadIcon, PencilIcon, RefreshCwIcon } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const KINDS: Array<{ id: ModelKind; name: string }> = [
   { id: "text", name: "文本" },
@@ -51,6 +52,7 @@ export function ProviderModelDiscovery({
   busy,
   onBusyChange,
   onClose,
+  onManualAdd,
   onImported,
 }: {
   token: string;
@@ -63,9 +65,11 @@ export function ProviderModelDiscovery({
   busy: boolean;
   onBusyChange: (busy: boolean) => void;
   onClose: () => void;
+  onManualAdd: () => void;
   onImported: (result: { imported: number; skipped: number }) => Promise<void>;
 }) {
   const { error: showError } = useToast();
+  const [open, setOpen] = useState(true);
   const [models, setModels] = useState<ModelChoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -73,6 +77,7 @@ export function ProviderModelDiscovery({
   const [query, setQuery] = useState("");
   const [revision, setRevision] = useState(0);
   const [truncated, setTruncated] = useState(false);
+  const manualRequested = useRef(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: revision triggers an explicit retry of the same saved connection.
   useEffect(() => {
@@ -159,23 +164,29 @@ export function ProviderModelDiscovery({
 
   return (
     <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !importing) onClose();
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !importing) setOpen(false);
+      }}
+      onOpenChangeComplete={(nextOpen) => {
+        if (nextOpen) return;
+        if (manualRequested.current) onManualAdd();
+        else onClose();
       }}
     >
       <DialogContent
         className="max-h-[85vh] overflow-y-auto p-0 sm:max-w-3xl"
         showCloseButton={!importing}
+        finalFocus={() => !manualRequested.current}
       >
         <section className="px-6 py-5" aria-label="获取的模型列表">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <DialogTitle>获取模型列表</DialogTitle>
+              <DialogTitle>添加模型</DialogTitle>
               <DialogDescription className="mt-2 pr-4 text-xs">
                 {providerId
-                  ? "使用已保存的接口地址和 Key。确认类型后导入，再到对应标签中启用。"
-                  : "使用当前填写的接口和 Key。模型会暂存，保存提供商时一起生效。"}
+                  ? "获取已保存提供商的模型列表，勾选添加后可在对应标签中启用。"
+                  : "使用当前填写的接口和 Key 获取列表。勾选的模型将在保存提供商时一起添加。"}
               </DialogDescription>
             </div>
             <div className="flex gap-2 pr-6">
@@ -185,13 +196,14 @@ export function ProviderModelDiscovery({
                 disabled={busy || loading}
                 onClick={() => setRevision((value) => value + 1)}
               >
+                <RefreshCwIcon aria-hidden="true" className="size-3.5" />
                 重新获取
               </Button>
               <Button
                 variant="outline"
                 type="button"
                 disabled={busy}
-                onClick={onClose}
+                onClick={() => setOpen(false)}
               >
                 取消
               </Button>
@@ -344,9 +356,10 @@ export function ProviderModelDiscovery({
                   disabled={busy || !selected.length}
                   onClick={() => void importSelection()}
                 >
+                  <DownloadIcon aria-hidden="true" className="size-3.5" />
                   {importing
-                    ? "正在导入…"
-                    : `导入所选模型（${selected.length}）`}
+                    ? "正在添加…"
+                    : `添加所选模型（${selected.length}）`}
                 </Button>
               </div>
             </>
@@ -356,6 +369,27 @@ export function ProviderModelDiscovery({
                 提供商没有返回可获取的模型，可继续手动添加。
               </p>
             )
+          )}
+          {!loading && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+              <p className="text-xs text-muted-foreground">
+                {error
+                  ? "可以重新获取，也可以直接填写模型信息。"
+                  : "列表中没有需要的模型？也可以手动添加。"}
+              </p>
+              <Button
+                variant={error || !models.length ? "default" : "outline"}
+                type="button"
+                disabled={busy || importing}
+                onClick={() => {
+                  manualRequested.current = true;
+                  setOpen(false);
+                }}
+              >
+                <PencilIcon aria-hidden="true" className="size-3.5" />
+                手动添加
+              </Button>
+            </div>
           )}
         </section>
       </DialogContent>
