@@ -265,7 +265,10 @@ export function AppSidebar() {
                       type="button"
                       aria-label="退出登录"
                       tooltip="退出登录"
-                      className={MENU_BUTTON_CLASS}
+                      className={cn(
+                        MENU_BUTTON_CLASS,
+                        "hover:bg-destructive/10 hover:text-destructive",
+                      )}
                     />
                   }
                 >
