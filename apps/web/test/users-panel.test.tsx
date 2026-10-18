@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import type { AdminUserCreate, AdminUserUpdate } from "@loomic/shared";
 import {
   act,
   cleanup,
@@ -16,11 +17,13 @@ import type { AdminUser } from "../src/lib/model-admin-api";
 const api = vi.hoisted(() => ({
   list: vi.fn(),
   update: vi.fn(),
+  create: vi.fn(),
   refreshRole: vi.fn(),
 }));
 vi.mock("../src/lib/model-admin-api", () => ({
   fetchAdminUsers: api.list,
-  updateSystemRole: api.update,
+  updateAdminUser: api.update,
+  createAdminUser: api.create,
 }));
 const users: AdminUser[] = [
   { id: "admin", name: "林管理员", email: "lin@example.test", role: "admin" },
@@ -36,7 +39,23 @@ const users: AdminUser[] = [
 beforeEach(() => {
   vi.stubGlobal("PointerEvent", MouseEvent);
   api.list.mockReset().mockResolvedValue({ users });
-  api.update.mockReset().mockResolvedValue(undefined);
+  api.update
+    .mockReset()
+    .mockImplementation(
+      async (_token: string, id: string, value: AdminUserUpdate) => ({
+        user: { id, ...value },
+      }),
+    );
+  api.create
+    .mockReset()
+    .mockImplementation(async (_token: string, value: AdminUserCreate) => ({
+      user: {
+        id: "new-user",
+        name: value.name,
+        email: value.email,
+        role: value.role,
+      },
+    }));
   api.refreshRole.mockReset().mockResolvedValue(undefined);
 });
 afterEach(() => {
@@ -58,11 +77,160 @@ async function chooseRole(
   user: ReturnType<typeof userEvent.setup>,
   role: string,
 ) {
-  const dialog = screen.getByRole("dialog", { name: "修改用户角色" });
+  const dialog = screen.getByRole("dialog", { name: "编辑用户" });
   await user.click(within(dialog).getByRole("combobox", { name: "用户角色" }));
   await user.click(await screen.findByRole("option", { name: role }));
   return dialog;
 }
+
+async function fillNewUser(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText("姓名"), "新成员");
+  await user.type(
+    screen.getByLabelText("邮箱", { exact: true }),
+    " NEW@example.test ",
+  );
+  await user.type(screen.getByLabelText("初始密码"), "test-password-1");
+}
+
+it("validates new-user fields inline and defaults to an ordinary user", async () => {
+  const user = userEvent.setup();
+  page();
+  await screen.findByRole("row", { name: /陈成员/ });
+  await user.click(screen.getByRole("button", { name: "添加用户" }));
+  const dialog = await screen.findByRole("dialog", { name: "添加用户" });
+  expect(
+    within(dialog).getByRole("combobox", { name: "用户角色" }),
+  ).toHaveTextContent("普通用户");
+  await user.click(within(dialog).getByRole("button", { name: "创建用户" }));
+  expect(within(dialog).getByText("请输入姓名。")).toBeInTheDocument();
+  expect(within(dialog).getByText("请输入有效的邮箱。")).toBeInTheDocument();
+  expect(
+    within(dialog).getByText("初始密码至少需要 6 位。"),
+  ).toBeInTheDocument();
+  expect(api.create).not.toHaveBeenCalled();
+});
+
+it("creates only after confirmation, keeps the pending dialog open and reveals the new row", async () => {
+  let finish: (() => void) | undefined;
+  api.create.mockImplementationOnce(
+    (_token: string, value: AdminUserCreate) =>
+      new Promise<{ user: AdminUser }>((resolve) => {
+        finish = () =>
+          resolve({
+            user: {
+              id: "new-user",
+              name: value.name,
+              email: value.email,
+              role: value.role,
+            },
+          });
+      }),
+  );
+  const user = userEvent.setup();
+  page();
+  await screen.findByRole("row", { name: /陈成员/ });
+  await user.type(screen.getByRole("textbox", { name: "搜索用户" }), "陈成员");
+  await user.click(screen.getByRole("button", { name: "添加用户" }));
+  await fillNewUser(user);
+  expect(screen.getByLabelText("初始密码")).toHaveAttribute("type", "password");
+  await user.click(screen.getByRole("button", { name: "显示密码" }));
+  expect(screen.getByLabelText("初始密码")).toHaveAttribute("type", "text");
+  expect(api.create).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "创建用户" }));
+  expect(api.create).toHaveBeenCalledExactlyOnceWith("token", {
+    name: "新成员",
+    email: "new@example.test",
+    password: "test-password-1",
+    role: "user",
+  });
+  expect(screen.getByRole("button", { name: "取消" })).toBeDisabled();
+  await user.keyboard("{Escape}");
+  expect(screen.getByRole("dialog", { name: "添加用户" })).toBeInTheDocument();
+  await act(async () => finish?.());
+  expect(await screen.findByRole("status")).toHaveTextContent("用户已创建");
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(screen.getByRole("row", { name: /新成员/ })).toHaveTextContent(
+    "new@example.test",
+  );
+  expect(screen.getByRole("textbox", { name: "搜索用户" })).toHaveValue("");
+  await user.click(screen.getByRole("button", { name: "添加用户" }));
+  expect(screen.getByLabelText("初始密码")).toHaveValue("");
+  expect(screen.getByLabelText("姓名")).toHaveValue("");
+});
+
+it("retains new-user input after an occupied email error and supports retry", async () => {
+  api.create.mockRejectedValueOnce(new Error("该邮箱已被使用，请更换邮箱。"));
+  const user = userEvent.setup();
+  page();
+  await screen.findByRole("row", { name: /陈成员/ });
+  await user.click(screen.getByRole("button", { name: "添加用户" }));
+  await fillNewUser(user);
+  await user.click(screen.getByRole("button", { name: "创建用户" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("该邮箱已被使用");
+  expect(screen.getByLabelText("姓名")).toHaveValue("新成员");
+  expect(screen.getByLabelText("初始密码")).toHaveValue("test-password-1");
+  await user.clear(screen.getByLabelText("邮箱", { exact: true }));
+  await user.type(
+    screen.getByLabelText("邮箱", { exact: true }),
+    "another@example.test",
+  );
+  await user.click(screen.getByRole("button", { name: "创建用户" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("用户已创建");
+  expect(api.create).toHaveBeenCalledTimes(2);
+});
+
+it("edits a user's name and login email without submitting a password", async () => {
+  const user = userEvent.setup();
+  page();
+  await user.click(await screen.findByRole("button", { name: "编辑 陈成员" }));
+  expect(screen.queryByLabelText("初始密码")).not.toBeInTheDocument();
+  await user.clear(screen.getByLabelText("姓名"));
+  await user.type(screen.getByLabelText("姓名"), "更新的成员");
+  await user.clear(screen.getByLabelText("邮箱", { exact: true }));
+  await user.type(
+    screen.getByLabelText("邮箱", { exact: true }),
+    "renamed@example.test",
+  );
+  await user.click(screen.getByRole("button", { name: "保存更改" }));
+  expect(api.update).toHaveBeenCalledExactlyOnceWith("token", "member", {
+    name: "更新的成员",
+    email: "renamed@example.test",
+    role: "user",
+  });
+  expect(await screen.findByRole("status")).toHaveTextContent("用户信息已更新");
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(screen.getByRole("row", { name: /更新的成员/ })).toHaveTextContent(
+    "renamed@example.test",
+  );
+});
+
+it("syncs the signed-in account after its profile changes", async () => {
+  const refreshProfile = vi.fn().mockResolvedValue(undefined);
+  const user = userEvent.setup();
+  render(
+    <ToastProvider>
+      <UsersPanel
+        token="token"
+        currentUserId="admin"
+        onSelfRoleChanged={api.refreshRole}
+        onSelfProfileChanged={refreshProfile}
+      />
+    </ToastProvider>,
+  );
+  await user.click(
+    await screen.findByRole("button", { name: "编辑 林管理员" }),
+  );
+  await user.clear(screen.getByLabelText("姓名"));
+  await user.type(screen.getByLabelText("姓名"), "新管理员姓名");
+  await user.click(screen.getByRole("button", { name: "保存更改" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("用户信息已更新");
+  expect(refreshProfile).toHaveBeenCalledExactlyOnceWith();
+  expect(api.refreshRole).not.toHaveBeenCalled();
+});
 
 it("combines name and email, identifies the current account and filters by both search and role", async () => {
   const user = userEvent.setup();
@@ -137,9 +305,7 @@ it("keeps list loading failures inline and supports retry without an empty-state
 it("discards a cancelled role draft without sending a permission change", async () => {
   const user = userEvent.setup();
   page();
-  await user.click(
-    await screen.findByRole("button", { name: "修改 陈成员 的角色" }),
-  );
+  await user.click(await screen.findByRole("button", { name: "编辑 陈成员" }));
   expect(screen.getByRole("button", { name: "保存更改" })).toBeDisabled();
   const dialog = await chooseRole(user, "管理员");
   expect(api.update).not.toHaveBeenCalled();
@@ -147,7 +313,7 @@ it("discards a cancelled role draft without sending a permission change", async 
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
   );
-  await user.click(screen.getByRole("button", { name: "修改 陈成员 的角色" }));
+  await user.click(screen.getByRole("button", { name: "编辑 陈成员" }));
   expect(screen.getByRole("combobox", { name: "用户角色" })).toHaveTextContent(
     "普通用户",
   );
@@ -157,29 +323,27 @@ it("discards a cancelled role draft without sending a permission change", async 
 it("saves only on confirmation, prevents dismissal while saving and updates the row after success", async () => {
   let finish: (() => void) | undefined;
   api.update.mockImplementationOnce(
-    () =>
-      new Promise<void>((resolve) => {
-        finish = resolve;
+    (_token: string, id: string, value: AdminUserUpdate) =>
+      new Promise<{ user: AdminUser }>((resolve) => {
+        finish = () => resolve({ user: { id, ...value } });
       }),
   );
   const user = userEvent.setup();
   page();
-  await user.click(
-    await screen.findByRole("button", { name: "修改 陈成员 的角色" }),
-  );
+  await user.click(await screen.findByRole("button", { name: "编辑 陈成员" }));
   const dialog = await chooseRole(user, "管理员");
   await user.click(within(dialog).getByRole("button", { name: "保存更改" }));
-  expect(api.update).toHaveBeenCalledExactlyOnceWith(
-    "token",
-    "member",
-    "admin",
-  );
+  expect(api.update).toHaveBeenCalledExactlyOnceWith("token", "member", {
+    name: "陈成员",
+    email: "chen@example.test",
+    role: "admin",
+  });
   expect(within(dialog).getByRole("button", { name: "取消" })).toBeDisabled();
   await user.keyboard("{Escape}");
   expect(dialog).toBeInTheDocument();
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
   await act(async () => finish?.());
-  expect(await screen.findByRole("status")).toHaveTextContent("用户角色已更新");
+  expect(await screen.findByRole("status")).toHaveTextContent("用户信息已更新");
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
   );
@@ -197,7 +361,7 @@ it("retains the role draft after a rejected last-admin change and permits retry"
   const user = userEvent.setup();
   page();
   await user.click(
-    await screen.findByRole("button", { name: "修改 林管理员 的角色" }),
+    await screen.findByRole("button", { name: "编辑 林管理员" }),
   );
   const dialog = await chooseRole(user, "普通用户");
   expect(within(dialog).getByText(/你将失去后台访问权限/)).toBeInTheDocument();
@@ -209,7 +373,7 @@ it("retains the role draft after a rejected last-admin change and permits retry"
   expect(within(dialog).getByRole("combobox")).toHaveTextContent("普通用户");
   expect(api.refreshRole).not.toHaveBeenCalled();
   await user.click(within(dialog).getByRole("button", { name: "保存更改" }));
-  expect(await screen.findByRole("status")).toHaveTextContent("用户角色已更新");
+  expect(await screen.findByRole("status")).toHaveTextContent("用户信息已更新");
   expect(api.refreshRole).toHaveBeenCalledExactlyOnceWith();
   expect(api.update).toHaveBeenCalledTimes(2);
 });

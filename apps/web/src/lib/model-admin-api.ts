@@ -1,4 +1,7 @@
 import type {
+  AdminUser,
+  AdminUserCreate,
+  AdminUserUpdate,
   ConfiguredModel,
   ConfiguredModelWrite,
   DiscoveredModelImport,
@@ -110,12 +113,14 @@ export const saveConfiguredModel = (
   );
 export const setDefaultConfiguredModel = (token: string, id: string) =>
   request(token, `/models/${id}/default`, "POST");
-export type AdminUser = {
-  id: string;
-  name: string;
-  email: string;
-  role: SystemRole;
-};
+export type { AdminUser } from "@loomic/shared";
+export const createAdminUser = (token: string, value: AdminUserCreate) =>
+  request<{ user: AdminUser }>(token, "/users", "POST", value);
+export const updateAdminUser = (
+  token: string,
+  id: string,
+  value: AdminUserUpdate,
+) => request<{ user: AdminUser }>(token, `/users/${id}`, "PUT", value);
 export const fetchAdminUsers = (token: string) =>
   request<{ users: AdminUser[] }>(token, "/users");
 export const updateSystemRole = (token: string, id: string, role: SystemRole) =>

@@ -23,6 +23,8 @@ async function setup() {
     saveModel: vi.fn(),
     setRole: vi.fn(),
     users: vi.fn(),
+    createUser: vi.fn(),
+    updateUser: vi.fn(),
     importPresetModels: vi.fn(),
     discoverModels: vi.fn(async () => ({ models: [], truncated: false })),
     importDiscoveredModels: vi.fn(async () => ({ imported: 1, skipped: 0 })),
@@ -53,6 +55,88 @@ async function setup() {
   return { app, service };
 }
 describe("model administration authorization", () => {
+  it("creates and edits accounts only through administrator routes with validated data", async () => {
+    const { app, service } = await setup();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const value = { name: "成员", email: "member@example.test", role: "user" };
+    const headers = { authorization: "Bearer admin" };
+    service.createUser.mockResolvedValue({ id, ...value });
+    service.updateUser.mockResolvedValue({ id, ...value });
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/admin/users",
+      headers,
+      payload: {
+        ...value,
+        name: " 成员 ",
+        email: " MEMBER@example.test ",
+        password: "test-password-1",
+      },
+    });
+    expect(created.statusCode).toBe(200);
+    expect(created.headers["cache-control"]).toBe("no-store");
+    expect(created.json()).toEqual({ user: { id, ...value } });
+    expect(created.body).not.toContain("test-password-1");
+    expect(service.createUser).toHaveBeenCalledExactlyOnceWith("admin", {
+      ...value,
+      password: "test-password-1",
+    });
+    const updated = await app.inject({
+      method: "PUT",
+      url: `/api/admin/users/${id}`,
+      headers,
+      payload: value,
+    });
+    expect(updated.statusCode).toBe(200);
+    expect(service.updateUser).toHaveBeenCalledExactlyOnceWith(
+      "admin",
+      id,
+      value,
+    );
+    for (const payload of [
+      { ...value, password: "123" },
+      { ...value, email: "invalid", password: "test-password-1" },
+      {
+        ...value,
+        password: "test-password-1",
+        app_metadata: { role: "admin" },
+      },
+    ]) {
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/api/admin/users",
+            headers,
+            payload,
+          })
+        ).statusCode,
+      ).toBe(400);
+    }
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: "/api/admin/users/invalid-id",
+          headers,
+          payload: value,
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(service.createUser).toHaveBeenCalledTimes(1);
+    expect(service.updateUser).toHaveBeenCalledTimes(1);
+    service.createUser.mockRejectedValueOnce(
+      new Error("private-password-fixture"),
+    );
+    const failed = await app.inject({
+      method: "POST",
+      url: "/api/admin/users",
+      headers,
+      payload: { ...value, password: "test-password-1" },
+    });
+    expect(failed.statusCode).toBe(500);
+    expect(failed.body).not.toContain("private-password-fixture");
+  });
   it("rejects unauthenticated access", async () => {
     const { app, service } = await setup();
     expect((await app.inject({ url: "/api/admin/models" })).statusCode).toBe(
@@ -75,6 +159,8 @@ describe("model administration authorization", () => {
     for (const [method, url] of [
       ["GET", "/api/admin/models"],
       ["GET", "/api/admin/users"],
+      ["POST", "/api/admin/users"],
+      ["PUT", `/api/admin/users/${id}`],
       ["POST", "/api/admin/providers"],
       ["POST", "/api/admin/providers/create-with-models"],
       ["POST", "/api/admin/providers/discover-models"],
@@ -102,6 +188,8 @@ describe("model administration authorization", () => {
       ).toBe(403);
     }
     expect(service.list).not.toHaveBeenCalled();
+    expect(service.createUser).not.toHaveBeenCalled();
+    expect(service.updateUser).not.toHaveBeenCalled();
     expect(service.saveProvider).not.toHaveBeenCalled();
     expect(service.revealProviderApiKey).not.toHaveBeenCalled();
     expect(service.saveModel).not.toHaveBeenCalled();

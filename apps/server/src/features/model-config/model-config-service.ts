@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 import {
+  type AdminUserCreate,
+  type AdminUserUpdate,
   type ConfiguredModel,
   type ConfiguredModelWrite,
   type Database,
@@ -27,6 +29,7 @@ import { discoverProviderModels } from "./model-discovery.js";
 import { createNetworkSettingsService } from "./network-settings.js";
 import { MODEL_PRESETS } from "./presets.js";
 import { decryptApiKey, encryptApiKey } from "./secrets.js";
+import { createManagedUser, updateManagedUser } from "./user-administration.js";
 export { ModelConfigError } from "./errors.js";
 
 type ProviderRow = Database["public"]["Tables"]["model_providers"]["Row"];
@@ -550,6 +553,19 @@ export function createModelConfigService(options: {
         imported: data?.length ?? 0,
         skipped: unique.length - (data?.length ?? 0),
       };
+    },
+    async createUser(userId: string, value: AdminUserCreate) {
+      await service.requireAdmin(userId);
+      return createManagedUser(options.getAdminClient(), value);
+    },
+    async updateUser(userId: string, targetId: string, value: AdminUserUpdate) {
+      await service.requireAdmin(userId);
+      return updateManagedUser(
+        options.getAdminClient(),
+        targetId,
+        await service.role(targetId),
+        value,
+      );
     },
     async users(userId: string) {
       await service.requireAdmin(userId);

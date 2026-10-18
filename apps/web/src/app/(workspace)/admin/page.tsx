@@ -28,6 +28,7 @@ import {
   setDefaultConfiguredModel,
   testProviderConnection,
 } from "@/lib/model-admin-api";
+import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
 import type {
   ConfiguredModel,
   ConfiguredModelWrite,
@@ -1226,6 +1227,11 @@ export default function AdminPage() {
             token={token}
             currentUserId={session.user.id}
             onSelfRoleChanged={refreshRole}
+            onSelfProfileChanged={async () => {
+              const { error } =
+                await getSupabaseBrowserClient().auth.refreshSession();
+              if (error) throw error;
+            }}
           />
         )}
       </TabsContent>

@@ -3,16 +3,7 @@
 import { useToast } from "@/components/toast";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -29,27 +20,26 @@ import {
 } from "@/components/ui/tooltip";
 import {
   type AdminUser,
+  createAdminUser,
   fetchAdminUsers,
-  updateSystemRole,
+  updateAdminUser,
 } from "@/lib/model-admin-api";
 import { cn } from "@/lib/utils";
+import type { AdminUserCreate, AdminUserUpdate } from "@loomic/shared";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
-  Loader2Icon,
   PencilIcon,
+  PlusIcon,
   RefreshCwIcon,
   SearchIcon,
   ShieldCheckIcon,
   UsersIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { USER_ROLE_ITEMS, UserEditorDialog } from "./user-editor-dialog";
 
-const ROLES = [
-  { value: "user", label: "普通用户" },
-  { value: "admin", label: "管理员" },
-] as const;
-const ROLE_FILTERS = [{ value: "all", label: "全部角色" }, ...ROLES];
+const ROLE_FILTERS = [{ value: "all", label: "全部角色" }, ...USER_ROLE_ITEMS];
 const PAGE_SIZE = 10;
 
 function RoleBadge({ role }: { role: AdminUser["role"] }) {
@@ -116,10 +106,12 @@ export function UsersPanel({
   token,
   currentUserId,
   onSelfRoleChanged,
+  onSelfProfileChanged,
 }: {
   token: string;
   currentUserId: string;
   onSelfRoleChanged: () => Promise<void>;
+  onSelfProfileChanged?: () => Promise<void>;
 }) {
   const { success, error: showError } = useToast();
   const [users, setUsers] = useState<AdminUser[] | null>(null);
@@ -129,7 +121,7 @@ export function UsersPanel({
   const [roleFilter, setRoleFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
-  const [draftRole, setDraftRole] = useState<AdminUser["role"]>("user");
+  const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const loadRevision = useRef(0);
 
@@ -172,36 +164,49 @@ export function UsersPanel({
   );
   const hasFilters = !!query.trim() || roleFilter !== "all";
 
-  async function saveRole(event: React.FormEvent) {
-    event.preventDefault();
-    if (!editingUser || saving || draftRole === editingUser.role) return;
+  async function saveUser(value: AdminUserCreate | AdminUserUpdate) {
+    if (saving) return;
     setSaving(true);
+    let saved: AdminUser;
     try {
-      await updateSystemRole(token, editingUser.id, draftRole);
+      const result = editingUser
+        ? await updateAdminUser(token, editingUser.id, value)
+        : await createAdminUser(token, {
+            ...value,
+            password: "password" in value ? value.password : "",
+          });
+      saved = result.user;
     } catch (err) {
-      showError(
-        err instanceof Error ? err.message : "用户角色更新失败，请重试。",
-      );
+      showError(err instanceof Error ? err.message : "用户保存失败，请重试。");
+      throw err;
+    } finally {
       setSaving(false);
-      return;
     }
-    setUsers(
-      (current) =>
-        current?.map((user) =>
-          user.id === editingUser.id ? { ...user, role: draftRole } : user,
-        ) ?? null,
+    setUsers((current) =>
+      editingUser
+        ? (current ?? []).map((user) => (user.id === saved.id ? saved : user))
+        : [saved, ...(current ?? [])],
     );
-    setEditingUser(null);
-    setSaving(false);
-    if (editingUser.id === currentUserId) {
+    setEditorOpen(false);
+    if (!editingUser) {
+      setQuery("");
+      setRoleFilter("all");
+      setPage(1);
+    }
+    if (editingUser?.id === currentUserId) {
       try {
-        await onSelfRoleChanged();
+        if (
+          editingUser.name !== saved.name ||
+          editingUser.email !== saved.email
+        )
+          await onSelfProfileChanged?.();
+        if (editingUser.role !== saved.role) await onSelfRoleChanged();
       } catch {
-        showError("角色已更新，请刷新页面以同步权限。");
+        showError("用户已更新，请刷新页面同步账号信息。");
         return;
       }
     }
-    success("用户角色已更新。");
+    success(editingUser ? "用户信息已更新。" : "用户已创建。");
   }
 
   return (
@@ -210,7 +215,7 @@ export function UsersPanel({
       className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
     >
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4">
-        <div>
+        <div className="min-w-0 flex-1 sm:min-w-[220px]">
           <div className="flex items-center gap-2">
             <h2 id="users-heading" className="text-sm font-semibold">
               用户管理
@@ -225,7 +230,7 @@ export function UsersPanel({
             管理员可配置后台，所有用户均可使用全部创作功能。
           </p>
         </div>
-        <div className="flex w-full items-center gap-2 sm:w-auto">
+        <div className="order-3 flex w-full items-center gap-2 sm:order-2 sm:w-auto">
           <div className="relative min-w-0 flex-1 sm:w-56">
             <SearchIcon
               aria-hidden="true"
@@ -292,6 +297,18 @@ export function UsersPanel({
             <TooltipContent>刷新用户列表</TooltipContent>
           </Tooltip>
         </div>
+        <Button
+          type="button"
+          className="order-2 sm:order-3"
+          disabled={loading || saving || !users || !!loadError}
+          onClick={() => {
+            setEditingUser(null);
+            setEditorOpen(true);
+          }}
+        >
+          <PlusIcon aria-hidden="true" className="size-3.5" />
+          添加用户
+        </Button>
       </div>
       {loadError && (
         <div className="flex items-center justify-between gap-3 border-b border-border bg-destructive/5 px-5 py-3">
@@ -376,17 +393,17 @@ export function UsersPanel({
                       type="button"
                       variant="ghost"
                       size="sm"
-                      aria-label={`修改 ${user.name || user.email} 的角色`}
+                      aria-label={`编辑 ${user.name || user.email}`}
                       disabled={loading || saving || !!loadError}
                       onClick={() => {
                         setEditingUser(user);
-                        setDraftRole(user.role);
+                        setEditorOpen(true);
                       }}
                       className="size-11 text-muted-foreground hover:text-foreground sm:h-7 sm:w-auto"
                     >
                       <PencilIcon aria-hidden="true" className="size-3.5" />
-                      <span className="hidden sm:inline">修改角色</span>
-                      <span className="sr-only sm:hidden">修改角色</span>
+                      <span className="hidden sm:inline">编辑</span>
+                      <span className="sr-only sm:hidden">编辑用户</span>
                     </Button>
                   </td>
                 </tr>
@@ -412,7 +429,7 @@ export function UsersPanel({
           <p className="mt-1 text-xs text-muted-foreground">
             {hasFilters
               ? "试试其他姓名、邮箱或角色。"
-              : "新用户注册后会出现在这里。"}
+              : "添加用户后即可在这里管理资料与角色。"}
           </p>
           {hasFilters && (
             <Button
@@ -467,89 +484,14 @@ export function UsersPanel({
           )}
         </div>
       )}
-      <Dialog
-        open={!!editingUser}
-        onOpenChange={(open) => {
-          if (!open && !saving) setEditingUser(null);
-        }}
-      >
-        <DialogContent showCloseButton={!saving}>
-          <DialogHeader>
-            <DialogTitle>修改用户角色</DialogTitle>
-            <DialogDescription>
-              保存后立即生效，仅影响后台访问权限。
-            </DialogDescription>
-          </DialogHeader>
-          {editingUser && (
-            <form onSubmit={saveRole} className="space-y-4">
-              <div className="rounded-lg border border-border bg-muted/20 p-3">
-                <UserIdentity
-                  user={editingUser}
-                  current={editingUser.id === currentUserId}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="user-role">用户角色</Label>
-                <Select
-                  items={ROLES}
-                  value={draftRole}
-                  disabled={saving}
-                  onValueChange={(value) => {
-                    if (value) setDraftRole(value as AdminUser["role"]);
-                  }}
-                >
-                  <SelectTrigger id="user-role" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {ROLES.map((item) => (
-                        <SelectItem key={item.value} value={item.value}>
-                          {item.label}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {draftRole === "admin"
-                    ? "可以管理模型提供商、用户角色与网络设置。"
-                    : "可以使用全部创作功能，无法访问管理后台。"}
-                </p>
-              </div>
-              {editingUser.role === "admin" && draftRole === "user" && (
-                <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs leading-5 text-muted-foreground">
-                  {editingUser.id === currentUserId
-                    ? "你将失去后台访问权限。系统必须保留至少一位管理员。"
-                    : "系统必须保留至少一位管理员。"}
-                </p>
-              )}
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={saving}
-                  onClick={() => setEditingUser(null)}
-                >
-                  取消
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={saving || draftRole === editingUser.role}
-                >
-                  {saving && (
-                    <Loader2Icon
-                      aria-hidden="true"
-                      className="size-3.5 motion-safe:animate-spin"
-                    />
-                  )}
-                  {saving ? "正在保存…" : "保存更改"}
-                </Button>
-              </DialogFooter>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
+      <UserEditorDialog
+        open={editorOpen}
+        user={editingUser}
+        currentUserId={currentUserId}
+        saving={saving}
+        onOpenChange={setEditorOpen}
+        onSave={saveUser}
+      />
     </section>
   );
 }

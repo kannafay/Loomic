@@ -1,4 +1,6 @@
 import {
+  adminUserCreateSchema,
+  adminUserUpdateSchema,
   configuredModelWriteSchema,
   discoveredModelImportSchema,
   networkSettingsSchema,
@@ -25,6 +27,10 @@ export async function registerModelAdminRoutes(
     reply: FastifyReply,
     admin: boolean,
     fn: (userId: string) => Promise<unknown>,
+    messages = {
+      invalid: "请检查必填项、接口地址和模型参数。",
+      failed: "模型配置处理失败，请稍后重试。",
+    },
   ) {
     try {
       const user = await auth.authenticate(request);
@@ -44,13 +50,13 @@ export async function registerModelAdminRoutes(
         return reply.code(400).send({
           error: {
             code: "invalid_input",
-            message: "请检查必填项、接口地址和模型参数。",
+            message: messages.invalid,
           },
         });
       return reply.code(500).send({
         error: {
           code: "model_config_error",
-          message: "模型配置处理失败，请稍后重试。",
+          message: messages.failed,
         },
       });
     }
@@ -188,6 +194,44 @@ export async function registerModelAdminRoutes(
     run(request, reply, true, async (userId) => ({
       users: await service.users(userId),
     })),
+  );
+  const userMessages = {
+    invalid: "请检查姓名、邮箱、初始密码与角色。",
+    failed: "用户信息处理失败，请稍后重试。",
+  };
+  app.post("/api/admin/users", (request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    return run(
+      request,
+      reply,
+      true,
+      async (userId) => ({
+        user: await service.createUser(
+          userId,
+          adminUserCreateSchema.parse(request.body),
+        ),
+      }),
+      userMessages,
+    );
+  });
+  app.put<{ Params: { id: string } }>(
+    "/api/admin/users/:id",
+    (request, reply) => {
+      reply.header("Cache-Control", "no-store");
+      return run(
+        request,
+        reply,
+        true,
+        async (userId) => ({
+          user: await service.updateUser(
+            userId,
+            z.string().uuid().parse(request.params.id),
+            adminUserUpdateSchema.parse(request.body),
+          ),
+        }),
+        userMessages,
+      );
+    },
   );
   app.put<{ Params: { id: string } }>(
     "/api/admin/users/:id/role",

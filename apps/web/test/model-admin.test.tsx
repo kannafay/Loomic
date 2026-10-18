@@ -50,6 +50,8 @@ vi.mock("../src/lib/model-admin-api", () => ({
   fetchNetworkSettings: state.fetchNetwork,
   saveNetworkSettings: state.saveNetwork,
   fetchAdminUsers: vi.fn(async () => ({ users: [] })),
+  createAdminUser: vi.fn(),
+  updateAdminUser: vi.fn(),
   importPresetModels: vi.fn(),
   setDefaultConfiguredModel: vi.fn(),
   updateSystemRole: vi.fn(),
