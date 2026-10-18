@@ -60,7 +60,6 @@ vi.mock("../src/lib/model-admin-api", () => ({
   createAdminUser: vi.fn(),
   updateAdminUser: vi.fn(),
   deleteAdminUser: vi.fn(),
-  setDefaultConfiguredModel: vi.fn(),
   updateSystemRole: vi.fn(),
 }));
 const provider = {
@@ -422,6 +421,7 @@ it("defaults to all model types, filters by type and edits media using its own k
     name: "图片测试模型",
     kind: "image",
     adapter: "agnes",
+    enabled: true,
   };
   const video = {
     ...model,
@@ -431,6 +431,8 @@ it("defaults to all model types, filters by type and edits media using its own k
     name: "视频测试模型",
     kind: "video",
     adapter: "agnes",
+    enabled: true,
+    isDefault: true,
     options: { limits: { maxDuration: 8, maxResolution: "720p" } },
   };
   const audio = {
@@ -451,6 +453,10 @@ it("defaults to all model types, filters by type and edits media using its own k
   const all = await screen.findByRole("tab", { name: /^全部/ });
   expect(all).toHaveAttribute("aria-selected", "true");
   expect(all).toHaveTextContent("4");
+  expect(
+    screen.queryByRole("button", { name: "设为默认" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText("默认", { exact: true })).not.toBeInTheDocument();
   for (const item of [model, image, video, audio]) {
     expect(
       screen.getByRole("checkbox", { name: `启用 ${item.name}` }),
@@ -633,6 +639,11 @@ it("edits a model in a dialog, discards cancelled changes and preserves its opti
   );
 });
 it("confirms deletion, retains the model on failure and blocks duplicate requests while retrying", async () => {
+  state.fetch.mockResolvedValue({
+    providers: [provider],
+    models: [{ ...model, isDefault: true }],
+    presets: [],
+  });
   const user = userEvent.setup();
   state.deleteModel.mockRejectedValueOnce(new Error("模型删除失败，请重试。"));
   render(<AdminPage />);
@@ -642,6 +653,7 @@ it("confirms deletion, retains the model on failure and blocks duplicate request
   let confirmation = within(
     await screen.findByRole("dialog", { name: "删除模型" }),
   );
+  expect(confirmation.queryByText(/重新设置默认模型/)).not.toBeInTheDocument();
   await waitFor(() =>
     expect(confirmation.getByRole("button", { name: "取消" })).toHaveFocus(),
   );

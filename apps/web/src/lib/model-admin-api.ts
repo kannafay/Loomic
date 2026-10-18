@@ -112,8 +112,6 @@ export const saveConfiguredModel = (
     id ? "PUT" : "POST",
     value,
   );
-export const setDefaultConfiguredModel = (token: string, id: string) =>
-  request(token, `/models/${id}/default`, "POST");
 export const deleteConfiguredModel = (token: string, id: string) =>
   request<{ ok: true }>(token, `/models/${id}`, "DELETE");
 export const deleteProviderModels = (token: string, providerId: string) =>

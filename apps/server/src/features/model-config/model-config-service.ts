@@ -250,9 +250,7 @@ export function createModelConfigService(options: {
     async resolve(kind: ModelKind, key?: string) {
       const catalog = await service.catalog();
       const models = catalog.models.filter((m) => m.kind === kind);
-      const model = key
-        ? models.find((m) => m.key === key)
-        : (models.find((m) => m.isDefault) ?? models[0]);
+      const model = key ? models.find((m) => m.key === key) : models[0];
       if (!model)
         throw new ModelConfigError(
           key
@@ -468,15 +466,6 @@ export function createModelConfigService(options: {
         .maybeSingle();
       if (error) throw new ModelConfigError("模型删除失败，请重试。", 503);
       if (!data) throw new ModelConfigError("模型不存在或已删除。", 404);
-      invalidate();
-    },
-    async setDefault(userId: string, id: string) {
-      await service.requireAdmin(userId);
-      const { error } = await options
-        .getAdminClient()
-        .rpc("set_default_configured_model", { p_model_id: id });
-      if (error)
-        throw new ModelConfigError("请先启用模型和提供商，再设为默认。");
       invalidate();
     },
     async discoverModels(userId: string, providerId: string) {

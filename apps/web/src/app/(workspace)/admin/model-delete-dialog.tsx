@@ -48,7 +48,6 @@ export function ModelDeleteDialog({
               : staged
                 ? "从待保存列表移除此模型，保存提供商时将不再添加。"
                 : "删除后所有用户将无法再选择此模型，已生成的内容会保留。"}
-            {model?.isDefault && "这是默认模型，删除后请重新设置默认模型。"}
           </DialogDescription>
         </DialogHeader>
         <div className="min-w-0 rounded-lg border border-border bg-muted/30 px-3 py-2.5">

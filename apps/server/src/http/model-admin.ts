@@ -189,13 +189,6 @@ export async function registerModelAdminRoutes(
         ),
       ),
   );
-  app.post<{ Params: { id: string } }>(
-    "/api/admin/models/:id/default",
-    (request, reply) =>
-      run(request, reply, true, (userId) =>
-        service.setDefault(userId, z.string().uuid().parse(request.params.id)),
-      ),
-  );
   app.delete<{ Params: { id: string } }>(
     "/api/admin/models/:id",
     (request, reply) =>

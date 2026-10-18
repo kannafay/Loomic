@@ -34,7 +34,6 @@ import {
   saveConfiguredModel,
   saveProviderConfig,
   saveProviderOrder,
-  setDefaultConfiguredModel,
   testProviderConnection,
 } from "@/lib/model-admin-api";
 import { getSupabaseBrowserClient } from "@/lib/supabase-browser";
@@ -951,11 +950,6 @@ export default function AdminPage() {
                                 }
                               </span>
                             )}
-                            {model.isDefault && (
-                              <span className="shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                默认
-                              </span>
-                            )}
                           </div>
                           <p
                             className="mt-0.5 truncate font-mono text-[11px] leading-4 text-muted-foreground"
@@ -964,28 +958,6 @@ export default function AdminPage() {
                             {model.apiModel}
                           </p>
                         </div>
-                        {!adding && model.enabled && !model.isDefault && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            type="button"
-                            disabled={busy}
-                            className="hidden shrink-0 text-xs text-muted-foreground hover:text-foreground sm:inline-flex"
-                            onClick={() => {
-                              if (token)
-                                void perform(async () => {
-                                  await setDefaultConfiguredModel(
-                                    token,
-                                    model.id,
-                                  );
-                                  await load();
-                                  success("默认模型已更新。");
-                                });
-                            }}
-                          >
-                            设为默认
-                          </Button>
-                        )}
                         <Button
                           variant="ghost"
                           size="sm"

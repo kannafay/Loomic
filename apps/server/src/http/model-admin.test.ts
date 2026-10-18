@@ -31,7 +31,6 @@ async function setup() {
     deleteUser: vi.fn(),
     discoverModels: vi.fn(async () => ({ models: [], truncated: false })),
     importDiscoveredModels: vi.fn(async () => ({ imported: 1, skipped: 0 })),
-    setDefault: vi.fn(),
     createProviderWithModels: vi.fn(),
     discoverDraftModels: vi.fn(),
     testProviderConnection: vi.fn(),
@@ -58,6 +57,15 @@ async function setup() {
   return { app, service };
 }
 describe("model administration authorization", () => {
+  it("no longer exposes administrator-wide model default configuration", async () => {
+    const { app } = await setup();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/admin/models/11111111-1111-4111-8111-111111111111/default",
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(response.statusCode).toBe(404);
+  });
   it("validates provider-wide model deletion and restricts it to authenticated administrators", async () => {
     const { app, service } = await setup();
     const id = "11111111-1111-4111-8111-111111111111";
@@ -352,7 +360,6 @@ describe("model administration authorization", () => {
       ["POST", `/api/admin/providers/${id}/api-key`],
       ["POST", "/api/admin/models"],
       ["PUT", `/api/admin/models/${id}`],
-      ["POST", `/api/admin/models/${id}/default`],
       ["DELETE", `/api/admin/models/${id}`],
       ["GET", `/api/admin/providers/${id}/discover-models`],
       ["POST", `/api/admin/providers/${id}/import-discovered-models`],

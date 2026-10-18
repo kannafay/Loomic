@@ -79,7 +79,7 @@ function setup() {
 
 afterEach(clearProviders);
 
-it("orders the public catalog by saved provider order and preserves each administrator model list and default", async () => {
+it("preserves the administrator's catalog order and ignores legacy global defaults when resolving a model", async () => {
   const { service } = setup();
   const catalog = await service.catalog();
   const admin = await service.list();
@@ -101,8 +101,11 @@ it("orders the public catalog by saved provider order and preserves each adminis
         .map((model) => model.key),
     ).toEqual([1, 2, 0, 3].map((index) => `configured/${kind}-${index}`));
     expect((await service.resolve(kind)).model.key).toBe(
-      `configured/${kind}-0`,
+      `configured/${kind}-1`,
     );
+    expect(
+      (await service.resolve(kind, `configured/${kind}-0`)).model.key,
+    ).toBe(`configured/${kind}-0`);
   }
 });
 
@@ -137,6 +140,10 @@ it("publishes a reordered catalog consistently through chat, image and video end
     await service.reorderProviders("admin", {
       providerIds: [uuid(3), uuid(2), uuid(1)],
     });
+    for (const kind of kinds)
+      expect((await service.resolve(kind)).model.key).toBe(
+        `configured/${kind}-3`,
+      );
     for (const [kind, url] of endpoints) {
       const response = await app.inject({ method: "GET", url });
       expect(
