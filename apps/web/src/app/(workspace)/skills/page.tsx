@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { AnimatePresence, motion } from "framer-motion";
 import { ListFilter, Plus, Search, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -381,7 +383,10 @@ export default function SkillsPage() {
       </p>
 
       {/* Tab navigation -- scrollable on narrow screens */}
-      <div className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border sm:mb-6">
+      <ScrollArea
+        orientation="horizontal"
+        className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border sm:mb-6"
+      >
         {TABS.map((tab) => (
           <button
             key={tab}
@@ -397,7 +402,7 @@ export default function SkillsPage() {
             {TAB_LABELS[tab]}
           </button>
         ))}
-      </div>
+      </ScrollArea>
 
       {/* === Installed Tab === */}
       {activeTab === "installed" && (

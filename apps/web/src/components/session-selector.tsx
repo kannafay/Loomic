@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import type { ChatSessionSummary } from "@loomic/shared";
 import { CheckIcon } from "lucide-react";
 import { useCallback, useState } from "react";
@@ -177,7 +179,10 @@ export function SessionSelector({
           </div>
 
           {/* Session list */}
-          <div className="min-h-0 max-h-60 overflow-y-auto overscroll-contain px-1 pb-1">
+          <ScrollArea
+            orientation="vertical"
+            className="min-h-0 max-h-60 overflow-y-auto overscroll-contain px-1 pb-1"
+          >
             {filtered.length === 0 && (
               <p className="px-3 py-4 text-center text-xs text-muted-foreground/70">
                 {search ? "无匹配结果" : "暂无对话"}
@@ -250,7 +255,7 @@ export function SessionSelector({
                 )}
               </div>
             ))}
-          </div>
+          </ScrollArea>
         </PopoverContent>
       </Popover>
 

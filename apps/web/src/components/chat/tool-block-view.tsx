@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { motion } from "framer-motion";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -582,7 +584,10 @@ function ToolDetailPanel({
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4">
+        <ScrollArea
+          orientation="vertical"
+          className="flex-1 overflow-y-auto px-4 pb-4 space-y-4"
+        >
           {/* Input -- collapsible */}
           {hasInput && (
             <div>
@@ -656,7 +661,7 @@ function ToolDetailPanel({
               </div>
             </div>
           )}
-        </div>
+        </ScrollArea>
       </motion.div>
     </motion.div>
   );
@@ -712,11 +717,11 @@ function ToolOutputRenderer({
   return (
     <div>
       <div className="text-xs font-medium text-muted-foreground mb-2">输出</div>
-      <div className="rounded-xl bg-muted px-4 py-3 overflow-x-auto max-h-[360px] overflow-y-auto">
+      <ScrollArea className="rounded-xl bg-muted px-4 py-3 overflow-x-auto max-h-[360px] overflow-y-auto">
         <pre className="text-[12px] leading-5 text-muted-foreground whitespace-pre-wrap break-all font-mono">
           {JSON.stringify(output, null, 2)}
         </pre>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

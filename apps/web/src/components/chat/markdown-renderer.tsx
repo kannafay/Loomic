@@ -4,6 +4,8 @@ import React, { useMemo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { ChatImage } from "./image-lightbox";
 import { isImageUrl } from "./utils";
 
@@ -15,6 +17,20 @@ import { isImageUrl } from "./utils";
  * every render, which would force ReactMarkdown to remount its tree.
  */
 const markdownComponents: Components = {
+  pre({ children, className }) {
+    return (
+      <ScrollArea render={<pre />} className={className}>
+        {children}
+      </ScrollArea>
+    );
+  },
+  table({ children }) {
+    return (
+      <ScrollArea orientation="horizontal">
+        <table>{children}</table>
+      </ScrollArea>
+    );
+  },
   a({ href, children }) {
     if (href && isImageUrl(href)) {
       return (

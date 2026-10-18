@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { motion } from "framer-motion";
 import {
   Calendar,
@@ -59,9 +61,12 @@ function FileTreeItem({ file }: { file: SkillFileEntry }) {
         <span className="truncate">{file.filePath}</span>
       </Button>
       {expanded && (
-        <pre className="px-3 pb-2 font-mono text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-words max-h-48 overflow-auto border-t border-border bg-secondary/50">
+        <ScrollArea
+          render={<pre />}
+          className="px-3 pb-2 font-mono text-[11px] leading-relaxed text-muted-foreground whitespace-pre-wrap break-words max-h-48 overflow-auto border-t border-border bg-secondary/50"
+        >
           {file.content}
-        </pre>
+        </ScrollArea>
       )}
     </div>
   );
@@ -133,7 +138,10 @@ export function SkillDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        scrollable
+        className="sm:max-w-lg max-h-[85vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {skill.name}
@@ -175,9 +183,12 @@ export function SkillDetailDialog({
           <span className="text-xs font-medium text-muted-foreground">
             SKILL.md
           </span>
-          <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-secondary p-3 font-mono text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words">
+          <ScrollArea
+            render={<pre />}
+            className="max-h-64 overflow-auto rounded-lg border border-border bg-secondary p-3 font-mono text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words"
+          >
             {skill.skillContent}
-          </pre>
+          </ScrollArea>
         </div>
 
         {/* Attached files tree */}

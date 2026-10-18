@@ -1,5 +1,7 @@
 "use client";
 
+import { Textarea } from "@/components/ui/textarea";
+
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { useCallback, useRef, useState } from "react";
@@ -77,7 +79,7 @@ export function CanvasImageGenPanel({
         </button>
       </div>
 
-      <textarea
+      <Textarea
         ref={textareaRef}
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
@@ -88,7 +90,7 @@ export function CanvasImageGenPanel({
           }
         }}
         placeholder="描述你想生成的图片…"
-        className="w-full h-20 resize-none rounded-lg border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        className="field-sizing-fixed h-20 w-full resize-none rounded-lg border border-border bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
         disabled={loading}
       />
 

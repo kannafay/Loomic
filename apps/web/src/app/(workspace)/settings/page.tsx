@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -126,7 +128,10 @@ export default function SettingsPage() {
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as SettingsTab)}
       >
-        <div className="mb-6 overflow-x-auto sm:mb-8">
+        <ScrollArea
+          orientation="horizontal"
+          className="mb-6 overflow-x-auto sm:mb-8"
+        >
           <TabsList aria-label="个人中心栏目" className="h-11 sm:h-8">
             {tabs.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} className="px-4 sm:px-3">
@@ -134,7 +139,7 @@ export default function SettingsPage() {
               </TabsTrigger>
             ))}
           </TabsList>
-        </div>
+        </ScrollArea>
 
         <div className="max-w-xl">
           <TabsContent value="profile">

@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Input } from "@/components/ui/input";
 
 import { AnimatePresence, motion } from "framer-motion";
@@ -166,7 +168,10 @@ function MarketplaceDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        scrollable
+        className="sm:max-w-lg max-h-[85vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {skill.name}
@@ -232,9 +237,12 @@ function MarketplaceDetailDialog({
             <span className="text-xs font-medium text-muted-foreground">
               README
             </span>
-            <pre className="max-h-64 overflow-auto rounded-lg border border-border bg-secondary p-3 font-mono text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words">
+            <ScrollArea
+              render={<pre />}
+              className="max-h-64 overflow-auto rounded-lg border border-border bg-secondary p-3 font-mono text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words"
+            >
               {skill.readme}
-            </pre>
+            </ScrollArea>
           </div>
         )}
 

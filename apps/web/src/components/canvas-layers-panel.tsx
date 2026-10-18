@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type {
   BinaryFiles,
@@ -289,7 +291,8 @@ export function CanvasLayersPanel({
       <div className="h-px bg-border" />
 
       {/* Layer list -- uses content-visibility for large canvas performance */}
-      <div
+      <ScrollArea
+        orientation="vertical"
         className="flex-1 overflow-y-auto px-1 py-1"
         style={{ contain: "layout style" }}
       >
@@ -308,7 +311,7 @@ export function CanvasLayersPanel({
             />
           ))
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

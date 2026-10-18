@@ -1,5 +1,6 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Select as SelectPrimitive } from "@base-ui/react/select";
 import type * as React from "react";
@@ -88,6 +89,7 @@ function SelectContent({
         className="isolate z-[200]"
       >
         <SelectPrimitive.Popup
+          render={<ScrollArea orientation="vertical" />}
           data-slot="select-content"
           data-align-trigger={alignItemWithTrigger}
           className={cn(

@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -205,6 +207,7 @@ export function ProviderModelDiscovery({
       }}
     >
       <DialogContent
+        scrollable={false}
         className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
         showCloseButton={!importing}
         initialFocus={searchInput}
@@ -301,8 +304,9 @@ export function ProviderModelDiscovery({
               </Button>
             </div>
             <TabsContent
+              render={<ScrollArea orientation="vertical" />}
               value={filter}
-              className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]"
+              className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto"
             >
               {loading ? (
                 <output className="flex min-h-full flex-col items-center justify-center gap-3 px-5 py-10 text-sm text-muted-foreground">

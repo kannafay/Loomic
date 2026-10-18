@@ -67,6 +67,7 @@ export function GuidanceSection({ value, onSave }: GuidanceSectionProps) {
     <section>
       <SectionHeader title="品牌规范" />
       <Textarea
+        scrollable={false}
         ref={textareaRef}
         value={draft}
         onChange={handleChange}

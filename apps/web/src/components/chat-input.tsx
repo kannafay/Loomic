@@ -305,6 +305,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
             </div>
           )}
           <Textarea
+            scrollable={false}
             ref={textareaRef}
             data-chat-input
             value={value}

@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 import { useState } from "react";
@@ -54,7 +56,10 @@ export function PricingComparison() {
       </div>
 
       {/* Single table with CSS transition for expand */}
-      <div className="mx-auto max-w-6xl overflow-x-auto rounded-xl border">
+      <ScrollArea
+        orientation="horizontal"
+        className="mx-auto max-w-6xl overflow-x-auto rounded-xl border"
+      >
         <table className="w-full border-collapse">
           <thead>
             <tr className="border-b border-border">
@@ -83,7 +88,7 @@ export function PricingComparison() {
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollArea>
 
       {/* Toggle button */}
       {featureCategories.length > INITIAL_CATEGORIES && (

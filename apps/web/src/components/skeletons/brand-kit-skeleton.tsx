@@ -1,3 +1,4 @@
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DelayedSkeleton } from "./delayed-skeleton";
 
@@ -23,7 +24,7 @@ export function BrandKitSkeleton() {
           </div>
 
           {/* Kit list items -- horizontal on mobile, vertical on desktop */}
-          <div className="flex gap-1 overflow-x-auto px-2 pb-3 md:flex-col md:flex-1 md:overflow-y-auto md:overflow-x-hidden md:pb-4 md:space-y-1">
+          <ScrollArea className="flex gap-1 overflow-x-auto px-2 pb-3 md:flex-col md:flex-1 md:overflow-y-auto md:overflow-x-hidden md:pb-4 md:space-y-1">
             {["placeholder-1", "placeholder-2", "placeholder-3"].map(
               (placeholderId) => (
                 <div
@@ -35,7 +36,7 @@ export function BrandKitSkeleton() {
                 </div>
               ),
             )}
-          </div>
+          </ScrollArea>
         </aside>
 
         {/* Editor */}
@@ -52,7 +53,10 @@ export function BrandKitSkeleton() {
           </header>
 
           {/* Content area */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-[80px] xl:px-[160px]">
+          <ScrollArea
+            orientation="vertical"
+            className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-[80px] xl:px-[160px]"
+          >
             <div className="mx-auto flex max-w-[960px] flex-col gap-8">
               {/* Extract from URL button placeholder */}
               <Skeleton className="h-10 w-44 self-start rounded-xl" />
@@ -130,7 +134,7 @@ export function BrandKitSkeleton() {
                 </div>
               </div>
             </div>
-          </div>
+          </ScrollArea>
         </div>
       </div>
     </DelayedSkeleton>

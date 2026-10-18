@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import type { ChatInputHandle } from "./chat-input";
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -960,7 +962,8 @@ export function ChatSidebar({
           console.error("[chat-sidebar] message area render crashed:", err)
         }
       >
-        <div
+        <ScrollArea
+          orientation="vertical"
           className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-6 px-4 py-4"
           aria-live="polite"
           aria-relevant="additions"
@@ -986,7 +989,7 @@ export function ChatSidebar({
             ))
           )}
           <div ref={messagesEndRef} />
-        </div>
+        </ScrollArea>
       </ErrorBoundary>
 
       {/* Input */}

@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -163,7 +165,8 @@ export function FontPickerDialog({
             </SelectGroup>
           </SelectContent>
         </Select>
-        <div
+        <ScrollArea
+          orientation="vertical"
           ref={listRef}
           onScroll={handleScroll}
           className="min-h-0 flex-1 overflow-y-auto"
@@ -185,7 +188,7 @@ export function FontPickerDialog({
               {search ? "未找到匹配字体" : "加载中..."}
             </p>
           )}
-        </div>
+        </ScrollArea>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>
             取消

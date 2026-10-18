@@ -37,9 +37,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="zh-CN"
       className={cn(geist.variable, "scroll-smooth")}
       data-scroll-behavior="smooth"
+      data-overlayscrollbars-initialize=""
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body
+        className="min-h-screen bg-background font-sans antialiased"
+        data-overlayscrollbars-initialize=""
+      >
         <Providers>{children}</Providers>
         <Script
           src="https://app.lemonsqueezy.com/js/lemon.js"

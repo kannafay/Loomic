@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import React, { useRef, useEffect, useCallback } from "react";
 
 import type { Message } from "../../hooks/use-chat-sessions";
@@ -56,7 +58,10 @@ export const MessageList = React.memo(function MessageList({
         console.error("[chat-sidebar] message area render crashed:", err)
       }
     >
-      <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-6 px-4 py-4">
+      <ScrollArea
+        orientation="vertical"
+        className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-6 px-4 py-4"
+      >
         {sessionsLoading || messagesLoading ? (
           <div className="flex h-full items-center justify-center">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
@@ -83,7 +88,7 @@ export const MessageList = React.memo(function MessageList({
           })
         )}
         <div ref={messagesEndRef} />
-      </div>
+      </ScrollArea>
     </ErrorBoundary>
   );
 });

@@ -230,6 +230,7 @@ export function ImageGeneratorPanel({
     >
       {/* Prompt textarea */}
       <Textarea
+        scrollable={false}
         ref={textareaRef}
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}

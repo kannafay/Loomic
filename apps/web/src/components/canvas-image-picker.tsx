@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { useEffect, useRef } from "react";
 
 export type CanvasImageItem = {
@@ -140,7 +142,8 @@ export function MessageMentionPicker({
   }
 
   return (
-    <div
+    <ScrollArea
+      orientation="vertical"
       ref={containerRef}
       className="absolute bottom-full left-2 mb-2 max-h-64 w-64 overflow-y-auto rounded-xl border border-border bg-popover shadow-lg"
     >
@@ -193,7 +196,7 @@ export function MessageMentionPicker({
           );
         })}
       </div>
-    </div>
+    </ScrollArea>
   );
 }
 

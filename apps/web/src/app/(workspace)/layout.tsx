@@ -10,6 +10,7 @@ import { PageTransition } from "@/components/page-transition";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth-context";
+import { scrollbarOptions } from "@/lib/scrollbar-options";
 
 export default function WorkspaceLayout({
   children,
@@ -66,14 +67,7 @@ export default function WorkspaceLayout({
           element="main"
           id="main"
           className="relative h-full min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
-          options={{
-            scrollbars: {
-              theme: "os-theme-loomic",
-              autoHide: "leave",
-              autoHideDelay: 600,
-              clickScroll: "instant",
-            },
-          }}
+          options={scrollbarOptions}
           defer
         >
           <PageTransition>{children}</PageTransition>

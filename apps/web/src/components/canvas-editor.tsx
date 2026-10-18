@@ -20,6 +20,7 @@ import { isVideoUrl } from "../lib/canvas-elements";
 import { normalizeCanvasElements } from "../lib/canvas-normalize";
 import { getServerBaseUrl } from "../lib/env";
 import { saveCanvas, uploadThumbnail } from "../lib/server-api";
+import { CanvasScrollbars } from "./canvas-scrollbars";
 import { CanvasToolMenu } from "./canvas-tool-menu";
 import { VideoCanvasElement } from "./canvas/video-canvas-element";
 import { ErrorBoundary } from "./error-boundary";
@@ -626,6 +627,7 @@ export function CanvasEditor({
       onError={(err) => console.error("[canvas-editor] render crashed:", err)}
     >
       <div className="h-full w-full relative">
+        <CanvasScrollbars />
         <Excalidraw
           langCode="zh-CN"
           theme={resolvedTheme === "dark" ? "dark" : "light"}

@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -238,7 +240,10 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
               ) : null}
             </div>
 
-            <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
+            <ScrollArea
+              orientation="horizontal"
+              className="flex items-center gap-2 overflow-x-auto pb-0.5"
+            >
               {selectedSeed.inputMentions
                 .filter((mention) => mention.type === "image")
                 .map((mention) => (
@@ -253,10 +258,11 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                     />
                   </div>
                 ))}
-            </div>
+            </ScrollArea>
           </div>
         ) : null}
         <Textarea
+          scrollable={false}
           ref={textareaRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}

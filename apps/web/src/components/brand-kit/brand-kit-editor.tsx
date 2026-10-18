@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -172,7 +174,10 @@ export function BrandKitEditor({
       </header>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-[80px] xl:px-[160px]">
+      <ScrollArea
+        orientation="vertical"
+        className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 md:px-[80px] xl:px-[160px]"
+      >
         <div className="flex flex-col gap-8 max-w-[960px] mx-auto">
           {/* Extract from URL — disabled Phase 1 */}
           <Button
@@ -219,7 +224,7 @@ export function BrandKitEditor({
             onUpload={handleUploadImage}
           />
         </div>
-      </div>
+      </ScrollArea>
     </div>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import type { ImageAttachmentState } from "../hooks/use-image-attachments";
 
 type ImageAttachmentBarProps = {
@@ -16,7 +18,10 @@ export function ImageAttachmentBar({
   if (attachments.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto px-2 py-1.5">
+    <ScrollArea
+      orientation="horizontal"
+      className="flex items-center gap-2 overflow-x-auto px-2 py-1.5"
+    >
       {attachments.map((att) => (
         <div
           key={att.id}
@@ -99,6 +104,6 @@ export function ImageAttachmentBar({
           </button>
         </div>
       ))}
-    </div>
+    </ScrollArea>
   );
 }

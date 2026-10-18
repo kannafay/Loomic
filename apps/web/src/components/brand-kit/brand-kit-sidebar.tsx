@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Button } from "@/components/ui/button";
 
 import type { BrandKitSummary } from "@loomic/shared";
@@ -46,7 +48,7 @@ export function BrandKitSidebar({
       </div>
 
       {/* Kit list -- horizontal scroll on mobile, vertical on desktop */}
-      <div className="flex gap-1 overflow-x-auto px-2 pb-3 md:flex-col md:flex-1 md:overflow-y-auto md:overflow-x-hidden md:pb-4">
+      <ScrollArea className="flex gap-1 overflow-x-auto px-2 pb-3 md:flex-col md:flex-1 md:overflow-y-auto md:overflow-x-hidden md:pb-4">
         {kits.map((kit) => {
           const isSelected = kit.id === selectedKitId;
           return (
@@ -99,7 +101,7 @@ export function BrandKitSidebar({
             </div>
           );
         })}
-      </div>
+      </ScrollArea>
     </aside>
   );
 }

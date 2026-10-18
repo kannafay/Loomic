@@ -1,5 +1,7 @@
 "use client";
 
+import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -310,7 +312,8 @@ export function ImageModelPreferencePopover({
                 </p>
               )}
             </div>
-            <div
+            <ScrollArea
+              orientation="vertical"
               className="min-h-0 max-h-64 overflow-y-auto overscroll-contain px-2 pb-2"
               aria-busy={catalog.status === "loading"}
             >
@@ -364,7 +367,7 @@ export function ImageModelPreferencePopover({
                   </fieldset>
                 ))
               )}
-            </div>
+            </ScrollArea>
             <div className="flex shrink-0 items-center justify-between gap-2 border-t px-4 py-3 text-xs">
               <output className="font-medium">
                 {manual

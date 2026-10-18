@@ -539,6 +539,7 @@ export function VideoGeneratorPanel({
       {/* Prompt textarea */}
       <div className="px-4 py-3">
         <Textarea
+          scrollable={false}
           ref={textareaRef}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
