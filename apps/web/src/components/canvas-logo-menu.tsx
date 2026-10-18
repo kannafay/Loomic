@@ -16,10 +16,10 @@ import {
   Undo2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 
+import { DeleteProjectDialog } from "@/components/delete-project-dialog";
 import { LoomicLogo } from "@/components/icons/loomic-logo";
-import { useToast } from "@/components/toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,17 +30,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useCreateProject } from "@/hooks/use-create-project";
+import { useDeleteProject } from "@/hooks/use-delete-project";
 import {
   createExcalidrawImageElement,
   getViewportCenter,
   scaleToFit,
 } from "@/lib/canvas-elements";
-import { deleteProject } from "@/lib/server-api";
+import { useInvalidatePageData } from "@/lib/page-data-context";
 
 interface CanvasLogoMenuProps {
-  accessToken: string;
   projectId: string;
-  canvasId: string;
   excalidrawApi: ExcalidrawImperativeAPI | null;
 }
 
@@ -70,16 +69,20 @@ function generateFileId(): string {
 }
 
 export function CanvasLogoMenu({
-  accessToken,
   projectId,
-  canvasId,
   excalidrawApi,
 }: CanvasLogoMenuProps) {
   const router = useRouter();
-  const { error: toastError } = useToast();
+  const invalidatePageData = useInvalidatePageData();
   const { create: createNewProject } = useCreateProject();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
+  const handleDeleted = useCallback(() => {
+    invalidatePageData("projects");
+    router.replace("/home");
+  }, [invalidatePageData, router]);
+  const { pendingId, deleting, requestDelete, confirmDelete, cancelDelete } =
+    useDeleteProject({ onDeleted: handleDeleted });
 
   const handleDuplicateElements = useCallback(() => {
     if (!excalidrawApi) return;
@@ -107,22 +110,6 @@ export function CanvasLogoMenu({
       captureUpdate: "IMMEDIATELY",
     });
   }, [excalidrawApi]);
-
-  const handleDeleteProject = useCallback(async () => {
-    if (!confirmingDelete) {
-      setConfirmingDelete(true);
-      return;
-    }
-    try {
-      await deleteProject(accessToken, projectId);
-      router.push("/projects");
-    } catch (err) {
-      console.warn("Failed to delete project:", err);
-      toastError("项目删除失败");
-    } finally {
-      setConfirmingDelete(false);
-    }
-  }, [accessToken, projectId, router, confirmingDelete, toastError]);
 
   const handleFileImport = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -177,19 +164,21 @@ export function CanvasLogoMenu({
 
   return (
     <>
-      <DropdownMenu
-        onOpenChange={(open) => {
-          if (!open) setConfirmingDelete(false);
-        }}
-      >
+      <DropdownMenu>
         <DropdownMenuTrigger
+          ref={menuTriggerRef}
           className="flex items-center justify-center size-8 rounded-xl bg-card/80 backdrop-blur-sm shadow-sm border border-border hover:bg-card transition-colors cursor-pointer outline-none"
           aria-label="菜单"
         >
           <LoomicLogo className="size-5 text-foreground" />
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="start" sideOffset={6} className="w-56">
+        <DropdownMenuContent
+          align="start"
+          sideOffset={6}
+          className="w-56"
+          finalFocus={pendingId ? false : undefined}
+        >
           {/* Group 1 — Navigation */}
           <DropdownMenuGroup>
             <DropdownMenuItem onClick={() => router.push("/home")}>
@@ -212,10 +201,10 @@ export function CanvasLogoMenu({
             </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"
-              onClick={handleDeleteProject}
+              onClick={() => requestDelete(projectId)}
             >
               <Trash2 className="size-4" />
-              {confirmingDelete ? "确认删除?" : "删除当前项目"}
+              删除当前项目
             </DropdownMenuItem>
           </DropdownMenuGroup>
 
@@ -270,6 +259,14 @@ export function CanvasLogoMenu({
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <DeleteProjectDialog
+        open={pendingId !== null}
+        deleting={deleting}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+        finalFocus={menuTriggerRef}
+      />
 
       <input
         ref={fileInputRef}

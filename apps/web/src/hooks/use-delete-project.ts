@@ -16,39 +16,45 @@ export function useDeleteProject(opts?: {
   const { success: toastSuccess, error: toastError } = useToast();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
 
   const signOutRef = useRef(signOut);
   signOutRef.current = signOut;
 
   /** Step 1: open confirm dialog */
   const requestDelete = useCallback((projectId: string) => {
+    if (deletingRef.current) return;
     setPendingId(projectId);
   }, []);
 
   /** Step 2: user confirms */
   const confirmDelete = useCallback(async () => {
     const token = session?.access_token;
-    if (!token || !pendingId) return;
+    if (!token || !pendingId || deletingRef.current) return;
 
+    deletingRef.current = true;
     setDeleting(true);
     try {
       await deleteProject(token, pendingId);
+      setPendingId(null);
       toastSuccess("项目已删除");
       opts?.onDeleted?.(pendingId);
     } catch (err) {
       if (err instanceof ApiAuthError) {
+        setPendingId(null);
         await signOutRef.current();
         return;
       }
       toastError("项目删除失败");
     } finally {
+      deletingRef.current = false;
       setDeleting(false);
-      setPendingId(null);
     }
   }, [session?.access_token, pendingId, toastSuccess, toastError, opts]);
 
   /** Step 3: user cancels */
   const cancelDelete = useCallback(() => {
+    if (deletingRef.current) return;
     setPendingId(null);
   }, []);
 

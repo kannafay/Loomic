@@ -2,15 +2,17 @@
 
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
+import { type RefObject, useRef } from "react";
 
 import { Button } from "./ui/button";
-import { Dialog, DialogContent } from "./ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "./ui/dialog";
 
 interface DeleteProjectDialogProps {
   open: boolean;
   deleting: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  finalFocus?: RefObject<HTMLElement | null>;
 }
 
 export function DeleteProjectDialog({
@@ -18,20 +20,28 @@ export function DeleteProjectDialog({
   deleting,
   onConfirm,
   onCancel,
+  finalFocus,
 }: DeleteProjectDialogProps) {
+  const cancelRef = useRef<HTMLButtonElement>(null);
   return (
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) onCancel();
+        if (!v && !deleting) onCancel();
       }}
     >
-      <DialogContent className="sm:max-w-sm" showCloseButton={false}>
-        <p className="text-sm font-medium text-foreground">
+      <DialogContent
+        className="sm:max-w-sm"
+        showCloseButton={false}
+        initialFocus={cancelRef}
+        finalFocus={finalFocus}
+      >
+        <DialogTitle className="text-sm leading-normal font-medium text-foreground">
           确定删除此项目？此操作无法撤销。
-        </p>
+        </DialogTitle>
         <div className="mt-4 flex items-center justify-end gap-3">
           <Button
+            ref={cancelRef}
             variant="ghost"
             onClick={onCancel}
             disabled={deleting}
@@ -42,10 +52,12 @@ export function DeleteProjectDialog({
           <Button
             onClick={onConfirm}
             disabled={deleting}
+            aria-busy={deleting}
             className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {deleting ? (
+            {deleting && (
               <motion.span
+                aria-hidden="true"
                 animate={{ rotate: 360 }}
                 transition={{
                   duration: 0.8,
@@ -56,9 +68,8 @@ export function DeleteProjectDialog({
               >
                 <Loader2 size={16} />
               </motion.span>
-            ) : (
-              "永久删除"
             )}
+            {deleting ? "正在删除…" : "永久删除"}
           </Button>
         </div>
       </DialogContent>

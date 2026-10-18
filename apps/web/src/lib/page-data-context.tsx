@@ -31,6 +31,14 @@ export function PageDataProvider({ children }: { children: ReactNode }) {
   );
 }
 
+/** Drop a stale resource before navigating back to its page. */
+export function useInvalidatePageData() {
+  const cache = useContext(PageDataContext);
+  if (!cache)
+    throw new Error("useInvalidatePageData requires PageDataProvider");
+  return useCallback((key: string) => cache.delete(key), [cache]);
+}
+
 /** Use a stable resource key; initial placeholders are never cached. */
 export function usePageDataState<T>(key: string, initialValue: T) {
   const cache = useContext(PageDataContext);

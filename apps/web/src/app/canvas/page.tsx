@@ -276,9 +276,7 @@ function CanvasPageContent() {
       {/* Top-left navigation bar */}
       <div className="absolute top-3 left-3 z-20 flex items-center gap-1.5">
         <CanvasLogoMenu
-          accessToken={accessToken}
           projectId={canvasData.projectId}
-          canvasId={canvasData.id}
           excalidrawApi={excalidrawApi}
         />
         <EditableProjectName
