@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -291,18 +292,15 @@ export function ProviderModelDiscovery({
                         </span>
                       )}
                       <Select
-                        items={[
-                          { value: "", label: "请选择类型" },
-                          ...KINDS.map((kind) => ({
-                            value: kind.id,
-                            label: kind.name,
-                          })),
-                        ]}
-                        value={model.kind ?? ""}
+                        items={KINDS.map((kind) => ({
+                          value: kind.id,
+                          label: kind.name,
+                        }))}
+                        value={model.kind}
                         disabled={busy || exists}
                         onValueChange={(value) =>
                           update(model.apiModel, {
-                            kind: (value as ModelKind) || null,
+                            kind: value,
                             selected: false,
                           })
                         }
@@ -315,12 +313,13 @@ export function ProviderModelDiscovery({
                           <SelectValue placeholder="请选择类型" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">请选择类型</SelectItem>
-                          {KINDS.map((kind) => (
-                            <SelectItem key={kind.id} value={kind.id}>
-                              {kind.name}
-                            </SelectItem>
-                          ))}
+                          <SelectGroup>
+                            {KINDS.map((kind) => (
+                              <SelectItem key={kind.id} value={kind.id}>
+                                {kind.name}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                     </div>

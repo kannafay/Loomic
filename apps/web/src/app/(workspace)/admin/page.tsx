@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
   SelectTrigger,
   SelectValue,
@@ -587,11 +588,13 @@ export default function AdminPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="openai">OpenAI 兼容</SelectItem>
-                        <SelectItem value="anthropic">
-                          Anthropic Messages
-                        </SelectItem>
-                        <SelectItem value="gemini">Gemini 原生</SelectItem>
+                        <SelectGroup>
+                          <SelectItem value="openai">OpenAI 兼容</SelectItem>
+                          <SelectItem value="anthropic">
+                            Anthropic Messages
+                          </SelectItem>
+                          <SelectItem value="gemini">Gemini 原生</SelectItem>
+                        </SelectGroup>
                       </SelectContent>
                     </Select>
                   </Label>
@@ -1168,17 +1171,19 @@ export default function AdminPage() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="auto">
-                                跟随提供商接口类型
-                              </SelectItem>
-                              <SelectItem value="agnes">
-                                Agnes 图片／视频接口
-                              </SelectItem>
-                              {kind === "video" && (
-                                <SelectItem value="veo">
-                                  Gemini Veo 接口
+                              <SelectGroup>
+                                <SelectItem value="auto">
+                                  跟随提供商接口类型
                                 </SelectItem>
-                              )}
+                                <SelectItem value="agnes">
+                                  Agnes 图片／视频接口
+                                </SelectItem>
+                                {kind === "video" && (
+                                  <SelectItem value="veo">
+                                    Gemini Veo 接口
+                                  </SelectItem>
+                                )}
+                              </SelectGroup>
                             </SelectContent>
                           </Select>
                         </label>
@@ -1315,8 +1320,10 @@ export default function AdminPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="user">普通用户</SelectItem>
-                          <SelectItem value="admin">管理员</SelectItem>
+                          <SelectGroup>
+                            <SelectItem value="user">普通用户</SelectItem>
+                            <SelectItem value="admin">管理员</SelectItem>
+                          </SelectGroup>
                         </SelectContent>
                       </Select>
                     </td>
