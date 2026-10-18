@@ -4,6 +4,7 @@ import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CanvasBottomBar } from "../src/components/canvas-bottom-bar";
+import { CanvasEmptyHint } from "../src/components/canvas-empty-hint";
 import { CanvasToolMenu } from "../src/components/canvas-tool-menu";
 
 vi.mock("../src/lib/server-api", () => ({
@@ -46,6 +47,83 @@ afterEach(() => {
 });
 
 describe("native canvas context menu", () => {
+  it("immediately hides the empty hint and its shortcut while the menu is open, then restores them", async () => {
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    let contextMenu: null | { items: never[]; left: number; top: number } =
+      null;
+    let elements: { isDeleted: boolean }[] = [];
+    const listeners = new Set<() => void>();
+    const api = {
+      getAppState: () => ({ contextMenu }),
+      getSceneElements: () => elements,
+      onChange: (callback: () => void) => {
+        listeners.add(callback);
+        return () => listeners.delete(callback);
+      },
+    } as unknown as ExcalidrawImperativeAPI;
+    const emitChange = () => {
+      for (const listener of listeners) listener();
+    };
+    const openChat = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <>
+        <CanvasEmptyHint excalidrawApi={api} onOpenChat={openChat} />
+        <textarea aria-label="对话输入" data-chat-input />
+      </>,
+    );
+    expect(screen.getByText("输入你的想法开始创作")).toBeVisible();
+
+    contextMenu = { items: [], left: 100, top: 100 };
+    act(emitChange);
+    expect(screen.queryByText("输入你的想法开始创作")).not.toBeInTheDocument();
+    await user.keyboard("c");
+    expect(openChat).not.toHaveBeenCalled();
+
+    contextMenu = null;
+    elements = [{ isDeleted: false }];
+    act(emitChange);
+    expect(screen.queryByText("输入你的想法开始创作")).not.toBeInTheDocument();
+    elements = [{ isDeleted: true }];
+    act(emitChange);
+    expect(screen.getByText("输入你的想法开始创作")).toBeVisible();
+    await user.keyboard("c");
+    expect(openChat).toHaveBeenCalledExactlyOnceWith();
+    expect(screen.getByRole("textbox", { name: "对话输入" })).toHaveFocus();
+  });
+
+  it("respects a menu that was already open when the editor became available and cleans up its subscription", () => {
+    let contextMenu: null | { items: never[]; left: number; top: number } = {
+      items: [],
+      left: 100,
+      top: 100,
+    };
+    const listeners = new Set<() => void>();
+    const api = {
+      getAppState: () => ({ contextMenu }),
+      getSceneElements: () => [],
+      onChange: (callback: () => void) => {
+        listeners.add(callback);
+        return () => listeners.delete(callback);
+      },
+    } as unknown as ExcalidrawImperativeAPI;
+    const view = render(
+      <CanvasEmptyHint excalidrawApi={null} onOpenChat={vi.fn()} />,
+    );
+    view.rerender(<CanvasEmptyHint excalidrawApi={api} onOpenChat={vi.fn()} />);
+    expect(screen.queryByText("输入你的想法开始创作")).not.toBeInTheDocument();
+    contextMenu = null;
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+    expect(screen.getByText("输入你的想法开始创作")).toBeVisible();
+    view.unmount();
+    expect(listeners.size).toBe(0);
+  });
+
   it("hides the video form during the native menu and restores the same prompt and frame afterward", async () => {
     const element = {
       id: "video",

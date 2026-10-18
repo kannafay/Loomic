@@ -19,29 +19,30 @@ export function CanvasEmptyHint({
   onOpenChat,
 }: CanvasEmptyHintProps) {
   const [hasElements, setHasElements] = useState(false);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const onOpenChatRef = useRef(onOpenChat);
   onOpenChatRef.current = onOpenChat;
 
-  // Poll the Excalidraw API every 500ms to determine if the canvas contains
-  // any non-deleted elements.
+  // Follow editor changes immediately so the hint never covers the native menu.
   useEffect(() => {
-    function check() {
-      if (!excalidrawApi) {
-        setHasElements(false);
-        return;
-      }
-      const elements = excalidrawApi.getSceneElements?.() ?? [];
+    if (!excalidrawApi) {
+      setHasElements(false);
+      setContextMenuOpen(false);
+      return;
+    }
+    function sync() {
+      const elements = excalidrawApi?.getSceneElements() ?? [];
       setHasElements(elements.some((el) => !el.isDeleted));
+      setContextMenuOpen(Boolean(excalidrawApi?.getAppState().contextMenu));
     }
 
-    check();
-    const id = setInterval(check, 500);
-    return () => clearInterval(id);
+    sync();
+    return excalidrawApi.onChange(sync);
   }, [excalidrawApi]);
 
   // Global keydown listener for the `C` shortcut.
   useEffect(() => {
-    if (hasElements) return;
+    if (hasElements || contextMenuOpen) return;
 
     function handleKeyDown(e: KeyboardEvent) {
       // Ignore when the user is typing in an input or textarea.
@@ -76,9 +77,9 @@ export function CanvasEmptyHint({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [hasElements]);
+  }, [hasElements, contextMenuOpen]);
 
-  if (hasElements) return null;
+  if (hasElements || contextMenuOpen) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
