@@ -321,7 +321,7 @@ export default function AdminPage() {
           {error}
         </p>
       )}
-      <TabsContent value="models" className="max-w-7xl">
+      <TabsContent value="models" className="min-w-0">
         <div className="mb-6">
           <h2 className="mb-1 text-lg font-semibold">模型配置</h2>
           <p className="text-sm text-muted-foreground">
@@ -1284,7 +1284,7 @@ export default function AdminPage() {
       <TabsContent value="network">
         {token && <NetworkSettingsPanel token={token} />}
       </TabsContent>
-      <TabsContent value="users" className="max-w-7xl">
+      <TabsContent value="users" className="min-w-0">
         {token && session && (
           <UsersPanel
             token={token}
