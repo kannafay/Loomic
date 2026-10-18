@@ -104,7 +104,7 @@ function GradientBorderCard({ children }: { children: React.ReactNode }) {
         className="absolute inset-0 -z-10 blur-3xl opacity-0 transition-opacity duration-700 group-[.in-view]:opacity-100"
         style={{
           background:
-            "radial-gradient(ellipse at center, oklch(0.90 0.17 115 / 0.12), transparent 70%)",
+            "radial-gradient(ellipse at center, color-mix(in oklch, var(--accent) 12%, transparent), transparent 70%)",
           transform: "scale(1.2)",
         }}
       />
@@ -247,7 +247,7 @@ function FeatureDivider() {
         className="w-full max-w-md h-px"
         style={{
           background:
-            "linear-gradient(90deg, transparent 0%, oklch(0.556 0 0 / 0.15) 30%, oklch(0.90 0.17 115 / 0.2) 50%, oklch(0.556 0 0 / 0.15) 70%, transparent 100%)",
+            "linear-gradient(90deg, transparent 0%, oklch(0.556 0 0 / 0.15) 30%, color-mix(in oklch, var(--accent) 20%, transparent) 50%, oklch(0.556 0 0 / 0.15) 70%, transparent 100%)",
         }}
       />
     </div>

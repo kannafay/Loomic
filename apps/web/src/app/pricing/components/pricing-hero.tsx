@@ -11,7 +11,7 @@ export function PricingHero() {
         initial="hidden"
         animate="visible"
         custom={0}
-        className="mb-4 inline-block rounded-full bg-accent/15 px-3.5 py-1 text-sm font-medium text-accent-foreground"
+        className="mb-4 inline-block rounded-full bg-accent-soft px-3.5 py-1 text-sm font-medium text-accent-soft-foreground"
       >
         定价方案
       </motion.span>

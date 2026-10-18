@@ -39,7 +39,7 @@ function ExampleChip({
       className={cn(
         "inline-flex h-8 items-center gap-1 rounded-full border-[0.5px] px-3 text-xs transition-all",
         accent === "special"
-          ? "border-accent bg-accent/30 text-foreground hover:bg-accent/40"
+          ? "border-accent/40 bg-accent-soft text-accent-soft-foreground hover:bg-accent/15"
           : active
             ? "border-foreground bg-foreground text-background"
             : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",

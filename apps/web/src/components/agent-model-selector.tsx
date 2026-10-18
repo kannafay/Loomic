@@ -103,7 +103,7 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
       <SelectTrigger
         aria-label="对话模型"
         title={`对话模型：${displayLabel}`}
-        className={`h-8 rounded-full ${compact ? "px-2.5 text-[11px]" : "px-3 text-xs"}${isActive ? " border-accent bg-accent/10 hover:bg-accent/20" : " hover:bg-muted"}`}
+        className={`h-8 rounded-full ${compact ? "px-2.5 text-[11px]" : "px-3 text-xs"}${isActive ? " border-accent/40 bg-accent-soft text-accent-soft-foreground hover:bg-accent/15 dark:bg-accent-soft dark:hover:bg-accent/15" : " hover:bg-muted"}`}
       >
         <svg
           width="14"

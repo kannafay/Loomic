@@ -31,7 +31,7 @@ export function PricingCTA() {
               href="/register"
               className={cn(
                 buttonVariants({ size: "lg" }),
-                "bg-accent text-accent-foreground hover:bg-accent/90",
+                "bg-accent text-accent-foreground hover:brightness-95",
               )}
             >
               免费开始

@@ -95,8 +95,8 @@ function GalleryCard({ item }: { item: GalleryItem }) {
         <span
           className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold mb-2 w-fit"
           style={{
-            background: "oklch(0.90 0.17 115)",
-            color: "oklch(0.18 0 0)",
+            background: "var(--accent)",
+            color: "var(--accent-foreground)",
           }}
         >
           {item.category}

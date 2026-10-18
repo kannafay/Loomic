@@ -35,7 +35,8 @@ function StatCard({ stat, isLast }: { stat: StatItem; isLast: boolean }) {
         <span
           className="text-3xl md:text-4xl font-bold text-foreground tabular-nums tracking-tight"
           style={{
-            textShadow: "0 0 20px oklch(0.90 0.17 115 / 0.15)",
+            textShadow:
+              "0 0 20px color-mix(in oklch, var(--accent) 15%, transparent)",
           }}
         >
           <AnimatedCounter

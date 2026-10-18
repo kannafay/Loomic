@@ -83,7 +83,8 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
         plan.highlighted
           ? {
               animation: "landing-border-shift 4s ease-in-out infinite",
-              boxShadow: "0 0 32px 0 oklch(0.90 0.17 115 / 0.12)",
+              boxShadow:
+                "0 0 32px 0 color-mix(in oklch, var(--accent) 12%, transparent)",
             }
           : {}
       }
@@ -94,8 +95,8 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
           <span
             className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold"
             style={{
-              background: "oklch(0.90 0.17 115)",
-              color: "oklch(0.2 0 0)",
+              background: "var(--accent)",
+              color: "var(--accent-foreground)",
             }}
           >
             <Sparkles className="size-3" />
@@ -124,12 +125,13 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
             <div
               className="size-5 rounded-full flex items-center justify-center shrink-0"
               style={{
-                background: "oklch(0.90 0.17 115 / 0.15)",
+                background:
+                  "color-mix(in oklch, var(--accent) 15%, transparent)",
               }}
             >
               <Check
                 className="size-3 shrink-0"
-                style={{ color: "oklch(0.65 0.17 115)" }}
+                style={{ color: "var(--accent-soft-foreground)" }}
               />
             </div>
             <span className="text-sm text-muted-foreground">{feature}</span>
@@ -147,8 +149,8 @@ function PricingCard({ plan }: { plan: PricingPlan }) {
               "hover:scale-[1.02] active:scale-[0.98]",
             )}
             style={{
-              background: "oklch(0.90 0.17 115)",
-              color: "oklch(0.2 0 0)",
+              background: "var(--accent)",
+              color: "var(--accent-foreground)",
             }}
           >
             {plan.cta}

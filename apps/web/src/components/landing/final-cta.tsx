@@ -34,7 +34,7 @@ function BackgroundOrbs() {
       <div
         className="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full blur-3xl will-change-transform"
         style={{
-          background: "oklch(0.90 0.17 115 / 0.20)",
+          background: "color-mix(in oklch, var(--accent) 20%, transparent)",
           animation: "landing-orb-drift-1 14s ease-in-out infinite",
         }}
       />
@@ -42,7 +42,7 @@ function BackgroundOrbs() {
       <div
         className="pointer-events-none absolute -bottom-24 -right-24 w-80 h-80 rounded-full blur-3xl will-change-transform"
         style={{
-          background: "oklch(0.90 0.17 115 / 0.15)",
+          background: "color-mix(in oklch, var(--accent) 15%, transparent)",
           animation: "landing-orb-drift-2 18s ease-in-out infinite",
         }}
       />
@@ -50,7 +50,7 @@ function BackgroundOrbs() {
       <div
         className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full blur-3xl will-change-transform"
         style={{
-          background: "oklch(0.90 0.17 115 / 0.08)",
+          background: "color-mix(in oklch, var(--accent) 8%, transparent)",
           animation: "landing-orb-drift-3 22s ease-in-out infinite",
         }}
       />
@@ -65,7 +65,7 @@ function BackgroundOrbs() {
             bottom: p.bottom,
             width: p.size,
             height: p.size,
-            background: "oklch(0.90 0.17 115 / 0.5)",
+            background: "color-mix(in oklch, var(--accent) 50%, transparent)",
             animation: `landing-float-up ${p.duration} ease-in-out ${p.delay} infinite`,
           }}
         />
@@ -86,7 +86,7 @@ export function FinalCTA() {
           className="relative overflow-hidden rounded-3xl px-8 py-20 md:py-28 flex flex-col items-center text-center"
           style={{
             background:
-              "radial-gradient(ellipse at 50% 40%, oklch(0.18 0.02 115) 0%, oklch(0.13 0 0) 60%, oklch(0.10 0 0) 100%)",
+              "radial-gradient(ellipse at 50% 40%, color-mix(in oklch, var(--accent) 12%, #171717) 0%, oklch(0.13 0 0) 60%, oklch(0.10 0 0) 100%)",
           }}
         >
           {/* Background orbs + particles */}
@@ -116,18 +116,20 @@ export function FinalCTA() {
               <div
                 className="absolute top-1/2 left-1/2 w-full h-full rounded-full pointer-events-none"
                 style={{
-                  border: "2px solid oklch(0.90 0.17 115 / 0.3)",
+                  border:
+                    "2px solid color-mix(in oklch, var(--accent) 30%, transparent)",
                   animation: "landing-cta-pulse-ring 2.5s ease-out infinite",
                 }}
                 aria-hidden="true"
               />
               <Link
                 href="/register"
-                className="relative inline-flex items-center px-12 py-4 rounded-full text-lg font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-[0_0_40px_12px_oklch(0.90_0.17_115_/_0.35)]"
+                className="relative inline-flex items-center px-12 py-4 rounded-full text-lg font-medium transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-[0_0_40px_12px_color-mix(in_oklch,var(--accent)_35%,transparent)]"
                 style={{
-                  background: "oklch(0.90 0.17 115)",
-                  color: "oklch(0.18 0 0)",
-                  boxShadow: "0 0 24px 4px oklch(0.90 0.17 115 / 0.2)",
+                  background: "var(--accent)",
+                  color: "var(--accent-foreground)",
+                  boxShadow:
+                    "0 0 24px 4px color-mix(in oklch, var(--accent) 20%, transparent)",
                 }}
               >
                 免费开始创作

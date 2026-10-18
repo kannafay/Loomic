@@ -365,7 +365,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                     className={`flex h-8 w-8 items-center justify-center rounded-full border-[0.5px] transition-colors ${
                       preference.mode === "manual" ||
                       videoPreference.mode === "manual"
-                        ? "border-accent bg-accent/20 text-accent-foreground"
+                        ? "border-accent/40 bg-accent-soft text-accent-soft-foreground"
                         : "border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >

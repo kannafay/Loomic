@@ -115,7 +115,7 @@ export function CreditHeaderButton() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex h-8 items-center gap-1.5 rounded-lg bg-muted px-3 text-xs font-medium tabular-nums text-foreground transition-colors hover:bg-accent"
+          className="flex h-8 items-center gap-1.5 rounded-lg bg-muted px-3 text-xs font-medium tabular-nums text-foreground transition-colors hover:bg-accent-soft hover:text-accent-soft-foreground"
         >
           <Zap className="h-3 w-3 text-muted-foreground fill-muted-foreground" />
           <span>{balance.toLocaleString("zh-CN")}</span>

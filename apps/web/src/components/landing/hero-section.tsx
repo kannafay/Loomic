@@ -56,8 +56,8 @@ function MockupCursor() {
       >
         <path
           d="M1 1L6.5 14L8.5 8.5L14 6.5L1 1Z"
-          fill="oklch(0.90 0.17 115)"
-          stroke="oklch(0.90 0.17 115 / 0.6)"
+          fill="var(--accent)"
+          stroke="color-mix(in oklch, var(--accent) 60%, transparent)"
           strokeWidth="0.5"
         />
       </svg>
@@ -65,8 +65,8 @@ function MockupCursor() {
       <div
         className="mt-0.5 ml-3 px-1.5 py-0.5 rounded text-[8px] font-medium whitespace-nowrap"
         style={{
-          background: "oklch(0.90 0.17 115)",
-          color: "oklch(0.25 0.04 115)",
+          background: "var(--accent)",
+          color: "var(--accent-foreground)",
         }}
       >
         AI
@@ -95,7 +95,7 @@ function HeroMockup() {
         className="absolute inset-0 -z-10 rounded-2xl blur-3xl opacity-20 dark:opacity-30"
         style={{
           background:
-            "radial-gradient(ellipse at 50% 80%, oklch(0.90 0.17 115 / 0.4) 0%, transparent 70%)",
+            "radial-gradient(ellipse at 50% 80%, color-mix(in oklch, var(--accent) 40%, transparent) 0%, transparent 70%)",
         }}
       />
 
@@ -210,7 +210,7 @@ export function HeroSection() {
           className="landing-hero-glow-1 absolute -top-1/4 right-0 w-[80vw] h-[80vw] rounded-full opacity-60 will-change-transform"
           style={{
             background:
-              "radial-gradient(ellipse at center, oklch(0.90 0.17 115 / 0.08) 0%, transparent 70%)",
+              "radial-gradient(ellipse at center, color-mix(in oklch, var(--accent) 8%, transparent) 0%, transparent 70%)",
             animation:
               "landing-gradient-drift-1 18s ease-in-out infinite alternate",
           }}
@@ -286,13 +286,13 @@ export function HeroSection() {
             href="/login"
             className={cn(
               "landing-cta-shimmer inline-flex items-center px-8 py-3 rounded-full text-base font-medium",
-              "text-foreground",
+              "text-accent-foreground",
               "transition-all duration-200 hover:scale-105 active:scale-95",
-              "hover:shadow-[0_0_24px_4px_oklch(0.90_0.17_115_/_0.35)]",
+              "hover:shadow-[0_0_24px_4px_color-mix(in_oklch,var(--accent)_35%,transparent)]",
             )}
             style={{
               background:
-                "linear-gradient(135deg, oklch(0.90 0.17 115) 0%, oklch(0.82 0.17 115) 100%)",
+                "linear-gradient(135deg, var(--accent) 0%, color-mix(in oklch, var(--accent) 90%, black) 100%)",
             }}
           >
             开始创作

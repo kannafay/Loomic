@@ -15,10 +15,10 @@ function LogoMark({ className }: { className?: string }) {
       className={cn("size-6", className)}
       aria-hidden="true"
     >
-      <rect width="28" height="28" rx="6" fill="oklch(0.90 0.17 115)" />
+      <rect width="28" height="28" rx="6" fill="var(--accent)" />
       <path
         d="M8 20 L8 8 L14 8 C17.314 8 20 10.686 20 14 C20 17.314 17.314 20 14 20 Z"
-        fill="oklch(0.2 0 0)"
+        fill="var(--accent-foreground)"
         strokeLinejoin="round"
       />
     </svg>

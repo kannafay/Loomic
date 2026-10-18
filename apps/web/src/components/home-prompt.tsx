@@ -348,7 +348,7 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
                           className={`flex h-10 w-10 items-center justify-center rounded-full border-[0.5px] transition-colors sm:h-8 sm:w-8 ${
                             preference.mode === "manual" ||
                             videoPreference.mode === "manual"
-                              ? "border-accent bg-accent/30 text-accent-foreground"
+                              ? "border-accent/40 bg-accent-soft text-accent-soft-foreground"
                               : "border-border text-foreground hover:bg-muted"
                           }`}
                         >

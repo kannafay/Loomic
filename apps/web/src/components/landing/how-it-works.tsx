@@ -61,7 +61,7 @@ function StepCard({ step, isLast }: { step: Step; isLast: boolean }) {
         className="absolute top-0 left-0 right-0 h-[2px]"
         style={{
           background:
-            "linear-gradient(90deg, transparent 0%, oklch(0.90 0.17 115 / 0.6) 50%, transparent 100%)",
+            "linear-gradient(90deg, transparent 0%, color-mix(in oklch, var(--accent) 60%, transparent) 50%, transparent 100%)",
         }}
       />
 

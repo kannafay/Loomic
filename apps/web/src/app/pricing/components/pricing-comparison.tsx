@@ -68,7 +68,7 @@ export function PricingComparison() {
                 >
                   <span>{tier.name}</span>
                   {tier.badge && i === proIndex && (
-                    <span className="mt-1 block text-[10px] font-semibold leading-tight text-accent-foreground">
+                    <span className="mt-1 block text-[10px] font-semibold leading-tight text-accent-soft-foreground">
                       {tier.badge}
                     </span>
                   )}

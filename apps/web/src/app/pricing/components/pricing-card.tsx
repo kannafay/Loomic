@@ -71,9 +71,9 @@ export function PricingCard({
           disabled={loading}
           onClick={handleCheckout}
           style={{
-            backgroundColor: "oklch(0.90 0.17 115)",
-            color: "oklch(0.205 0 0)",
-            borderColor: "oklch(0.90 0.17 115)",
+            backgroundColor: "var(--accent)",
+            color: "var(--accent-foreground)",
+            borderColor: "var(--accent)",
           }}
         >
           {buttonContent}
@@ -111,8 +111,9 @@ export function PricingCard({
       style={
         tier.highlighted
           ? {
-              borderColor: "oklch(0.90 0.17 115)",
-              boxShadow: "0 0 20px oklch(0.90 0.17 115 / 0.15)",
+              borderColor: "var(--accent)",
+              boxShadow:
+                "0 0 20px color-mix(in oklch, var(--accent) 15%, transparent)",
             }
           : {}
       }
