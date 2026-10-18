@@ -185,7 +185,7 @@ export function ChatSidebar({
   const isResizing = useRef(false);
 
   const clampWidth = useCallback(
-    (w: number) => Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, w)),
+    (w: number) => Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, Math.round(w))),
     [],
   );
 
@@ -1073,7 +1073,7 @@ export function ChatSidebar({
         aria-valuemin={SIDEBAR_MIN}
         aria-valuemax={SIDEBAR_MAX}
         tabIndex={0}
-        className="w-2 shrink-0 cursor-col-resize bg-gradient-to-r from-transparent via-border to-transparent shadow-[1px_0_10px_rgba(15,23,42,0.06)] transition-all hover:via-muted-foreground/40 hover:shadow-[1px_0_14px_rgba(15,23,42,0.1)] active:via-muted-foreground/60 active:shadow-[1px_0_16px_rgba(15,23,42,0.14)] outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative z-10 w-px shrink-0 touch-none cursor-col-resize bg-border transition-colors before:absolute before:inset-y-0 before:-left-1 before:w-[9px] hover:bg-accent/60 active:bg-accent outline-none focus-visible:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onKeyDown={handleResizeKeyDown}

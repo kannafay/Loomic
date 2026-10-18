@@ -349,10 +349,17 @@ function CanvasPageContent() {
   );
 }
 
+function CanvasRoute() {
+  const canvasId = useSearchParams().get("id");
+  // A new project needs fresh editor and assistant state. Session changes
+  // within the same canvas keep the captured initial prompt intact.
+  return <CanvasPageContent key={canvasId} />;
+}
+
 export default function CanvasPage() {
   return (
     <Suspense fallback={<LoadingScreen />}>
-      <CanvasPageContent />
+      <CanvasRoute />
     </Suspense>
   );
 }

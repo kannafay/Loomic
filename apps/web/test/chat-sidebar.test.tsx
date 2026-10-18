@@ -1,7 +1,14 @@
 // @vitest-environment jsdom
 
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -168,6 +175,55 @@ describe("ChatSidebar", () => {
     cleanup();
     vi.clearAllMocks();
     vi.restoreAllMocks();
+  });
+
+  it("resizes with the keyboard and keeps the panel within its width limits", async () => {
+    renderSidebar();
+    await screen.findByPlaceholderText("描述你的想法，或输入“@”引用内容");
+    const handle = screen.getByRole("separator", {
+      name: "调整对话面板宽度",
+    });
+    handle.focus();
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(handle).toHaveAttribute("aria-valuenow", "420");
+    expect(handle.parentElement).toHaveStyle({ width: "420px" });
+    await userEvent.keyboard("{ArrowLeft>12/}");
+    expect(handle).toHaveAttribute("aria-valuenow", "600");
+    await userEvent.keyboard("{ArrowRight>20/}");
+    expect(handle).toHaveAttribute("aria-valuenow", "300");
+  });
+
+  it("tracks mouse dragging outside the divider and stops on release", async () => {
+    renderSidebar();
+    await screen.findByPlaceholderText("描述你的想法，或输入“@”引用内容");
+    const handle = screen.getByRole("separator", {
+      name: "调整对话面板宽度",
+    });
+    fireEvent.mouseDown(handle, { clientX: 1000 });
+    fireEvent.mouseMove(document, { clientX: 979.5 });
+    expect(handle).toHaveAttribute("aria-valuenow", "421");
+    expect(handle.parentElement).toHaveStyle({ width: "421px" });
+    fireEvent.mouseMove(document, { clientX: 500 });
+    expect(handle).toHaveAttribute("aria-valuenow", "600");
+    fireEvent.mouseUp(document);
+    fireEvent.mouseMove(document, { clientX: 1100 });
+    expect(handle).toHaveAttribute("aria-valuenow", "600");
+  });
+
+  it("supports touch dragging and releases the gesture on cancellation", async () => {
+    renderSidebar();
+    await screen.findByPlaceholderText("描述你的想法，或输入“@”引用内容");
+    const handle = screen.getByRole("separator", {
+      name: "调整对话面板宽度",
+    });
+    fireEvent.touchStart(handle, { touches: [{ clientX: 1000 }] });
+    fireEvent.touchMove(document, { touches: [{ clientX: 950 }] });
+    expect(handle).toHaveAttribute("aria-valuenow", "450");
+    fireEvent.touchMove(document, { touches: [{ clientX: 1200 }] });
+    expect(handle).toHaveAttribute("aria-valuenow", "300");
+    fireEvent.touchCancel(document);
+    fireEvent.touchMove(document, { touches: [{ clientX: 800 }] });
+    expect(handle).toHaveAttribute("aria-valuenow", "300");
   });
 
   it("starts runs via WebSocket with the active real session id", async () => {

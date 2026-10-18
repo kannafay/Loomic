@@ -64,13 +64,17 @@ export function ProjectList({
 
         {/* Project cards */}
         {projects.map((project) => (
-          <Link
+          <div
             key={project.id}
-            href={`/canvas?id=${project.primaryCanvas.id}`}
             className={`group relative block aspect-[286/208] rounded-lg bg-card p-2 cursor-pointer shadow-card transition-all duration-300 hover:shadow-md sm:p-3 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1${
               highlightId === project.id ? " ring-2 ring-border" : ""
             }`}
           >
+            <Link
+              href={`/canvas?id=${project.primaryCanvas.id}`}
+              aria-label={project.name}
+              className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            />
             {/* Trash icon -- hover reveal on desktop */}
             <button
               type="button"
@@ -109,7 +113,7 @@ export function ProjectList({
             <div className="mt-0.5 text-[10px] text-muted-foreground sm:text-[11px]">
               更新于 {formatDate(project.updatedAt)}
             </div>
-          </Link>
+          </div>
         ))}
       </div>
 

@@ -22,6 +22,13 @@ vi.mock("../src/lib/auth-context", () => ({
 
 import ProjectsPage from "../src/app/(workspace)/projects/page";
 import { ToastProvider } from "../src/components/toast";
+import {
+  INITIAL_AGENT_MODEL_KEY,
+  INITIAL_ATTACHMENTS_KEY,
+  INITIAL_IMAGE_GENERATION_PREFERENCE_KEY,
+  INITIAL_VIDEO_GENERATION_PREFERENCE_KEY,
+  useCreateProject,
+} from "../src/hooks/use-create-project";
 import { PageDataProvider } from "../src/lib/page-data-context";
 
 const mockFetch = vi.fn<typeof fetch>();
@@ -122,12 +129,6 @@ function renderPage() {
   return render(pageContent());
 }
 
-function mockPreviewTab() {
-  const previewTab = { location: { href: "/loading-preview" }, close: vi.fn() };
-  vi.mocked(window.open).mockReturnValue(previewTab as unknown as Window);
-  return previewTab;
-}
-
 describe("Projects page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -200,33 +201,7 @@ describe("Projects page", () => {
     ).toBeVisible();
   });
 
-  it("creates an unnamed project and navigates the synchronously opened preview tab", async () => {
-    mockRequests();
-    const previewTab = mockPreviewTab();
-    renderPage();
-
-    await userEvent.click(
-      await screen.findByRole("button", { name: "新建项目" }),
-    );
-
-    expect(window.open).toHaveBeenCalledExactlyOnceWith(
-      "/loading-preview",
-      "_blank",
-    );
-    await waitFor(() => expect(previewTab.location.href).toBe("/canvas?id=c1"));
-    expect(mockFetch).toHaveBeenCalledWith(
-      "http://localhost:3001/api/projects",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ name: "未命名项目" }),
-        headers: expect.objectContaining({ Authorization: "Bearer token_123" }),
-      }),
-    );
-    expect(previewTab.close).not.toHaveBeenCalled();
-    expect(mockPush).not.toHaveBeenCalled();
-  });
-
-  it("opens the new canvas in the current tab when popups are blocked", async () => {
+  it("creates an unnamed project in the current tab without opening a preview tab", async () => {
     mockRequests();
     renderPage();
 
@@ -235,6 +210,99 @@ describe("Projects page", () => {
     );
 
     await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/canvas?id=c1"));
+    expect(window.open).not.toHaveBeenCalled();
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:3001/api/projects",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ name: "未命名项目" }),
+        headers: expect.objectContaining({ Authorization: "Bearer token_123" }),
+      }),
+    );
+  });
+
+  it("hands the prompt, attachments and model choices to the canvas in the same tab", async () => {
+    const prompt = "雪山日出，写实，16:9";
+    const attachments = [
+      {
+        assetId: "reference-1",
+        url: "https://example.com/reference.png",
+        mimeType: "image/png",
+        source: "upload" as const,
+        name: "reference.png",
+      },
+    ];
+    const imageGenerationPreference = {
+      mode: "manual" as const,
+      models: ["configured/agnes-image"],
+    };
+    const videoGenerationPreference = {
+      mode: "manual" as const,
+      models: ["configured/agnes-video"],
+    };
+    function PromptSubmit() {
+      const { create } = useCreateProject();
+      return (
+        <button
+          type="button"
+          onClick={() =>
+            create({
+              prompt,
+              attachments,
+              imageGenerationPreference,
+              videoGenerationPreference,
+              model: "configured/agnes-chat",
+            })
+          }
+        >
+          提交创作
+        </button>
+      );
+    }
+    mockRequests();
+    render(
+      <ToastProvider>
+        <PromptSubmit />
+      </ToastProvider>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "提交创作" }));
+    await waitFor(() =>
+      expect(mockPush).toHaveBeenCalledWith(
+        `/canvas?id=c1&prompt=${encodeURIComponent(prompt)}`,
+      ),
+    );
+    expect(window.open).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem(INITIAL_ATTACHMENTS_KEY)).toBe(
+      JSON.stringify(attachments),
+    );
+    expect(
+      sessionStorage.getItem(INITIAL_IMAGE_GENERATION_PREFERENCE_KEY),
+    ).toBe(JSON.stringify(imageGenerationPreference));
+    expect(
+      sessionStorage.getItem(INITIAL_VIDEO_GENERATION_PREFERENCE_KEY),
+    ).toBe(JSON.stringify(videoGenerationPreference));
+    expect(sessionStorage.getItem(INITIAL_AGENT_MODEL_KEY)).toBe(
+      "configured/agnes-chat",
+    );
+  });
+
+  it("clears a previous prompt's handoff data when creating a blank project", async () => {
+    const keys = [
+      INITIAL_ATTACHMENTS_KEY,
+      INITIAL_IMAGE_GENERATION_PREFERENCE_KEY,
+      INITIAL_VIDEO_GENERATION_PREFERENCE_KEY,
+      INITIAL_AGENT_MODEL_KEY,
+    ];
+    for (const key of keys) sessionStorage.setItem(key, "previous");
+    mockRequests();
+    renderPage();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "新建项目" }),
+    );
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/canvas?id=c1"));
+    for (const key of keys) expect(sessionStorage.getItem(key)).toBeNull();
   });
 
   it.each(["viewer", "projects"] as const)(
@@ -274,17 +342,16 @@ describe("Projects page", () => {
   });
 
   it.each([409, 500, 401])(
-    "closes the preview tab and handles a %i during project creation",
+    "stays on the current page and handles a %i during project creation",
     async (status) => {
       mockRequests({ createStatus: status });
-      const previewTab = mockPreviewTab();
       renderPage();
 
       await userEvent.click(
         await screen.findByRole("button", { name: "新建项目" }),
       );
 
-      await waitFor(() => expect(previewTab.close).toHaveBeenCalledOnce());
+      expect(window.open).not.toHaveBeenCalled();
       expect(mockPush).not.toHaveBeenCalled();
       if (status === 401) {
         await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/login"));

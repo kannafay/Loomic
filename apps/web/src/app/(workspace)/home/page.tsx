@@ -369,10 +369,12 @@ export default function HomePage() {
                 variants={cardItem}
                 whileHover={{ y: -4 }}
                 className="group relative aspect-[286/208] cursor-pointer rounded-lg bg-card p-2 text-left shadow-card transition-shadow duration-300 hover:shadow-md sm:p-3"
-                onClick={() =>
-                  router.push(`/canvas?id=${project.primaryCanvas.id}`)
-                }
               >
+                <Link
+                  href={`/canvas?id=${project.primaryCanvas.id}`}
+                  aria-label={project.name}
+                  className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                />
                 {/* Trash icon -- hover reveal */}
                 <button
                   type="button"
@@ -381,7 +383,7 @@ export default function HomePage() {
                     requestDelete(project.id);
                   }}
                   aria-label={`删除${project.name}`}
-                  className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-[4px] bg-foreground/70 text-background opacity-0 transition-all duration-300 hover:bg-foreground/80 group-hover:opacity-100 sm:right-5 sm:top-5"
+                  className="absolute right-3 top-3 z-10 flex size-8 items-center justify-center rounded-[4px] bg-foreground/70 text-background opacity-0 transition-all duration-300 hover:bg-foreground/80 group-hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring sm:right-5 sm:top-5"
                 >
                   <Trash2 size={14} />
                 </button>
