@@ -134,6 +134,7 @@ describe("ChatSidebar", () => {
   }
 
   beforeEach(() => {
+    localStorage.setItem("loomic:agent-model", "chat-model");
     Object.defineProperty(Element.prototype, "scrollIntoView", {
       configurable: true,
       value: vi.fn(),
@@ -173,6 +174,7 @@ describe("ChatSidebar", () => {
 
   afterEach(() => {
     cleanup();
+    localStorage.removeItem("loomic:agent-model");
     vi.clearAllMocks();
     vi.restoreAllMocks();
   });
@@ -243,6 +245,7 @@ describe("ChatSidebar", () => {
       expect(mockWs.startRun).toHaveBeenCalledWith(
         expect.objectContaining({
           sessionId: "session-real",
+          model: "chat-model",
           conversationId: "canvas-1",
           prompt: "hello loom",
           canvasId: "canvas-1",

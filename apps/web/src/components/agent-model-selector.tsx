@@ -10,10 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAgentModel } from "@/hooks/use-agent-model";
+import { useAuth } from "@/lib/auth-context";
 import { groupModelsByProvider } from "@/lib/model-groups";
-import { fetchModels } from "@/lib/server-api";
+import { fetchModelPreferences, fetchModels } from "@/lib/server-api";
 import type { ModelInfo } from "@loomic/shared";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // Sparkle icon SVG path from design spec
 const SPARKLE_ICON_PATH =
@@ -54,51 +55,72 @@ function ProviderLogo({ provider }: { provider: string }) {
 
 export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
   const { model, setModel } = useAgentModel();
+  const { session, loading } = useAuth();
+  const accessToken = session?.access_token;
+  const modelRef = useRef(model);
+  modelRef.current = model;
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Refresh the available models when this selector opens.
   useEffect(() => {
+    if (loading) return;
     let canceled = false;
-    fetchModels()
-      .then((data) => {
+    Promise.all([
+      fetchModels(),
+      accessToken
+        ? fetchModelPreferences(accessToken)
+        : Promise.resolve({ preferences: { text: null } }),
+    ])
+      .then(([data, { preferences }]) => {
         if (!canceled) {
           setModels(data.models);
           setModelsLoaded(true);
+          setLoadError(false);
+          const selected =
+            data.models.find(
+              (candidate) => candidate.id === modelRef.current,
+            ) ??
+            data.models.find(
+              (candidate) => candidate.id === preferences.text,
+            ) ??
+            data.models[0];
+          setModel(selected?.id ?? null);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!canceled) setLoadError(true);
+      });
     return () => {
       canceled = true;
     };
-  }, [open]);
+  }, [open, accessToken, loading, setModel]);
 
-  const isActive = model !== null;
   const selectedModel = models.find((candidate) => candidate.id === model);
+  const isActive = !!selectedModel;
   const displayLabel = selectedModel
     ? selectedModel.name
-    : model && modelsLoaded
-      ? "所选模型不可用"
-      : "智能助手";
+    : loadError
+      ? "模型加载失败"
+      : modelsLoaded
+        ? "暂无可用模型"
+        : "加载模型中…";
   const groups = groupModelsByProvider(models);
-  const automatic = "workspace-default";
 
   return (
     <Select
       open={open}
       onOpenChange={setOpen}
-      value={model ?? automatic}
+      value={selectedModel?.id ?? null}
       onValueChange={(value) => {
-        if (value) setModel(value === automatic ? null : value);
+        if (value) setModel(value);
       }}
-      items={[
-        { value: automatic, label: "自动（个人默认）" },
-        ...models.map((candidate) => ({
-          value: candidate.id,
-          label: candidate.name,
-        })),
-      ]}
+      items={models.map((candidate) => ({
+        value: candidate.id,
+        label: candidate.name,
+      }))}
     >
       <SelectTrigger
         aria-label="对话模型"
@@ -121,10 +143,7 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
         alignItemWithTrigger={false}
         className="max-h-[min(70vh,420px)] w-64"
       >
-        <SelectGroup>
-          <SelectLabel>对话模型</SelectLabel>
-          <SelectItem value={automatic}>自动（个人默认）</SelectItem>
-        </SelectGroup>
+        {models.length === 0 && <SelectLabel>{displayLabel}</SelectLabel>}
         {groups.map((group) => (
           <SelectGroup key={group.key}>
             <SelectLabel className="flex items-center gap-1.5">

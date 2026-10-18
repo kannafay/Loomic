@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ChatInput } from "../src/components/chat-input";
 
 vi.mock("../src/components/agent-model-selector", () => ({
@@ -10,7 +10,21 @@ vi.mock("../src/components/agent-model-selector", () => ({
 vi.mock("../src/components/image-model-preference", () => ({
   ImageModelPreferencePopover: () => null,
 }));
-afterEach(cleanup);
+beforeEach(() => localStorage.setItem("loomic:agent-model", "chat-model"));
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+});
+
+it("blocks sending until a concrete conversation model is selected", async () => {
+  localStorage.clear();
+  const onSend = vi.fn();
+  render(<ChatInput onSend={onSend} />);
+  await userEvent.type(screen.getByRole("textbox"), "待发送消息{Enter}");
+  expect(screen.getByRole("button", { name: "发送消息" })).toBeDisabled();
+  expect(onSend).not.toHaveBeenCalled();
+  expect(screen.getByRole("textbox")).toHaveValue("待发送消息");
+});
 
 it("allows stopping with an empty draft even while sending or uploads are disabled", async () => {
   const onSend = vi.fn();

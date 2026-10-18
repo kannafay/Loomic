@@ -120,7 +120,8 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
           (!attachments || attachments.length === 0) &&
           !selectedSeed) ||
         disabled ||
-        isUploading
+        isUploading ||
+        !agentModel
       )
         return;
 
@@ -156,7 +157,7 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
         videoPreference.mode === "manual" && videoPreference.models.length > 0
           ? videoPreference
           : undefined,
-        agentModel ?? undefined,
+        agentModel,
       );
       setValue("");
       if (textareaRef.current) {
@@ -400,9 +401,9 @@ export const HomePrompt = forwardRef<HomePromptHandle, HomePromptProps>(
               variant="default"
               type="button"
               onClick={handleSubmit}
-              disabled={disabled || isUploading || !hasContent}
+              disabled={disabled || isUploading || !hasContent || !agentModel}
               className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors sm:h-8 sm:w-8 ${
-                hasContent && !disabled && !isUploading
+                hasContent && !disabled && !isUploading && agentModel
                   ? "bg-primary text-primary-foreground hover:bg-primary/80 hover:accent-glow active:bg-primary/90"
                   : "cursor-not-allowed bg-primary text-primary-foreground opacity-30"
               }`}

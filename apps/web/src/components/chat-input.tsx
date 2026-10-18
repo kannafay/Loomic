@@ -14,6 +14,7 @@ import {
 } from "react";
 
 import type { MessageMention } from "@loomic/shared";
+import { useAgentModel } from "../hooks/use-agent-model";
 import type { ImageAttachmentState } from "../hooks/use-image-attachments";
 import { useImageModelPreference } from "../hooks/use-image-model-preference";
 import { useVideoModelPreference } from "../hooks/use-video-model-preference";
@@ -69,6 +70,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { preference } = useImageModelPreference();
     const { preference: videoPreference } = useVideoModelPreference();
+    const { model: agentModel } = useAgentModel();
     const [modelPopoverOpen, setModelPopoverOpen] = useState(false);
 
     useImperativeHandle(ref, () => ({
@@ -87,7 +89,8 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
         (!trimmed && (!attachments || attachments.length === 0)) ||
         disabled ||
         isUploading ||
-        isStreaming
+        isStreaming ||
+        !agentModel
       )
         return;
       onSend(trimmed);
@@ -95,7 +98,15 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
       }
-    }, [value, disabled, isUploading, isStreaming, onSend, attachments]);
+    }, [
+      value,
+      disabled,
+      isUploading,
+      isStreaming,
+      onSend,
+      attachments,
+      agentModel,
+    ]);
 
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent) => {
@@ -390,7 +401,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
               disabled={
                 isStreaming
                   ? isStopping || !onStop
-                  : disabled || !hasContent || isUploading
+                  : disabled || !hasContent || isUploading || !agentModel
               }
               aria-label={
                 isStreaming

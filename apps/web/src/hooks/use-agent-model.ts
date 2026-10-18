@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "loomic:agent-model";
 
-type AgentModel = string | null; // null = personal preference, then catalog order
+type AgentModel = string | null; // null = not initialized or no available model
 
 // Listeners for cross-component reactivity
 const listeners = new Set<() => void>();
