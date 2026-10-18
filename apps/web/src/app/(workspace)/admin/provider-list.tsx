@@ -35,6 +35,7 @@ export function ProviderList({
   const orderRef = useRef(providers);
   const savingRef = useRef(false);
   const [saving, setSaving] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const instructionsId = useId();
 
   useEffect(() => {
@@ -88,11 +89,16 @@ export function ProviderList({
                 .length
             }
             active={selectedId === provider.id}
+            dragging={dragging}
             disabled={disabled || saving}
             sortable={order.length > 1}
             instructionsId={instructionsId}
             onSelect={() => onSelect(provider)}
-            onDragEnd={() => void commitOrder()}
+            onDragStart={() => setDragging(true)}
+            onDragEnd={() => {
+              setDragging(false);
+              void commitOrder();
+            }}
             onMove={(direction) => {
               if (disabled || savingRef.current) return;
               const target = index + direction;
@@ -117,20 +123,24 @@ function ProviderListItem({
   provider,
   enabledCount,
   active,
+  dragging,
   disabled,
   sortable,
   instructionsId,
   onSelect,
+  onDragStart,
   onDragEnd,
   onMove,
 }: {
   provider: ProviderConfig;
   enabledCount: number;
   active: boolean;
+  dragging: boolean;
   disabled: boolean;
   sortable: boolean;
   instructionsId: string;
   onSelect: () => void;
+  onDragStart: () => void;
   onDragEnd: () => void;
   onMove: (direction: -1 | 1) => void;
 }) {
@@ -143,8 +153,14 @@ function ProviderListItem({
       dragListener={false}
       dragControls={controls}
       dragMomentum={false}
+      layout="position"
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
-      {...(reducedMotion ? { transition: { duration: 0 } } : {})}
+      {...(reducedMotion
+        ? { transition: { duration: 0 } }
+        : dragging
+          ? {}
+          : { transition: { layout: { duration: 0 } } })}
       aria-label={provider.name}
       className={`relative flex min-w-0 items-center rounded-lg border bg-card pl-1 transition-colors ${active ? "border-border/70 bg-muted" : "border-transparent hover:bg-muted/50"}`}
     >
