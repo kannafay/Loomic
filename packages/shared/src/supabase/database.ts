@@ -776,7 +776,7 @@ export type Database = {
           base_url: string;
           category: string;
           created_at: string;
-          created_by: string;
+          created_by: string | null;
           enabled: boolean;
           id: string;
           name: string;
@@ -790,7 +790,7 @@ export type Database = {
           base_url: string;
           category: string;
           created_at?: string;
-          created_by: string;
+          created_by?: string | null;
           enabled?: boolean;
           id?: string;
           name: string;
@@ -803,7 +803,7 @@ export type Database = {
           base_url?: string;
           category?: string;
           created_at?: string;
-          created_by?: string;
+          created_by?: string | null;
           enabled?: boolean;
           id?: string;
           name?: string;

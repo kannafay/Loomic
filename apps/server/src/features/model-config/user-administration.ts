@@ -23,6 +23,21 @@ function authError(
   return new ModelConfigError("账号服务暂时不可用，请稍后重试。", 503);
 }
 
+export async function deleteManagedUser(
+  client: AdminSupabaseClient,
+  actorId: string,
+  id: string,
+): Promise<void> {
+  if (actorId === id) throw new ModelConfigError("不能删除当前登录账号。", 409);
+  // Auth deletes the account and cascades application data in one transaction.
+  const { error } = await client.auth.admin.deleteUser(id, false);
+  if (error) {
+    if (error.code === "user_not_found" || error.status === 404)
+      throw authError(error);
+    throw new ModelConfigError("用户删除失败，请刷新列表后重试。", 503);
+  }
+}
+
 export async function createManagedUser(
   client: AdminSupabaseClient,
   input: AdminUserCreate,

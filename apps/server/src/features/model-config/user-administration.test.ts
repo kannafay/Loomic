@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AdminSupabaseClient } from "../../supabase/admin.js";
 import { createModelConfigService } from "./model-config-service.js";
-import { createManagedUser, updateManagedUser } from "./user-administration.js";
+import {
+  createManagedUser,
+  deleteManagedUser,
+  updateManagedUser,
+} from "./user-administration.js";
 
 const id = "11111111-1111-4111-8111-111111111111";
 const value = {
@@ -51,6 +55,38 @@ function setup() {
 }
 
 describe("managed users", () => {
+  it("deletes only the confirmed target through Auth hard deletion", async () => {
+    const { client, auth, from, rpc } = setup();
+    await deleteManagedUser(client, "actor", id);
+    expect(auth.deleteUser).toHaveBeenCalledExactlyOnceWith(id, false);
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+  it("prevents deleting the signed-in account before any mutation", async () => {
+    const { client, auth } = setup();
+    await expect(deleteManagedUser(client, id, id)).rejects.toMatchObject({
+      statusCode: 409,
+      message: "不能删除当前登录账号。",
+    });
+    expect(auth.deleteUser).not.toHaveBeenCalled();
+  });
+  it.each([
+    [{ code: "user_not_found", status: 404 }, 404, "用户不存在，请刷新列表。"],
+    [
+      { code: "unexpected_failure", message: "private-database-fixture" },
+      503,
+      "用户删除失败，请刷新列表后重试。",
+    ],
+  ] as const)(
+    "reports a rejected deletion without leaking Auth details (%j)",
+    async (error, statusCode, message) => {
+      const { client, auth } = setup();
+      auth.deleteUser.mockResolvedValueOnce({ error });
+      await expect(
+        deleteManagedUser(client, "actor", id),
+      ).rejects.toMatchObject({ statusCode, message });
+    },
+  );
   it.each(["user", "admin"] as const)(
     "creates a %s account with its profile/workspace and returns no password",
     async (role) => {
@@ -198,7 +234,7 @@ describe("managed users", () => {
       message: "用户资料未完全保存，请刷新列表核对后重试。",
     });
   });
-  it.each(["createUser", "updateUser"] as const)(
+  it.each(["createUser", "updateUser", "deleteUser"] as const)(
     "checks administrator access before %s reaches account services",
     async (method) => {
       const { client, auth, from } = setup();
@@ -210,10 +246,13 @@ describe("managed users", () => {
       const operation =
         method === "createUser"
           ? service.createUser("ordinary", creation)
-          : service.updateUser("ordinary", id, value);
+          : method === "updateUser"
+            ? service.updateUser("ordinary", id, value)
+            : service.deleteUser("ordinary", id);
       await expect(operation).rejects.toMatchObject({ statusCode: 403 });
       expect(auth.createUser).not.toHaveBeenCalled();
       expect(auth.getUserById).not.toHaveBeenCalled();
+      expect(auth.deleteUser).not.toHaveBeenCalled();
       expect(from).not.toHaveBeenCalled();
     },
   );

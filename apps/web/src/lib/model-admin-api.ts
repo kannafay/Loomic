@@ -123,5 +123,7 @@ export const updateAdminUser = (
 ) => request<{ user: AdminUser }>(token, `/users/${id}`, "PUT", value);
 export const fetchAdminUsers = (token: string) =>
   request<{ users: AdminUser[] }>(token, "/users");
+export const deleteAdminUser = (token: string, id: string) =>
+  request<{ ok: true }>(token, `/users/${id}`, "DELETE");
 export const updateSystemRole = (token: string, id: string, role: SystemRole) =>
   request(token, `/users/${id}/role`, "PUT", { role });

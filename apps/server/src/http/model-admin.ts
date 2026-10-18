@@ -199,6 +199,26 @@ export async function registerModelAdminRoutes(
     invalid: "请检查姓名、邮箱、初始密码与角色。",
     failed: "用户信息处理失败，请稍后重试。",
   };
+  app.delete<{ Params: { id: string } }>(
+    "/api/admin/users/:id",
+    (request, reply) => {
+      reply.header("Cache-Control", "no-store");
+      return run(
+        request,
+        reply,
+        true,
+        (userId) =>
+          service.deleteUser(
+            userId,
+            z.string().uuid().parse(request.params.id),
+          ),
+        {
+          invalid: "用户 ID 无效，请刷新列表。",
+          failed: "用户删除失败，请稍后重试。",
+        },
+      );
+    },
+  );
   app.post("/api/admin/users", (request, reply) => {
     reply.header("Cache-Control", "no-store");
     return run(

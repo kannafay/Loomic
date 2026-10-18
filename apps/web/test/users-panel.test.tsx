@@ -18,12 +18,14 @@ const api = vi.hoisted(() => ({
   list: vi.fn(),
   update: vi.fn(),
   create: vi.fn(),
+  delete: vi.fn(),
   refreshRole: vi.fn(),
 }));
 vi.mock("../src/lib/model-admin-api", () => ({
   fetchAdminUsers: api.list,
   updateAdminUser: api.update,
   createAdminUser: api.create,
+  deleteAdminUser: api.delete,
 }));
 const users: AdminUser[] = [
   { id: "admin", name: "林管理员", email: "lin@example.test", role: "admin" },
@@ -39,6 +41,7 @@ const users: AdminUser[] = [
 beforeEach(() => {
   vi.stubGlobal("PointerEvent", MouseEvent);
   api.list.mockReset().mockResolvedValue({ users });
+  api.delete.mockReset().mockResolvedValue({ ok: true });
   api.update
     .mockReset()
     .mockImplementation(
@@ -91,6 +94,101 @@ async function fillNewUser(user: ReturnType<typeof userEvent.setup>) {
   );
   await user.type(screen.getByLabelText("初始密码"), "test-password-1");
 }
+
+it("requires confirmation, identifies the target and safely cancels deletion", async () => {
+  const user = userEvent.setup();
+  page();
+  expect(
+    await screen.findByRole("button", { name: "删除 林管理员" }),
+  ).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "删除 陈成员" }));
+  const dialog = screen.getByRole("dialog", { name: "删除用户" });
+  expect(within(dialog).getByText("陈成员")).toBeVisible();
+  expect(within(dialog).getByText("chen@example.test")).toBeVisible();
+  expect(within(dialog).getByText(/无法恢复/)).toBeVisible();
+  await waitFor(() =>
+    expect(within(dialog).getByRole("button", { name: "取消" })).toHaveFocus(),
+  );
+  expect(api.delete).not.toHaveBeenCalled();
+  await user.click(within(dialog).getByRole("button", { name: "取消" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await user.click(screen.getByRole("button", { name: "删除 陈成员" }));
+  await user.keyboard("{Escape}");
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(api.delete).not.toHaveBeenCalled();
+  expect(screen.getByRole("row", { name: /陈成员/ })).toBeVisible();
+});
+
+it("blocks repeated submissions and dismissal until deletion completes, then removes the row", async () => {
+  let finish: (() => void) | undefined;
+  api.delete.mockImplementationOnce(
+    () =>
+      new Promise<{ ok: true }>((resolve) => {
+        finish = () => resolve({ ok: true });
+      }),
+  );
+  const user = userEvent.setup();
+  page();
+  await user.click(await screen.findByRole("button", { name: "删除 陈成员" }));
+  const dialog = screen.getByRole("dialog", { name: "删除用户" });
+  await user.click(within(dialog).getByRole("button", { name: "确认删除" }));
+  expect(api.delete).toHaveBeenCalledExactlyOnceWith("token", "member");
+  expect(within(dialog).getByRole("button", { name: "取消" })).toBeDisabled();
+  const pending = within(dialog).getByRole("button", { name: "正在删除…" });
+  expect(pending).toBeDisabled();
+  await user.click(pending);
+  await user.keyboard("{Escape}");
+  expect(dialog).toBeVisible();
+  expect(api.delete).toHaveBeenCalledTimes(1);
+  await act(async () => finish?.());
+  expect(await screen.findByRole("status")).toHaveTextContent("用户已删除");
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(screen.queryByRole("row", { name: /陈成员/ })).not.toBeInTheDocument();
+  expect(screen.getByText("共 2 位用户，2 位管理员")).toBeVisible();
+});
+
+it("keeps the account and confirmation after a rejected deletion and allows retry", async () => {
+  api.delete.mockRejectedValueOnce(
+    new Error("用户删除失败，请刷新列表后重试。"),
+  );
+  const user = userEvent.setup();
+  page();
+  await user.click(await screen.findByRole("button", { name: "删除 陈成员" }));
+  await user.click(screen.getByRole("button", { name: "确认删除" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("用户删除失败");
+  expect(screen.getByRole("dialog", { name: "删除用户" })).toBeVisible();
+  await user.click(screen.getByRole("button", { name: "确认删除" }));
+  expect(await screen.findByRole("status")).toHaveTextContent("用户已删除");
+  expect(api.delete).toHaveBeenCalledTimes(2);
+});
+
+it("returns to the previous page when its last row is deleted", async () => {
+  api.list.mockResolvedValue({
+    users: Array.from({ length: 11 }, (_, index) => ({
+      id: `user-${index}`,
+      name: `成员 ${index}`,
+      email: `member${index}@example.test`,
+      role: "user",
+    })),
+  });
+  const user = userEvent.setup();
+  page();
+  await screen.findByRole("row", { name: /成员 0 / });
+  await user.click(screen.getByRole("button", { name: "下一页" }));
+  await user.click(screen.getByRole("button", { name: "删除 成员 10" }));
+  await user.click(screen.getByRole("button", { name: "确认删除" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(screen.getByRole("row", { name: /成员 0 / })).toBeVisible();
+  expect(screen.queryByText("暂无用户")).not.toBeInTheDocument();
+});
 
 it("validates new-user fields inline and defaults to an ordinary user", async () => {
   const user = userEvent.setup();

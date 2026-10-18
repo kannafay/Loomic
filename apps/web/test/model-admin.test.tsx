@@ -52,6 +52,7 @@ vi.mock("../src/lib/model-admin-api", () => ({
   fetchAdminUsers: vi.fn(async () => ({ users: [] })),
   createAdminUser: vi.fn(),
   updateAdminUser: vi.fn(),
+  deleteAdminUser: vi.fn(),
   importPresetModels: vi.fn(),
   setDefaultConfiguredModel: vi.fn(),
   updateSystemRole: vi.fn(),

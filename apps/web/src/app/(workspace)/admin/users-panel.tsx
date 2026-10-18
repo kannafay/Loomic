@@ -21,6 +21,7 @@ import {
 import {
   type AdminUser,
   createAdminUser,
+  deleteAdminUser,
   fetchAdminUsers,
   updateAdminUser,
 } from "@/lib/model-admin-api";
@@ -34,9 +35,11 @@ import {
   RefreshCwIcon,
   SearchIcon,
   ShieldCheckIcon,
+  Trash2Icon,
   UsersIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { UserDeleteDialog } from "./user-delete-dialog";
 import { USER_ROLE_ITEMS, UserEditorDialog } from "./user-editor-dialog";
 
 const ROLE_FILTERS = [{ value: "all", label: "全部角色" }, ...USER_ROLE_ITEMS];
@@ -123,6 +126,10 @@ export function UsersPanel({
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deletionUser, setDeletionUser] = useState<AdminUser | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deletionPending = useRef(false);
   const loadRevision = useRef(0);
 
   const loadUsers = useCallback(async () => {
@@ -209,6 +216,30 @@ export function UsersPanel({
     success(editingUser ? "用户信息已更新。" : "用户已创建。");
   }
 
+  async function deleteUser() {
+    if (
+      !deletionUser ||
+      deletionPending.current ||
+      deletionUser.id === currentUserId
+    )
+      return;
+    deletionPending.current = true;
+    setDeleting(true);
+    try {
+      await deleteAdminUser(token, deletionUser.id);
+      setUsers((current) =>
+        (current ?? []).filter((user) => user.id !== deletionUser.id),
+      );
+      setDeleteOpen(false);
+      success("用户已删除。");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "用户删除失败，请重试。");
+    } finally {
+      deletionPending.current = false;
+      setDeleting(false);
+    }
+  }
+
   return (
     <section
       aria-labelledby="users-heading"
@@ -281,7 +312,7 @@ export function UsersPanel({
                   variant="outline"
                   size="icon"
                   aria-label="刷新用户列表"
-                  disabled={loading || saving}
+                  disabled={loading || saving || deleting}
                   onClick={() => void loadUsers()}
                 />
               }
@@ -300,7 +331,7 @@ export function UsersPanel({
         <Button
           type="button"
           className="order-2 sm:order-3"
-          disabled={loading || saving || !users || !!loadError}
+          disabled={loading || saving || deleting || !users || !!loadError}
           onClick={() => {
             setEditingUser(null);
             setEditorOpen(true);
@@ -344,7 +375,7 @@ export function UsersPanel({
             </th>
             <th
               scope="col"
-              className="w-20 px-3 py-2.5 text-right font-medium sm:w-36 sm:px-5"
+              className="w-28 px-3 py-2.5 text-right font-medium sm:w-44 sm:px-5"
             >
               操作
             </th>
@@ -389,22 +420,51 @@ export function UsersPanel({
                     <RoleBadge role={user.role} />
                   </td>
                   <td className="px-3 py-3.5 text-right sm:px-5">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      aria-label={`编辑 ${user.name || user.email}`}
-                      disabled={loading || saving || !!loadError}
-                      onClick={() => {
-                        setEditingUser(user);
-                        setEditorOpen(true);
-                      }}
-                      className="size-11 text-muted-foreground hover:text-foreground sm:h-7 sm:w-auto"
-                    >
-                      <PencilIcon aria-hidden="true" className="size-3.5" />
-                      <span className="hidden sm:inline">编辑</span>
-                      <span className="sr-only sm:hidden">编辑用户</span>
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`编辑 ${user.name || user.email}`}
+                        disabled={loading || saving || deleting || !!loadError}
+                        onClick={() => {
+                          setEditingUser(user);
+                          setEditorOpen(true);
+                        }}
+                        className="size-11 text-muted-foreground hover:text-foreground sm:h-7 sm:w-auto"
+                      >
+                        <PencilIcon aria-hidden="true" className="size-3.5" />
+                        <span className="hidden sm:inline">编辑</span>
+                        <span className="sr-only sm:hidden">编辑用户</span>
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`删除 ${user.name || user.email}`}
+                        title={
+                          user.id === currentUserId
+                            ? "不能删除当前登录账号"
+                            : undefined
+                        }
+                        disabled={
+                          user.id === currentUserId ||
+                          loading ||
+                          saving ||
+                          deleting ||
+                          !!loadError
+                        }
+                        onClick={() => {
+                          setDeletionUser(user);
+                          setDeleteOpen(true);
+                        }}
+                        className="size-11 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:h-7 sm:w-auto"
+                      >
+                        <Trash2Icon aria-hidden="true" className="size-3.5" />
+                        <span className="hidden sm:inline">删除</span>
+                        <span className="sr-only sm:hidden">删除用户</span>
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -491,6 +551,13 @@ export function UsersPanel({
         saving={saving}
         onOpenChange={setEditorOpen}
         onSave={saveUser}
+      />
+      <UserDeleteDialog
+        open={deleteOpen}
+        user={deletionUser}
+        deleting={deleting}
+        onOpenChange={setDeleteOpen}
+        onConfirm={deleteUser}
       />
     </section>
   );

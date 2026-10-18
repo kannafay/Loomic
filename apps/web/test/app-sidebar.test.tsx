@@ -161,6 +161,11 @@ describe("workspace sidebar", () => {
         selector: '[data-slot="tooltip-content"]',
       }),
     ).toBeVisible();
+    // Base UI disables hit testing for the positioner, popup and arrow together.
+    expect(
+      screen.getByText("首页", { selector: '[data-slot="tooltip-content"]' })
+        .parentElement,
+    ).toHaveStyle({ pointerEvents: "none" });
     await user.keyboard("{Escape}");
     await waitFor(() =>
       expect(

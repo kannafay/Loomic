@@ -25,6 +25,7 @@ async function setup() {
     users: vi.fn(),
     createUser: vi.fn(),
     updateUser: vi.fn(),
+    deleteUser: vi.fn(),
     importPresetModels: vi.fn(),
     discoverModels: vi.fn(async () => ({ models: [], truncated: false })),
     importDiscoveredModels: vi.fn(async () => ({ imported: 1, skipped: 0 })),
@@ -55,6 +56,54 @@ async function setup() {
   return { app, service };
 }
 describe("model administration authorization", () => {
+  it("validates and authorizes deletion and returns no sensitive account data", async () => {
+    const { app, service } = await setup();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const headers = { authorization: "Bearer admin" };
+    const deleted = await app.inject({
+      method: "DELETE",
+      url: `/api/admin/users/${id}`,
+      headers,
+    });
+    expect(deleted.statusCode).toBe(200);
+    expect(deleted.headers["cache-control"]).toBe("no-store");
+    expect(deleted.json()).toEqual({ ok: true });
+    expect(service.deleteUser).toHaveBeenCalledExactlyOnceWith("admin", id);
+    expect(
+      (
+        await app.inject({
+          method: "DELETE",
+          url: "/api/admin/users/invalid",
+          headers,
+        })
+      ).statusCode,
+    ).toBe(400);
+    expect(
+      (await app.inject({ method: "DELETE", url: `/api/admin/users/${id}` }))
+        .statusCode,
+    ).toBe(401);
+    expect(service.deleteUser).toHaveBeenCalledTimes(1);
+    service.deleteUser.mockRejectedValueOnce(
+      new ModelConfigError("不能删除当前登录账号。", 409),
+    );
+    const rejected = await app.inject({
+      method: "DELETE",
+      url: `/api/admin/users/${id}`,
+      headers,
+    });
+    expect(rejected.statusCode).toBe(409);
+    expect(rejected.json().error.message).toBe("不能删除当前登录账号。");
+    service.deleteUser.mockRejectedValueOnce(
+      new Error("private-database-fixture"),
+    );
+    const failed = await app.inject({
+      method: "DELETE",
+      url: `/api/admin/users/${id}`,
+      headers,
+    });
+    expect(failed.statusCode).toBe(500);
+    expect(failed.body).not.toContain("private-database-fixture");
+  });
   it("creates and edits accounts only through administrator routes with validated data", async () => {
     const { app, service } = await setup();
     const id = "11111111-1111-4111-8111-111111111111";
@@ -161,6 +210,7 @@ describe("model administration authorization", () => {
       ["GET", "/api/admin/users"],
       ["POST", "/api/admin/users"],
       ["PUT", `/api/admin/users/${id}`],
+      ["DELETE", `/api/admin/users/${id}`],
       ["POST", "/api/admin/providers"],
       ["POST", "/api/admin/providers/create-with-models"],
       ["POST", "/api/admin/providers/discover-models"],
@@ -190,6 +240,7 @@ describe("model administration authorization", () => {
     expect(service.list).not.toHaveBeenCalled();
     expect(service.createUser).not.toHaveBeenCalled();
     expect(service.updateUser).not.toHaveBeenCalled();
+    expect(service.deleteUser).not.toHaveBeenCalled();
     expect(service.saveProvider).not.toHaveBeenCalled();
     expect(service.revealProviderApiKey).not.toHaveBeenCalled();
     expect(service.saveModel).not.toHaveBeenCalled();

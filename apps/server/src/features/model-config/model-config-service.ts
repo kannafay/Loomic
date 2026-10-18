@@ -29,7 +29,11 @@ import { discoverProviderModels } from "./model-discovery.js";
 import { createNetworkSettingsService } from "./network-settings.js";
 import { MODEL_PRESETS } from "./presets.js";
 import { decryptApiKey, encryptApiKey } from "./secrets.js";
-import { createManagedUser, updateManagedUser } from "./user-administration.js";
+import {
+  createManagedUser,
+  deleteManagedUser,
+  updateManagedUser,
+} from "./user-administration.js";
 export { ModelConfigError } from "./errors.js";
 
 type ProviderRow = Database["public"]["Tables"]["model_providers"]["Row"];
@@ -557,6 +561,10 @@ export function createModelConfigService(options: {
     async createUser(userId: string, value: AdminUserCreate) {
       await service.requireAdmin(userId);
       return createManagedUser(options.getAdminClient(), value);
+    },
+    async deleteUser(userId: string, targetId: string) {
+      await service.requireAdmin(userId);
+      await deleteManagedUser(options.getAdminClient(), userId, targetId);
     },
     async updateUser(userId: string, targetId: string, value: AdminUserUpdate) {
       await service.requireAdmin(userId);

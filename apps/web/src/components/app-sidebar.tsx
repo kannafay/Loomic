@@ -3,13 +3,13 @@
 import {
   FolderIcon,
   HouseIcon,
+  LayoutDashboardIcon,
   LogOutIcon,
   type LucideIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PuzzleIcon,
   Settings2Icon,
-  ShieldCheckIcon,
   SwatchBookIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -66,7 +66,7 @@ const SETTINGS_ITEM: NavItem = {
 const ADMIN_ITEM: NavItem = {
   href: "/admin",
   label: "管理后台",
-  icon: ShieldCheckIcon,
+  icon: LayoutDashboardIcon,
 };
 
 const MENU_BUTTON_CLASS =
