@@ -4,7 +4,6 @@ import {
   FolderIcon,
   HouseIcon,
   LayoutDashboardIcon,
-  LoaderCircleIcon,
   LogOutIcon,
   type LucideIcon,
   PanelLeftCloseIcon,
@@ -94,12 +93,9 @@ function NavigationContent({
     <>
       <span
         aria-hidden="true"
-        className="relative flex size-6 shrink-0 items-center justify-center"
+        className="flex size-6 shrink-0 items-center justify-center"
       >
-        <item.icon className={cn("size-5", pending && "invisible")} />
-        {pending && (
-          <LoaderCircleIcon className="absolute size-5 animate-spin motion-reduce:animate-none" />
-        )}
+        <item.icon className="size-5" />
       </span>
       {mobile ? (
         <span className="max-w-full truncate text-[10px] font-medium leading-none">
