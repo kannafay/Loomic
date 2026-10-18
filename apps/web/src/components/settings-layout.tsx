@@ -55,7 +55,7 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
             <TabsTrigger
               key={section.id}
               value={section.id}
-              className="h-8 flex-none justify-start px-2 after:hidden data-active:bg-muted"
+              className="h-8 flex-none justify-start px-2 after:hidden group-data-[variant=line]/tabs-list:data-active:bg-accent-soft dark:group-data-[variant=line]/tabs-list:data-active:bg-accent-soft"
             >
               {section.label}
             </TabsTrigger>

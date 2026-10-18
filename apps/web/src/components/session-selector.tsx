@@ -191,10 +191,10 @@ export function SessionSelector({
             {filtered.map((s) => (
               <div
                 key={s.id}
-                className={`group flex items-center justify-between gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors focus-within:bg-muted ${
+                className={`group flex items-center justify-between gap-1.5 rounded-md px-1.5 py-1 text-sm transition-colors ${
                   s.id === activeSessionId
-                    ? "bg-muted text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-muted"
+                    ? "bg-accent-soft text-accent-soft-foreground font-medium focus-within:bg-accent/15"
+                    : "text-muted-foreground hover:bg-muted focus-within:bg-muted"
                 }`}
               >
                 {confirmingId === s.id ? (
@@ -229,6 +229,9 @@ export function SessionSelector({
                   <>
                     <button
                       type="button"
+                      aria-current={
+                        s.id === activeSessionId ? "true" : undefined
+                      }
                       className="min-w-0 truncate flex-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       onClick={() => handleSelect(s.id)}
                     >

@@ -41,7 +41,7 @@ function ExampleChip({
         accent === "special"
           ? "border-accent/40 bg-accent-soft text-accent-soft-foreground hover:bg-accent/15"
           : active
-            ? "border-foreground bg-foreground text-background"
+            ? "border-accent/40 bg-accent-soft text-accent-soft-foreground hover:bg-accent/15"
             : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground",
         disabled && accent !== "special" && "cursor-not-allowed opacity-60",
       )}
@@ -98,7 +98,7 @@ function ExamplePreviewCard({
       className={cn(
         "group aspect-[217/130] overflow-hidden rounded-xl px-4 pt-4 text-left transition-all duration-300",
         selected
-          ? "bg-card shadow-md ring-1 ring-foreground/15"
+          ? "bg-accent-soft shadow-md ring-1 ring-accent/40"
           : "bg-card shadow-card hover:-translate-y-0.5 hover:bg-muted/70 hover:shadow-md",
       )}
     >

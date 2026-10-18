@@ -21,18 +21,21 @@ export function PricingToggle({ value, onChange }: PricingToggleProps) {
           key={key}
           type="button"
           onClick={() => onChange(key)}
+          aria-pressed={value === key}
           className="relative z-0 flex cursor-pointer items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
         >
           {value === key && (
             <motion.span
               layoutId="pricing-toggle-bg"
-              className="bg-card shadow-card absolute inset-0 rounded-full"
+              className="bg-accent-soft shadow-card absolute inset-0 rounded-full ring-1 ring-inset ring-accent/30"
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
             />
           )}
           <span
             className={`relative z-10 transition-colors ${
-              value === key ? "text-foreground" : "text-muted-foreground"
+              value === key
+                ? "text-accent-soft-foreground"
+                : "text-muted-foreground"
             }`}
           >
             {label}

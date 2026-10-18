@@ -177,7 +177,7 @@ export function FontPickerDialog({
               variant="ghost"
               aria-pressed={selected?.family === item.family}
               onClick={() => setSelected(item)}
-              className={`h-auto w-full justify-start px-3 py-2 text-left text-base ${selected?.family === item.family ? "bg-muted" : ""}`}
+              className="h-auto w-full justify-start px-3 py-2 text-left text-base aria-pressed:bg-accent-soft aria-pressed:text-accent-soft-foreground aria-pressed:hover:bg-accent/15 aria-pressed:hover:text-accent-soft-foreground dark:aria-pressed:hover:bg-accent/15"
               style={{ fontFamily: `"${item.family}", sans-serif` }}
             >
               {item.family}

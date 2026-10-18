@@ -392,10 +392,11 @@ export default function SkillsPage() {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
+            aria-pressed={activeTab === tab}
             className={cn(
               "min-h-[44px] whitespace-nowrap px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px sm:min-h-0",
               activeTab === tab
-                ? "border-foreground text-foreground"
+                ? "border-accent text-accent-soft-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
@@ -456,9 +457,10 @@ export default function SkillsPage() {
 
             {/* Official filter toggle */}
             <Button
-              variant={officialOnly ? "default" : "outline"}
+              variant="outline"
               size="sm"
-              className="min-h-[44px] sm:min-h-0"
+              aria-pressed={officialOnly}
+              className="min-h-[44px] aria-pressed:border-accent/40 aria-pressed:bg-accent-soft aria-pressed:text-accent-soft-foreground aria-pressed:hover:bg-accent/15 aria-pressed:hover:text-accent-soft-foreground sm:min-h-0 dark:aria-pressed:bg-accent-soft dark:aria-pressed:hover:bg-accent/15"
               onClick={() => setOfficialOnly((p) => !p)}
             >
               <ShieldCheck className="size-3.5" />

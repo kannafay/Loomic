@@ -162,7 +162,8 @@ function ProviderListItem({
           ? {}
           : { transition: { layout: { duration: 0 } } })}
       aria-label={provider.name}
-      className={`relative flex min-w-0 items-center rounded-lg border bg-card pl-1 transition-colors ${active ? "border-border/70 bg-muted" : "border-transparent hover:bg-muted/50"}`}
+      data-active={active || undefined}
+      className={`group/provider relative flex min-w-0 items-center rounded-lg border pl-1 transition-colors ${active ? "border-accent/40 bg-accent-soft" : "border-transparent bg-card hover:bg-muted/50"}`}
     >
       <Button
         type="button"
@@ -201,7 +202,7 @@ function ProviderListItem({
         <span className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="flex items-center justify-between gap-2">
             <span
-              className="truncate text-sm font-medium leading-5 text-foreground"
+              className="truncate text-sm font-medium leading-5 text-foreground group-data-active/provider:text-accent-soft-foreground"
               title={provider.name}
             >
               {provider.name}

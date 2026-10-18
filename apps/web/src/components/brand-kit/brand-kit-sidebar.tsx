@@ -56,7 +56,9 @@ export function BrandKitSidebar({
               key={kit.id}
               className={cn(
                 "group flex min-h-[44px] w-auto shrink-0 items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors cursor-pointer md:w-full md:min-h-0 md:shrink",
-                isSelected ? "bg-muted" : "hover:bg-muted/60",
+                isSelected
+                  ? "bg-accent-soft ring-1 ring-inset ring-accent/30"
+                  : "hover:bg-muted/60",
               )}
             >
               <Button
@@ -74,7 +76,14 @@ export function BrandKitSidebar({
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-medium text-foreground">
+                    <span
+                      className={cn(
+                        "truncate text-sm font-medium",
+                        isSelected
+                          ? "text-accent-soft-foreground"
+                          : "text-foreground",
+                      )}
+                    >
                       {kit.name}
                     </span>
                     {kit.is_default && (

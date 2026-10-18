@@ -25,10 +25,11 @@ function DiscoveryTab({ active, label, onClick }: DiscoveryTabProps) {
     <button
       type="button"
       onClick={onClick}
+      aria-pressed={active}
       className={cn(
         "rounded-full border px-3 py-1.5 text-sm transition-colors",
         active
-          ? "border-foreground bg-foreground text-background"
+          ? "border-accent/40 bg-accent-soft text-accent-soft-foreground hover:bg-accent/15"
           : "border-border bg-background text-muted-foreground hover:border-foreground/25 hover:text-foreground",
       )}
     >

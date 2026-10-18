@@ -198,7 +198,7 @@ function Popover({
 
 /* ── Toolbar button ── */
 const btnClass =
-  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors";
+  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground transition-colors aria-pressed:bg-accent-soft aria-pressed:text-accent-soft-foreground aria-pressed:hover:bg-accent/15 aria-pressed:hover:text-accent-soft-foreground";
 
 /* ── Element helpers for Search ── */
 type ExcalidrawEl = ExcalidrawElement;
@@ -381,6 +381,7 @@ export function CanvasBottomBar({
           className={btnClass}
           onClick={toggleBgPicker}
           aria-label="背景颜色"
+          aria-pressed={bgPickerOpen}
         >
           {bgColor === "transparent" ? (
             <CheckerIcon className="h-4 w-4 rounded-full" />
@@ -395,9 +396,10 @@ export function CanvasBottomBar({
         {/* ── Layers button ── */}
         <button
           type="button"
-          className={`${btnClass} ${layersOpen ? "bg-muted text-foreground" : ""}`}
+          className={btnClass}
           onClick={handleToggleLayers}
           aria-label="图层"
+          aria-pressed={layersOpen}
         >
           <LayersIcon className="h-4 w-4" />
         </button>
@@ -405,9 +407,10 @@ export function CanvasBottomBar({
         {/* ── Files button ── */}
         <button
           type="button"
-          className={`${btnClass} ${filesOpen ? "bg-muted text-foreground" : ""}`}
+          className={btnClass}
           onClick={handleToggleFiles}
           aria-label="生成的文件"
+          aria-pressed={filesOpen}
         >
           <FileIcon className="h-3.5 w-3.5" />
         </button>
@@ -506,7 +509,8 @@ export function CanvasBottomBar({
               <button
                 key={hex}
                 type="button"
-                className={`h-6 w-6 shrink-0 rounded-full border hover:scale-110 transition-transform ${bgColor === hex ? "border-foreground ring-1 ring-foreground ring-offset-1 ring-offset-card" : "border-border"}`}
+                aria-pressed={bgColor === hex}
+                className={`h-6 w-6 shrink-0 rounded-full border hover:scale-110 transition-transform ${bgColor === hex ? "border-accent ring-1 ring-accent ring-offset-1 ring-offset-card" : "border-border"}`}
                 style={
                   hex === "transparent"
                     ? CHECKER_STYLE

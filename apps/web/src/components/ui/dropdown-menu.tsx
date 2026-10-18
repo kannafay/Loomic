@@ -118,7 +118,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none focus:bg-muted focus:text-foreground not-data-[variant=destructive]:focus:**:text-foreground data-inset:pl-7 data-popup-open:bg-muted data-popup-open:text-foreground data-open:bg-muted data-open:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-1 text-sm outline-hidden select-none focus:bg-muted focus:text-foreground data-inset:pl-7 data-popup-open:bg-accent-soft data-popup-open:text-accent-soft-foreground data-open:bg-accent-soft data-open:text-accent-soft-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -168,6 +168,7 @@ function DropdownMenuCheckboxItem({
       data-inset={inset}
       className={cn(
         "relative flex cursor-pointer items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-muted focus:text-foreground focus:**:text-foreground data-inset:pl-7 data-disabled:cursor-default data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "data-checked:bg-accent-soft data-checked:text-accent-soft-foreground data-checked:focus:bg-accent-soft data-checked:focus:text-accent-soft-foreground data-checked:focus:**:text-accent-soft-foreground",
         className,
       )}
       checked={checked}
@@ -209,6 +210,7 @@ function DropdownMenuRadioItem({
       data-inset={inset}
       className={cn(
         "relative flex cursor-pointer items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm outline-hidden select-none focus:bg-muted focus:text-foreground focus:**:text-foreground data-inset:pl-7 data-disabled:cursor-default data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "data-checked:bg-accent-soft data-checked:text-accent-soft-foreground data-checked:focus:bg-accent-soft data-checked:focus:text-accent-soft-foreground data-checked:focus:**:text-accent-soft-foreground",
         className,
       )}
       {...props}

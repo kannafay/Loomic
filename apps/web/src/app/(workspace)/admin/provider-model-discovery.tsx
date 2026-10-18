@@ -338,7 +338,7 @@ export function ProviderModelDiscovery({
                         key={model.apiModel}
                         className={`flex min-h-16 items-center gap-3 border-b border-border/70 px-4 py-2.5 last:border-0 sm:px-5 ${
                           model.selected && !exists
-                            ? "bg-muted/60"
+                            ? "bg-accent-soft text-accent-soft-foreground"
                             : "hover:bg-muted/30"
                         }`}
                       >

@@ -527,13 +527,14 @@ export function CanvasToolMenu({
               type="button"
               title={TOOL_LABELS[tool]}
               aria-label={TOOL_LABELS[tool]}
+              aria-pressed={isActive}
               onMouseDown={(e) => {
                 e.preventDefault();
                 handleToolChange(tool);
               }}
               className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 outline-none ${
                 isActive
-                  ? "bg-foreground/[0.08] text-foreground"
+                  ? "bg-accent-soft text-accent-soft-foreground"
                   : "text-foreground/60 hover:bg-foreground/[0.04] hover:text-foreground"
               }`}
             >
@@ -550,10 +551,11 @@ export function CanvasToolMenu({
           type="button"
           title="AI 生成图片"
           aria-label="AI 生成图片"
+          aria-pressed={!!activeGeneratorId}
           onClick={handleCreateImageGenerator}
           className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 outline-none ${
             activeGeneratorId
-              ? "bg-foreground/[0.08] text-foreground"
+              ? "bg-accent-soft text-accent-soft-foreground"
               : "text-foreground/60 hover:bg-foreground/[0.04] hover:text-foreground"
           }`}
         >
@@ -565,10 +567,11 @@ export function CanvasToolMenu({
           type="button"
           title="AI 生成视频"
           aria-label="AI 生成视频"
+          aria-pressed={!!activeVideoGenId}
           onClick={handleCreateVideoGenerator}
           className={`flex items-center justify-center h-8 w-8 rounded-lg transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 outline-none ${
             activeVideoGenId
-              ? "bg-foreground/[0.08] text-foreground"
+              ? "bg-accent-soft text-accent-soft-foreground"
               : "text-foreground/60 hover:bg-foreground/[0.04] hover:text-foreground"
           }`}
         >

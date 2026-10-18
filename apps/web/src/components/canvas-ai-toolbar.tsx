@@ -40,10 +40,11 @@ export function CanvasAIToolbar({
           }
           className={`flex items-center justify-center h-8 w-8 rounded-lg text-sm transition-colors cursor-pointer ${
             activePanel === "image"
-              ? "bg-accent text-accent-foreground"
+              ? "bg-accent-soft text-accent-soft-foreground"
               : "text-foreground/60 hover:bg-muted hover:text-foreground"
           }`}
           title="AI 图片"
+          aria-pressed={activePanel === "image"}
         >
           <svg
             aria-hidden="true"

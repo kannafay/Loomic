@@ -440,7 +440,7 @@ export default function AdminPage() {
                           onClick={() => usePreset(preset.id)}
                           aria-pressed={providerDraft.preset === preset.id}
                           title={preset.name}
-                          className="h-12 min-w-0 justify-start gap-2 rounded-lg px-2.5 text-xs transition-colors aria-pressed:border-foreground/35 aria-pressed:bg-muted aria-pressed:hover:bg-muted active:translate-y-0"
+                          className="h-12 min-w-0 justify-start gap-2 rounded-lg px-2.5 text-xs transition-colors aria-pressed:border-accent/40 aria-pressed:bg-accent-soft aria-pressed:text-accent-soft-foreground aria-pressed:hover:bg-accent/15 aria-pressed:hover:text-accent-soft-foreground active:translate-y-0 dark:aria-pressed:bg-accent-soft dark:aria-pressed:hover:bg-accent/15"
                         >
                           <ProviderAvatar
                             preset={preset.id}
@@ -450,7 +450,7 @@ export default function AdminPage() {
                           <span className="truncate">{preset.name}</span>
                           <span
                             aria-hidden="true"
-                            className={`ml-auto flex size-4 shrink-0 items-center justify-center rounded-full bg-foreground text-background ${providerDraft.preset === preset.id ? "" : "invisible"}`}
+                            className={`ml-auto flex size-4 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground ${providerDraft.preset === preset.id ? "" : "invisible"}`}
                           >
                             <CheckIcon className="size-2.5" />
                           </span>

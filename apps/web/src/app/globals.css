@@ -453,6 +453,21 @@
 
 /* ── Excalidraw UI overrides (aligned with Jaaz) ── */
 
+/* Use the app palette for native canvas controls as well as our toolbars. */
+:root .excalidraw,
+:root .excalidraw.theme--dark {
+  --color-primary: var(--accent);
+  --color-primary-darker: var(--accent-soft-foreground);
+  --color-primary-darkest: var(--accent-soft-foreground);
+  --color-primary-hover: var(--accent-soft-foreground);
+  --color-primary-light: var(--accent-soft);
+  --color-primary-light-darker: color-mix(in oklch, var(--accent) 18%, var(--background));
+  --color-brand-active: var(--accent);
+  --color-brand-hover: var(--accent-soft-foreground);
+  --color-on-primary-container: var(--accent-soft-foreground);
+  --color-surface-primary-container: var(--accent-soft);
+}
+
 /* Hide left menu button — replaced by CanvasLogoMenu */
 .excalidraw .App-menu_top__left {
   display: none !important;

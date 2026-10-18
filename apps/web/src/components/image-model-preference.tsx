@@ -150,7 +150,7 @@ function ModelOption({
   return manual ? (
     <Label
       htmlFor={id}
-      className={`flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted has-[:focus-visible]:bg-muted ${selected ? "bg-muted" : ""}`}
+      className={`flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 py-2 transition-colors ${selected ? "bg-accent-soft text-accent-soft-foreground hover:bg-accent/15 has-[:focus-visible]:bg-accent/15" : "hover:bg-muted has-[:focus-visible]:bg-muted"}`}
     >
       {content}
     </Label>

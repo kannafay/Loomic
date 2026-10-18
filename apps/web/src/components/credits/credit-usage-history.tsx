@@ -127,9 +127,10 @@ export function CreditUsageHistory() {
             key={opt.value}
             type="button"
             onClick={() => setFilter(opt.value)}
+            aria-pressed={filter === opt.value}
             className={`rounded-md px-3 py-1.5 text-xs transition-colors ${
               filter === opt.value
-                ? "bg-card font-medium text-foreground shadow-sm"
+                ? "bg-accent-soft font-medium text-accent-soft-foreground shadow-sm ring-1 ring-inset ring-accent/30"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
