@@ -62,12 +62,14 @@ export default function WorkspaceLayout({
           跳到主内容
         </a>
         <AppSidebar />
-        <main
-          id="main"
-          className="relative h-full min-w-0 flex-1 overflow-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
-        >
-          <PageTransition>{children}</PageTransition>
-        </main>
+        <PageTransition>
+          <main
+            id="main"
+            className="relative h-full min-w-0 flex-1 overflow-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+          >
+            <div className="h-full">{children}</div>
+          </main>
+        </PageTransition>
       </SidebarProvider>
     </TooltipProvider>
   );

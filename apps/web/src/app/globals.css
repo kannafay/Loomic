@@ -150,6 +150,65 @@
     }
 }
 
+/* Animate page snapshots together so navigation never waits on an empty frame. */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-group(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-old(root) {
+  display: none;
+}
+
+::view-transition-group(workspace-page) {
+  animation: none;
+  overflow: clip;
+}
+
+::view-transition-image-pair(workspace-page) {
+  isolation: isolate;
+}
+
+::view-transition-old(workspace-page),
+::view-transition-new(workspace-page) {
+  /* Avoid a brightness dip as the two snapshots fade across each other. */
+  mix-blend-mode: plus-lighter;
+}
+
+::view-transition-old(workspace-page) {
+  animation: workspace-page-out 200ms ease-in-out both;
+}
+
+::view-transition-new(workspace-page) {
+  animation: workspace-page-in 200ms ease-in-out both;
+}
+
+@keyframes workspace-page-out {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
+}
+
+@keyframes workspace-page-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(workspace-page),
+  ::view-transition-old(workspace-page),
+  ::view-transition-new(workspace-page) {
+    animation: none;
+  }
+
+  ::view-transition-old(workspace-page) {
+    display: none;
+  }
+}
+
 /* ── Shadow utilities ── */
 @utility shadow-subtle {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
