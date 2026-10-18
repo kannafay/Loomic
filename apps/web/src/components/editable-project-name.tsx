@@ -94,7 +94,7 @@ export function EditableProjectName({
       type="button"
       onClick={startEditing}
       disabled={saving}
-      className="h-8 rounded-lg bg-transparent hover:bg-card/60 backdrop-blur-sm px-2.5 text-sm font-medium text-foreground transition-colors truncate max-w-[200px] cursor-text"
+      className="h-8 rounded-lg bg-transparent hover:bg-card/60 backdrop-blur-sm px-2.5 text-sm font-medium text-foreground transition-colors truncate max-w-[200px]"
       title={name}
     >
       {name}

@@ -148,6 +148,45 @@
   html {
     @apply font-sans;
     }
+
+  /* Cover native controls and headless UI primitives, including portal menus.
+     Keep this in the base layer so drag, resize and text cursors can override it. */
+  :where(
+    button,
+    a[href],
+    select,
+    summary,
+    input[type="button"],
+    input[type="submit"],
+    input[type="reset"],
+    input[type="checkbox"],
+    input[type="radio"],
+    input[type="range"],
+    input[type="color"],
+    input[type="file"],
+    [role="button"],
+    [role="link"],
+    [role="tab"],
+    [role="option"],
+    [role="menuitem"],
+    [role="menuitemcheckbox"],
+    [role="menuitemradio"],
+    [role="checkbox"],
+    [role="radio"],
+    [role="switch"],
+    [role="combobox"]
+  ):not(:disabled, [aria-disabled="true"], [data-disabled]),
+  :where(label:has(
+    :where(
+      input[type="checkbox"],
+      input[type="radio"],
+      [role="checkbox"],
+      [role="radio"],
+      [role="switch"]
+    ):not(:disabled, [aria-disabled="true"], [data-disabled])
+  )) {
+    cursor: pointer;
+  }
 }
 
 /* Animate page snapshots together so navigation never waits on an empty frame. */
