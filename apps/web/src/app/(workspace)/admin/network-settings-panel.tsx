@@ -33,10 +33,10 @@ export function NetworkSettingsPanel({ token }: { token: string }) {
     };
   }, [token]);
   return (
-    <section className="max-w-3xl rounded-xl border border-border bg-card p-6">
-      <h2 className="text-sm font-semibold">全局代理</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        模型列表、连接测试、聊天和媒体生成共用此代理，所有用户统一生效。
+    <section className="max-w-xl">
+      <h2 className="mb-1 text-lg font-semibold">网络设置</h2>
+      <p className="mb-6 text-sm text-muted-foreground">
+        管理模型服务的全局代理，所有用户统一生效。
       </p>
       {error && (
         <p role="alert" className="mt-4 text-sm text-destructive">
@@ -51,7 +51,7 @@ export function NetworkSettingsPanel({ token }: { token: string }) {
         )
       ) : (
         <form
-          className="mt-6 space-y-5"
+          className="space-y-4"
           onSubmit={(event) => {
             event.preventDefault();
             setError("");
@@ -129,7 +129,7 @@ export function NetworkSettingsPanel({ token }: { token: string }) {
               本地地址自动直连；其他域名或 IP 用逗号分隔。
             </p>
           </label>
-          <Button variant="default" type="submit" disabled={busy}>
+          <Button variant="default" type="submit" size="sm" disabled={busy}>
             {busy ? "正在保存…" : "保存网络设置"}
           </Button>
         </form>

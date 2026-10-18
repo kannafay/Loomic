@@ -241,14 +241,11 @@ export function UsersPanel({
   }
 
   return (
-    <section
-      aria-labelledby="users-heading"
-      className="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border px-5 py-4">
+    <section aria-labelledby="users-heading" className="min-w-0">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="min-w-0 flex-1 sm:min-w-[220px]">
           <div className="flex items-center gap-2">
-            <h2 id="users-heading" className="text-sm font-semibold">
+            <h2 id="users-heading" className="text-lg font-semibold">
               用户管理
             </h2>
             {users && (
@@ -257,7 +254,7 @@ export function UsersPanel({
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+          <p className="mt-1 text-sm text-muted-foreground">
             管理员可配置后台，所有用户均可使用全部创作功能。
           </p>
         </div>
@@ -341,209 +338,213 @@ export function UsersPanel({
           添加用户
         </Button>
       </div>
-      {loadError && (
-        <div className="flex items-center justify-between gap-3 border-b border-border bg-destructive/5 px-5 py-3">
-          <p role="alert" className="text-xs text-destructive">
-            {loadError}
-          </p>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={loading}
-            onClick={() => void loadUsers()}
-          >
-            重试
-          </Button>
-        </div>
-      )}
-      <table
-        aria-busy={loading}
-        className="w-full table-fixed text-left text-sm"
-      >
-        <caption className="sr-only">用户及后台访问角色</caption>
-        <thead className="border-b border-border bg-muted/30 text-xs text-muted-foreground">
-          <tr>
-            <th scope="col" className="px-5 py-2.5 font-medium">
-              用户
-            </th>
-            <th
-              scope="col"
-              className="hidden w-36 px-3 py-2.5 font-medium sm:table-cell lg:w-44"
-            >
-              角色
-            </th>
-            <th
-              scope="col"
-              className="w-28 px-3 py-2.5 text-right font-medium sm:w-44 sm:px-5"
-            >
-              操作
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {loading && !users
-            ? ["first", "second", "third", "fourth"].map((id) => (
-                <tr key={id}>
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="size-9 shrink-0 rounded-full" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-3 w-36" />
-                      </div>
-                    </div>
-                  </td>
-                  <td className="hidden px-3 sm:table-cell">
-                    <Skeleton className="h-5 w-16" />
-                  </td>
-                  <td className="px-3 sm:px-5">
-                    <Skeleton className="ml-auto h-6 w-12" />
-                  </td>
-                </tr>
-              ))
-            : visibleUsers.map((user) => (
-                <tr
-                  key={user.id}
-                  className="transition-colors hover:bg-muted/25"
-                >
-                  <td className="px-5 py-3.5">
-                    <UserIdentity
-                      user={user}
-                      current={user.id === currentUserId}
-                    />
-                    <div className="mt-2 pl-12 sm:hidden">
-                      <RoleBadge role={user.role} />
-                    </div>
-                  </td>
-                  <td className="hidden px-3 py-3.5 sm:table-cell">
-                    <RoleBadge role={user.role} />
-                  </td>
-                  <td className="px-3 py-3.5 text-right sm:px-5">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`编辑 ${user.name || user.email}`}
-                        disabled={loading || saving || deleting || !!loadError}
-                        onClick={() => {
-                          setEditingUser(user);
-                          setEditorOpen(true);
-                        }}
-                        className="size-11 text-muted-foreground hover:text-foreground sm:h-7 sm:w-auto"
-                      >
-                        <PencilIcon aria-hidden="true" className="size-3.5" />
-                        <span className="hidden sm:inline">编辑</span>
-                        <span className="sr-only sm:hidden">编辑用户</span>
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`删除 ${user.name || user.email}`}
-                        title={
-                          user.id === currentUserId
-                            ? "不能删除当前登录账号"
-                            : undefined
-                        }
-                        disabled={
-                          user.id === currentUserId ||
-                          loading ||
-                          saving ||
-                          deleting ||
-                          !!loadError
-                        }
-                        onClick={() => {
-                          setDeletionUser(user);
-                          setDeleteOpen(true);
-                        }}
-                        className="size-11 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:h-7 sm:w-auto"
-                      >
-                        <Trash2Icon aria-hidden="true" className="size-3.5" />
-                        <span className="hidden sm:inline">删除</span>
-                        <span className="sr-only sm:hidden">删除用户</span>
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-        </tbody>
-      </table>
-      {!loading && !loadError && visibleUsers.length === 0 && (
-        <div className="flex flex-col items-center px-5 py-12 text-center">
-          {hasFilters ? (
-            <SearchIcon
-              aria-hidden="true"
-              className="mb-3 size-5 text-muted-foreground"
-            />
-          ) : (
-            <UsersIcon
-              aria-hidden="true"
-              className="mb-3 size-5 text-muted-foreground"
-            />
-          )}
-          <p className="text-sm font-medium">
-            {hasFilters ? "没有找到匹配的用户" : "暂无用户"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {hasFilters
-              ? "试试其他姓名、邮箱或角色。"
-              : "添加用户后即可在这里管理资料与角色。"}
-          </p>
-          {hasFilters && (
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        {loadError && (
+          <div className="flex items-center justify-between gap-3 border-b border-border bg-destructive/5 px-5 py-3">
+            <p role="alert" className="text-xs text-destructive">
+              {loadError}
+            </p>
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="mt-4"
-              onClick={() => {
-                setQuery("");
-                setRoleFilter("all");
-                setPage(1);
-              }}
+              disabled={loading}
+              onClick={() => void loadUsers()}
             >
-              清除筛选
+              重试
             </Button>
-          )}
-        </div>
-      )}
-      {users && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
-          <p>
-            {hasFilters
-              ? `找到 ${filteredUsers.length} 位用户，共 ${users.length} 位`
-              : `共 ${users.length} 位用户，${users.filter((user) => user.role === "admin").length} 位管理员`}
-          </p>
-          {pageCount > 1 && (
-            <div className="flex items-center gap-2">
-              <span>
-                {currentPage} / {pageCount}
-              </span>
+          </div>
+        )}
+        <table
+          aria-busy={loading}
+          className="w-full table-fixed text-left text-sm"
+        >
+          <caption className="sr-only">用户及后台访问角色</caption>
+          <thead className="border-b border-border bg-muted/30 text-xs text-muted-foreground">
+            <tr>
+              <th scope="col" className="px-5 py-2.5 font-medium">
+                用户
+              </th>
+              <th
+                scope="col"
+                className="hidden w-36 px-3 py-2.5 font-medium sm:table-cell lg:w-44"
+              >
+                角色
+              </th>
+              <th
+                scope="col"
+                className="w-28 px-3 py-2.5 text-right font-medium sm:w-44 sm:px-5"
+              >
+                操作
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {loading && !users
+              ? ["first", "second", "third", "fourth"].map((id) => (
+                  <tr key={id}>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="size-9 shrink-0 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-3 w-20" />
+                          <Skeleton className="h-3 w-36" />
+                        </div>
+                      </div>
+                    </td>
+                    <td className="hidden px-3 sm:table-cell">
+                      <Skeleton className="h-5 w-16" />
+                    </td>
+                    <td className="px-3 sm:px-5">
+                      <Skeleton className="ml-auto h-6 w-12" />
+                    </td>
+                  </tr>
+                ))
+              : visibleUsers.map((user) => (
+                  <tr
+                    key={user.id}
+                    className="transition-colors hover:bg-muted/25"
+                  >
+                    <td className="px-5 py-3.5">
+                      <UserIdentity
+                        user={user}
+                        current={user.id === currentUserId}
+                      />
+                      <div className="mt-2 pl-12 sm:hidden">
+                        <RoleBadge role={user.role} />
+                      </div>
+                    </td>
+                    <td className="hidden px-3 py-3.5 sm:table-cell">
+                      <RoleBadge role={user.role} />
+                    </td>
+                    <td className="px-3 py-3.5 text-right sm:px-5">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`编辑 ${user.name || user.email}`}
+                          disabled={
+                            loading || saving || deleting || !!loadError
+                          }
+                          onClick={() => {
+                            setEditingUser(user);
+                            setEditorOpen(true);
+                          }}
+                          className="size-11 text-muted-foreground hover:text-foreground sm:h-7 sm:w-auto"
+                        >
+                          <PencilIcon aria-hidden="true" className="size-3.5" />
+                          <span className="hidden sm:inline">编辑</span>
+                          <span className="sr-only sm:hidden">编辑用户</span>
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`删除 ${user.name || user.email}`}
+                          title={
+                            user.id === currentUserId
+                              ? "不能删除当前登录账号"
+                              : undefined
+                          }
+                          disabled={
+                            user.id === currentUserId ||
+                            loading ||
+                            saving ||
+                            deleting ||
+                            !!loadError
+                          }
+                          onClick={() => {
+                            setDeletionUser(user);
+                            setDeleteOpen(true);
+                          }}
+                          className="size-11 text-muted-foreground hover:bg-destructive/10 hover:text-destructive sm:h-7 sm:w-auto"
+                        >
+                          <Trash2Icon aria-hidden="true" className="size-3.5" />
+                          <span className="hidden sm:inline">删除</span>
+                          <span className="sr-only sm:hidden">删除用户</span>
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+          </tbody>
+        </table>
+        {!loading && !loadError && visibleUsers.length === 0 && (
+          <div className="flex flex-col items-center px-5 py-12 text-center">
+            {hasFilters ? (
+              <SearchIcon
+                aria-hidden="true"
+                className="mb-3 size-5 text-muted-foreground"
+              />
+            ) : (
+              <UsersIcon
+                aria-hidden="true"
+                className="mb-3 size-5 text-muted-foreground"
+              />
+            )}
+            <p className="text-sm font-medium">
+              {hasFilters ? "没有找到匹配的用户" : "暂无用户"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {hasFilters
+                ? "试试其他姓名、邮箱或角色。"
+                : "添加用户后即可在这里管理资料与角色。"}
+            </p>
+            {hasFilters && (
               <Button
                 type="button"
-                size="icon-sm"
+                size="sm"
                 variant="outline"
-                aria-label="上一页"
-                disabled={currentPage === 1 || loading}
-                onClick={() => setPage(currentPage - 1)}
+                className="mt-4"
+                onClick={() => {
+                  setQuery("");
+                  setRoleFilter("all");
+                  setPage(1);
+                }}
               >
-                <ChevronLeftIcon aria-hidden="true" className="size-3.5" />
+                清除筛选
               </Button>
-              <Button
-                type="button"
-                size="icon-sm"
-                variant="outline"
-                aria-label="下一页"
-                disabled={currentPage === pageCount || loading}
-                onClick={() => setPage(currentPage + 1)}
-              >
-                <ChevronRightIcon aria-hidden="true" className="size-3.5" />
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+          </div>
+        )}
+        {users && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-3 text-xs text-muted-foreground">
+            <p>
+              {hasFilters
+                ? `找到 ${filteredUsers.length} 位用户，共 ${users.length} 位`
+                : `共 ${users.length} 位用户，${users.filter((user) => user.role === "admin").length} 位管理员`}
+            </p>
+            {pageCount > 1 && (
+              <div className="flex items-center gap-2">
+                <span>
+                  {currentPage} / {pageCount}
+                </span>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  aria-label="上一页"
+                  disabled={currentPage === 1 || loading}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  <ChevronLeftIcon aria-hidden="true" className="size-3.5" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  variant="outline"
+                  aria-label="下一页"
+                  disabled={currentPage === pageCount || loading}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  <ChevronRightIcon aria-hidden="true" className="size-3.5" />
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <UserEditorDialog
         open={editorOpen}
         user={editingUser}

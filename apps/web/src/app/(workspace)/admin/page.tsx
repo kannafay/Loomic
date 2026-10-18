@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 
 import { Checkbox } from "@/components/ui/checkbox";
@@ -268,12 +269,16 @@ export default function AdminPage() {
 
   if (loading || roleLoading)
     return (
-      <div className="p-8 text-sm text-muted-foreground">正在读取权限…</div>
+      <div className="px-4 py-6 text-sm text-muted-foreground sm:px-6 md:p-8">
+        正在读取权限…
+      </div>
     );
   if (role !== "admin")
     return (
-      <div className="p-8">
-        <h1 className="text-lg font-semibold">管理后台</h1>
+      <div className="px-4 py-6 sm:px-6 md:p-8">
+        <h1 className="mb-4 text-base font-semibold sm:mb-6 sm:text-lg">
+          管理后台
+        </h1>
         <p className="mt-3 text-sm text-muted-foreground">
           只有管理员可以访问后台。你仍可使用全部创作功能。
         </p>
@@ -287,27 +292,27 @@ export default function AdminPage() {
         setTab(value as typeof tab);
         setError("");
       }}
-      className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:p-8"
+      className="w-full gap-0 px-4 py-6 sm:px-6 md:p-8"
     >
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-semibold">管理后台</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            统一管理内部使用的模型与账号权限。
-          </p>
-        </div>
-        <TabsList aria-label="后台栏目">
-          <TabsTrigger value="models" disabled={busy}>
+      <h1 className="mb-4 text-base font-semibold sm:mb-6 sm:text-lg">
+        管理后台
+      </h1>
+      <ScrollArea
+        orientation="horizontal"
+        className="mb-8 overflow-x-auto sm:mb-10"
+      >
+        <TabsList aria-label="后台栏目" className="h-11 sm:h-8">
+          <TabsTrigger value="models" disabled={busy} className="px-4 sm:px-3">
             模型配置
           </TabsTrigger>
-          <TabsTrigger value="users" disabled={busy}>
+          <TabsTrigger value="users" disabled={busy} className="px-4 sm:px-3">
             用户管理
           </TabsTrigger>
-          <TabsTrigger value="network" disabled={busy}>
+          <TabsTrigger value="network" disabled={busy} className="px-4 sm:px-3">
             网络设置
           </TabsTrigger>
         </TabsList>
-      </div>
+      </ScrollArea>
       {tab === "models" && error && (
         <p
           role="alert"
@@ -316,7 +321,13 @@ export default function AdminPage() {
           {error}
         </p>
       )}
-      <TabsContent value="models">
+      <TabsContent value="models" className="max-w-7xl">
+        <div className="mb-6">
+          <h2 className="mb-1 text-lg font-semibold">模型配置</h2>
+          <p className="text-sm text-muted-foreground">
+            管理提供商连接与可用模型。
+          </p>
+        </div>
         <div className="grid items-start gap-5 lg:grid-cols-[300px_minmax(0,1fr)] xl:grid-cols-[320px_minmax(0,1fr)]">
           <aside className="min-w-0 rounded-xl border border-border bg-card p-2">
             <div className="mb-2 flex items-center justify-between gap-2 px-2 py-1">
@@ -1273,7 +1284,7 @@ export default function AdminPage() {
       <TabsContent value="network">
         {token && <NetworkSettingsPanel token={token} />}
       </TabsContent>
-      <TabsContent value="users">
+      <TabsContent value="users" className="max-w-7xl">
         {token && session && (
           <UsersPanel
             token={token}
