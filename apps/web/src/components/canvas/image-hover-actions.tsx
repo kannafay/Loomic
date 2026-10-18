@@ -5,6 +5,7 @@ import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import { Download, Maximize2 } from "lucide-react";
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { cn } from "../../lib/utils";
 import { ImageLightbox } from "../chat/image-lightbox";
 import { Button, buttonVariants } from "../ui/button";
 
@@ -214,12 +215,10 @@ export function ImageHoverActions({
             download={image.filename}
             aria-label="下载图片"
             title="下载图片"
-            className={buttonVariants({
-              variant: "ghost",
-              size: "icon-sm",
-              className:
-                "bg-black/55 text-white shadow-sm backdrop-blur-md hover:bg-black/75 hover:text-white active:translate-y-0",
-            })}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "icon-sm" }),
+              "bg-black/55 text-white shadow-sm backdrop-blur-md hover:bg-black/75 hover:text-white active:translate-y-0",
+            )}
           >
             <Download className="size-3.5" />
           </a>
