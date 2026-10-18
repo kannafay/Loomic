@@ -9,6 +9,7 @@ const state = vi.hoisted(() => ({
   fetch: vi.fn(),
   saveModel: vi.fn(),
   saveProvider: vi.fn(),
+  revealKey: vi.fn(),
   discover: vi.fn(),
   importModels: vi.fn(),
   discoverDraft: vi.fn(),
@@ -30,6 +31,7 @@ vi.mock("../src/lib/model-admin-api", () => ({
   fetchModelAdmin: state.fetch,
   saveConfiguredModel: state.saveModel,
   saveProviderConfig: state.saveProvider,
+  fetchProviderApiKey: state.revealKey,
   fetchProviderModels: state.discover,
   importDiscoveredModels: state.importModels,
   discoverDraftProviderModels: state.discoverDraft,
@@ -74,6 +76,7 @@ beforeEach(() => {
     .mockResolvedValue({ providers: [provider], models: [model], presets: [] });
   state.saveModel.mockReset().mockResolvedValue({ ...model, enabled: true });
   state.saveProvider.mockReset().mockResolvedValue(provider);
+  state.revealKey.mockReset().mockResolvedValue({ apiKey: "saved-test-key" });
   state.discover.mockReset().mockResolvedValue({
     models: [
       {
@@ -122,6 +125,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
 
@@ -138,9 +142,137 @@ it("keeps saved keys masked and exposes the four model types", async () => {
   expect(screen.getByLabelText(/API Key/)).toHaveValue("");
   for (const name of [/文本/, /语音/, /图片/, /视频生成/])
     expect(screen.getByRole("tab", { name })).toBeInTheDocument();
-  expect(screen.getByPlaceholderText("留空保持现有 Key")).toHaveAttribute(
+  expect(state.revealKey).not.toHaveBeenCalled();
+  expect(screen.getByPlaceholderText("••••••••••••••••")).toHaveAttribute(
     "type",
     "password",
+  );
+});
+it("reveals and copies a saved key without changing the key being submitted", async () => {
+  const user = userEvent.setup();
+  const writeText = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue(undefined);
+  render(<AdminPage />);
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "显示密钥" })).toBeEnabled(),
+  );
+  await user.click(screen.getByRole("button", { name: "显示密钥" }));
+  const input = screen.getByLabelText(/API Key/);
+  await waitFor(() => expect(input).toHaveValue("saved-test-key"));
+  expect(input).toHaveAttribute("type", "text");
+  expect(state.revealKey).toHaveBeenCalledExactlyOnceWith("token", provider.id);
+  await user.click(screen.getByRole("button", { name: "隐藏密钥" }));
+  expect(input).toHaveAttribute("type", "password");
+  await user.click(screen.getByRole("button", { name: "复制密钥" }));
+  expect(writeText).toHaveBeenCalledWith("saved-test-key");
+  expect(await screen.findByRole("status")).toHaveTextContent("密钥已复制");
+  expect(input).toHaveAttribute("type", "password");
+  expect(state.revealKey).toHaveBeenCalledOnce();
+  await user.click(screen.getByRole("button", { name: "保存提供商" }));
+  await waitFor(() =>
+    expect(state.saveProvider).toHaveBeenCalledWith(
+      "token",
+      expect.objectContaining({ apiKey: "" }),
+      provider.id,
+    ),
+  );
+  await waitFor(() => expect(screen.getByLabelText(/API Key/)).toHaveValue(""));
+  expect(screen.getByLabelText(/API Key/)).toHaveAttribute("type", "password");
+});
+it("uses the entered key for preview and copy, and reports clipboard failures", async () => {
+  const user = userEvent.setup();
+  const writeText = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockRejectedValueOnce(new Error("clipboard denied"))
+    .mockResolvedValue(undefined);
+  render(<AdminPage />);
+  await user.click(await screen.findByRole("button", { name: "添加提供商" }));
+  expect(screen.getByRole("button", { name: "显示密钥" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "复制密钥" })).toBeDisabled();
+  await user.type(
+    screen.getByLabelText("API Key", { exact: true }),
+    "draft-only-key",
+  );
+  await user.click(screen.getByRole("button", { name: "显示密钥" }));
+  expect(screen.getByLabelText("API Key", { exact: true })).toHaveAttribute(
+    "type",
+    "text",
+  );
+  await user.click(screen.getByRole("button", { name: "复制密钥" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("复制失败");
+  await user.click(screen.getByRole("button", { name: "复制密钥" }));
+  expect(writeText).toHaveBeenLastCalledWith("draft-only-key");
+  expect(await screen.findByRole("status")).toHaveTextContent("密钥已复制");
+  expect(state.revealKey).not.toHaveBeenCalled();
+});
+it("does not copy an old provider key after switching providers during a request", async () => {
+  const user = userEvent.setup();
+  const writeText = vi
+    .spyOn(navigator.clipboard, "writeText")
+    .mockResolvedValue(undefined);
+  const other = { ...provider, id: "provider-2", name: "另一个提供商" };
+  state.fetch.mockResolvedValue({
+    providers: [provider, other],
+    models: [model],
+    presets: [],
+  });
+  let resolveKey!: (value: { apiKey: string }) => void;
+  state.revealKey.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        resolveKey = resolve;
+      }),
+  );
+  render(<AdminPage />);
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "复制密钥" })).toBeEnabled(),
+  );
+  await user.click(screen.getByRole("button", { name: "复制密钥" }));
+  await user.click(screen.getByRole("button", { name: other.name }));
+  await act(async () => resolveKey({ apiKey: "old-provider-key" }));
+  expect(writeText).not.toHaveBeenCalled();
+  expect(screen.getByLabelText(/API Key/)).toHaveValue("");
+  expect(screen.getByLabelText(/API Key/)).toHaveAttribute("type", "password");
+  expect(screen.getByRole("button", { name: "显示密钥" })).toBeEnabled();
+});
+it("does not overwrite a newly entered key with a delayed saved-key response", async () => {
+  const user = userEvent.setup();
+  let resolveKey!: (value: { apiKey: string }) => void;
+  state.revealKey.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        resolveKey = resolve;
+      }),
+  );
+  render(<AdminPage />);
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "显示密钥" })).toBeEnabled(),
+  );
+  await user.click(screen.getByRole("button", { name: "显示密钥" }));
+  await user.type(screen.getByLabelText(/API Key/), "new-draft-key");
+  await act(async () => resolveKey({ apiKey: "old-saved-key" }));
+  expect(screen.getByLabelText(/API Key/)).toHaveValue("new-draft-key");
+  expect(screen.getByLabelText(/API Key/)).toHaveAttribute("type", "password");
+  await user.click(screen.getByRole("button", { name: "显示密钥" }));
+  expect(screen.getByLabelText(/API Key/)).toHaveValue("new-draft-key");
+  expect(screen.getByLabelText(/API Key/)).toHaveAttribute("type", "text");
+  expect(state.revealKey).toHaveBeenCalledOnce();
+});
+it("allows retrying a failed saved-key read without exposing error details", async () => {
+  const user = userEvent.setup();
+  state.revealKey.mockRejectedValueOnce(new Error("private-error-fixture"));
+  render(<AdminPage />);
+  await waitFor(() =>
+    expect(screen.getByRole("button", { name: "显示密钥" })).toBeEnabled(),
+  );
+  await user.click(screen.getByRole("button", { name: "显示密钥" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("密钥读取失败");
+  expect(screen.queryByText(/private-error-fixture/)).toBeNull();
+  expect(screen.getByLabelText(/API Key/)).toHaveValue("");
+  await user.click(screen.getByRole("button", { name: "显示密钥" }));
+  await waitFor(() =>
+    expect(screen.getByLabelText(/API Key/)).toHaveValue("saved-test-key"),
   );
 });
 it("enables a model explicitly through the administrator API", async () => {

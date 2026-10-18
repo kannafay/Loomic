@@ -68,6 +68,18 @@ export async function registerModelAdminRoutes(
       service.saveProvider(userId, providerWriteSchema.parse(request.body)),
     ),
   );
+  app.post<{ Params: { id: string } }>(
+    "/api/admin/providers/:id/api-key",
+    (request, reply) => {
+      reply.header("Cache-Control", "no-store");
+      return run(request, reply, true, (userId) =>
+        service.revealProviderApiKey(
+          userId,
+          z.string().uuid().parse(request.params.id),
+        ),
+      );
+    },
+  );
   app.post(
     "/api/admin/providers/create-with-models",
     { bodyLimit: 4 * 1024 * 1024 },

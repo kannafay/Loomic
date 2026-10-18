@@ -19,6 +19,7 @@ async function setup() {
     role: vi.fn(async (id: string) => (id === "admin" ? "admin" : "user")),
     list: vi.fn(async () => ({ providers: [], models: [], presets: [] })),
     saveProvider: vi.fn(),
+    revealProviderApiKey: vi.fn(async () => ({ apiKey: "saved-test-key" })),
     saveModel: vi.fn(),
     setRole: vi.fn(),
     users: vi.fn(),
@@ -58,6 +59,15 @@ describe("model administration authorization", () => {
       401,
     );
     expect(service.list).not.toHaveBeenCalled();
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/api/admin/providers/11111111-1111-4111-8111-111111111111/api-key",
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect(service.revealProviderApiKey).not.toHaveBeenCalled();
   });
   it("rejects ordinary users for every configuration and role mutation", async () => {
     const { app, service } = await setup();
@@ -72,6 +82,7 @@ describe("model administration authorization", () => {
       ["GET", "/api/admin/network"],
       ["PUT", "/api/admin/network"],
       ["PUT", `/api/admin/providers/${id}`],
+      ["POST", `/api/admin/providers/${id}/api-key`],
       ["POST", "/api/admin/models"],
       ["PUT", `/api/admin/models/${id}`],
       ["POST", `/api/admin/models/${id}/default`],
@@ -92,10 +103,52 @@ describe("model administration authorization", () => {
     }
     expect(service.list).not.toHaveBeenCalled();
     expect(service.saveProvider).not.toHaveBeenCalled();
+    expect(service.revealProviderApiKey).not.toHaveBeenCalled();
     expect(service.saveModel).not.toHaveBeenCalled();
     expect(service.setRole).not.toHaveBeenCalled();
     expect(service.discoverModels).not.toHaveBeenCalled();
     expect(service.importDiscoveredModels).not.toHaveBeenCalled();
+  });
+  it("reveals a single key only for administrators without caching the response", async () => {
+    const { app, service } = await setup();
+    const id = "11111111-1111-4111-8111-111111111111";
+    const response = await app.inject({
+      method: "POST",
+      url: `/api/admin/providers/${id}/api-key`,
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.json()).toEqual({ apiKey: "saved-test-key" });
+    expect(service.revealProviderApiKey).toHaveBeenCalledExactlyOnceWith(
+      "admin",
+      id,
+    );
+  });
+  it("validates the provider id before reading a key", async () => {
+    const { app, service } = await setup();
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/admin/providers/invalid-id/api-key",
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(service.revealProviderApiKey).not.toHaveBeenCalled();
+  });
+  it("does not expose internal key errors in the response", async () => {
+    const { app, service } = await setup();
+    service.revealProviderApiKey.mockRejectedValueOnce(
+      new Error("private-fixture"),
+    );
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/admin/providers/11111111-1111-4111-8111-111111111111/api-key",
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(response.statusCode).toBe(500);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.body).not.toContain("private-fixture");
   });
   it("allows model discovery/import for administrators and validates import types", async () => {
     const { app, service } = await setup();

@@ -49,6 +49,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NetworkSettingsPanel } from "./network-settings-panel";
+import { ProviderApiKeyInput } from "./provider-api-key-input";
 import { ProviderModelDiscovery } from "./provider-model-discovery";
 
 const KINDS: Array<{ id: ModelKind; name: string }> = [
@@ -101,6 +102,7 @@ export default function AdminPage() {
   const [adding, setAdding] = useState(false);
   const [providerDraft, setProviderDraft] =
     useState<ProviderWrite>(EMPTY_PROVIDER);
+  const [apiKeyRevision, setApiKeyRevision] = useState(0);
   const [kind, setKind] = useState<ModelKind>("text");
   const [modelDraft, setModelDraft] = useState<ModelDraft | null>(null);
   const [showDiscovery, setShowDiscovery] = useState(false);
@@ -113,6 +115,7 @@ export default function AdminPage() {
   const [notice, setNotice] = useState("");
 
   const chooseProvider = useCallback((provider: ProviderConfig) => {
+    setApiKeyRevision((revision) => revision + 1);
     setSelectedId(provider.id);
     setAdding(false);
     setModelDraft(null);
@@ -191,6 +194,7 @@ export default function AdminPage() {
   function usePreset(presetId: string) {
     const preset = data?.presets.find((item) => item.id === presetId);
     if (!preset) return;
+    setApiKeyRevision((revision) => revision + 1);
     setPendingModels(
       preset.models.map((model) => stagedModel({ ...model, enabled: false })),
     );
@@ -324,6 +328,7 @@ export default function AdminPage() {
                 aria-label="添加提供商"
                 disabled={busy || !data}
                 onClick={() => {
+                  setApiKeyRevision((revision) => revision + 1);
                   setAdding(true);
                   setSelectedId(null);
                   setProviderDraft(EMPTY_PROVIDER);
@@ -613,43 +618,42 @@ export default function AdminPage() {
                     spellCheck={false}
                   />
                 </Label>
-                <Label htmlFor="page-2" className="grid gap-2 text-xs">
-                  <span>
-                    API Key{" "}
-                    {selected?.hasApiKey && !adding && (
-                      <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
-                        已保存
-                      </span>
-                    )}
-                    {providerDraft.category === "custom" && (
-                      <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
-                        本地服务可留空
-                      </span>
-                    )}
-                  </span>
-                  <Input
+                <div className="grid gap-2">
+                  <Label htmlFor="page-2" className="text-xs">
+                    <span>
+                      API Key{" "}
+                      {selected?.hasApiKey && !adding && (
+                        <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
+                          已保存
+                        </span>
+                      )}
+                      {providerDraft.category === "custom" && (
+                        <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                          本地服务可留空
+                        </span>
+                      )}
+                    </span>
+                  </Label>
+                  <ProviderApiKeyInput
+                    key={`${selectedId ?? "new"}:${apiKeyRevision}`}
                     id="page-2"
-                    className="font-normal"
-                    type="password"
+                    token={token}
+                    providerId={!adding ? (selectedId ?? undefined) : undefined}
+                    hasSavedKey={!adding && !!selected?.hasApiKey}
+                    disabled={busy}
                     required={
                       providerDraft.category !== "custom" &&
                       (adding || !selected?.hasApiKey)
                     }
                     value={providerDraft.apiKey ?? ""}
-                    onChange={(event) =>
+                    onChange={(apiKey) =>
                       setProviderDraft({
                         ...providerDraft,
-                        apiKey: event.target.value,
+                        apiKey,
                       })
                     }
-                    placeholder={
-                      !adding && selected?.hasApiKey
-                        ? "留空保持现有 Key"
-                        : "填写提供商的 API Key"
-                    }
-                    autoComplete="new-password"
                   />
-                </Label>
+                </div>
                 <div className="-mx-5 space-y-2 border-t border-border bg-muted/20 px-5 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <Label

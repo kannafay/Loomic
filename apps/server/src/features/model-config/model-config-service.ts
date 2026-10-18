@@ -157,6 +157,26 @@ export function createModelConfigService(options: {
         presets: MODEL_PRESETS,
       };
     },
+    async revealProviderApiKey(userId: string, providerId: string) {
+      await service.requireAdmin(userId);
+      const { data, error } = await options
+        .getAdminClient()
+        .from("model_providers")
+        .select("api_key_ciphertext")
+        .eq("id", providerId)
+        .maybeSingle();
+      if (error) throw new ModelConfigError("密钥读取失败，请重试。", 503);
+      if (!data) throw new ModelConfigError("提供商不存在。", 404);
+      try {
+        return {
+          apiKey: data.api_key_ciphertext
+            ? decryptApiKey(data.api_key_ciphertext, options.secret)
+            : "",
+        };
+      } catch {
+        throw new ModelConfigError("密钥读取失败，请重试。", 500);
+      }
+    },
     async catalog(force = false): Promise<ConfiguredCatalog> {
       if (!force && cachedCatalog && Date.now() - cachedAt < 2000)
         return cachedCatalog;

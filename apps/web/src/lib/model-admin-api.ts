@@ -35,6 +35,8 @@ async function request<T>(
 }
 export const fetchModelAdmin = (token: string) =>
   request<ModelAdminResponse>(token, "/models");
+export const fetchProviderApiKey = (token: string, id: string) =>
+  request<{ apiKey: string }>(token, `/providers/${id}/api-key`, "POST");
 export const createProviderWithModels = (
   token: string,
   value: ProviderCreation,
