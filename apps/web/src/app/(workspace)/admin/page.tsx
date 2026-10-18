@@ -20,16 +20,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { useAuth } from "@/lib/auth-context";
 import {
-  type AdminUser,
   createProviderWithModels,
-  fetchAdminUsers,
   fetchModelAdmin,
   importPresetModels,
   saveConfiguredModel,
   saveProviderConfig,
   setDefaultConfiguredModel,
   testProviderConnection,
-  updateSystemRole,
 } from "@/lib/model-admin-api";
 import type {
   ConfiguredModel,
@@ -52,6 +49,7 @@ import { useCallback, useEffect, useState } from "react";
 import { NetworkSettingsPanel } from "./network-settings-panel";
 import { ProviderApiKeyInput } from "./provider-api-key-input";
 import { ProviderModelDiscovery } from "./provider-model-discovery";
+import { UsersPanel } from "./users-panel";
 
 const KINDS: Array<{ id: ModelKind; name: string }> = [
   { id: "text", name: "文本" },
@@ -99,7 +97,6 @@ export default function AdminPage() {
   const token = session?.access_token;
   const [tab, setTab] = useState<"models" | "users" | "network">("models");
   const [data, setData] = useState<ModelAdminResponse | null>(null);
-  const [users, setUsers] = useState<AdminUser[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [providerDraft, setProviderDraft] =
@@ -153,13 +150,6 @@ export default function AdminPage() {
       canceled = true;
     };
   }, [token, role, chooseProvider]);
-  useEffect(() => {
-    if (tab !== "users" || !token || role !== "admin") return;
-    void fetchAdminUsers(token)
-      .then((result) => setUsers(result.users))
-      .catch((err) => setError(err.message));
-  }, [tab, token, role]);
-
   async function perform(action: () => Promise<void>) {
     setBusy(true);
     setError("");
@@ -289,7 +279,7 @@ export default function AdminPage() {
           </TabsTrigger>
         </TabsList>
       </div>
-      {error && (
+      {tab === "models" && error && (
         <p
           role="alert"
           className="mb-4 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive"
@@ -1231,78 +1221,13 @@ export default function AdminPage() {
         {token && <NetworkSettingsPanel token={token} />}
       </TabsContent>
       <TabsContent value="users">
-        <section className="overflow-hidden rounded-xl border border-border bg-card">
-          <div className="border-b border-border px-5 py-4">
-            <h2 className="text-sm font-semibold">用户角色</h2>
-            <p className="mt-1 text-xs text-muted-foreground">
-              管理员与普通用户的创作功能相同，只有管理员能配置后台。
-            </p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted/40 text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-5 py-3 font-medium">用户</th>
-                  <th className="px-5 py-3 font-medium">邮箱</th>
-                  <th className="px-5 py-3 font-medium">角色</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td className="whitespace-nowrap px-5 py-4">
-                      {user.name}
-                      {user.id === session?.user.id && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          当前账号
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-4 text-muted-foreground">
-                      {user.email}
-                    </td>
-                    <td className="px-5 py-4">
-                      <Select
-                        items={[
-                          { value: "user", label: "普通用户" },
-                          { value: "admin", label: "管理员" },
-                        ]}
-                        value={user.role}
-                        disabled={busy}
-                        onValueChange={(value) => {
-                          if (token)
-                            void perform(async () => {
-                              await updateSystemRole(
-                                token,
-                                user.id,
-                                value as AdminUser["role"],
-                              );
-                              setUsers((await fetchAdminUsers(token)).users);
-                              await refreshRole();
-                              success("用户角色已更新。");
-                            });
-                        }}
-                      >
-                        <SelectTrigger
-                          className="min-w-28"
-                          aria-label={`${user.name} 的角色`}
-                        >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            <SelectItem value="user">普通用户</SelectItem>
-                            <SelectItem value="admin">管理员</SelectItem>
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        {token && session && (
+          <UsersPanel
+            token={token}
+            currentUserId={session.user.id}
+            onSelfRoleChanged={refreshRole}
+          />
+        )}
       </TabsContent>
     </Tabs>
   );

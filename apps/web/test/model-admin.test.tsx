@@ -146,6 +146,16 @@ it("does not load administrator configuration for an ordinary user", () => {
   expect(state.fetch).not.toHaveBeenCalled();
   expect(screen.queryByLabelText(/API Key/)).not.toBeInTheDocument();
 });
+it("opens the user management panel from the administrator tabs", async () => {
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  await screen.findByRole("checkbox", { name: "启用 Agnes 测试模型" });
+  await user.click(screen.getByRole("tab", { name: "用户管理" }));
+  expect(
+    await screen.findByRole("table", { name: "用户及后台访问角色" }),
+  ).toBeInTheDocument();
+  expect(await screen.findByText("暂无用户")).toBeInTheDocument();
+});
 it("keeps saved keys masked and exposes the four model types", async () => {
   render(<AdminPage />);
   await screen.findByRole("checkbox", { name: "启用 Agnes 测试模型" });
