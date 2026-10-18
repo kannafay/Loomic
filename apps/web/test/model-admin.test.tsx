@@ -1,8 +1,18 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render as renderUI,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import AdminPage from "../src/app/(workspace)/admin/page";
+import { ToastProvider } from "../src/components/toast";
+
+const render = (ui: ReactNode) => renderUI(ui, { wrapper: ToastProvider });
 
 const state = vi.hoisted(() => ({
   role: "admin",
@@ -291,6 +301,28 @@ it("enables a model explicitly through the administrator API", async () => {
       model.id,
     ),
   );
+  const notification = await screen.findByRole("status");
+  expect(notification).toHaveTextContent("模型已启用，前台可以选择。");
+  expect(notification).toHaveAttribute("data-slot", "toast");
+});
+it("shows failed model updates as a toast and keeps the existing selection", async () => {
+  state.saveModel.mockRejectedValueOnce(new Error("模型更新失败，请重试。"));
+  render(<AdminPage />);
+  const checkbox = await screen.findByRole("checkbox", {
+    name: "启用 Agnes 测试模型",
+  });
+  await userEvent.click(checkbox);
+  const notification = await screen.findByRole("alert");
+  expect(notification).toHaveTextContent("模型更新失败");
+  expect(notification).toHaveAttribute("data-slot", "toast");
+  expect(checkbox).not.toBeChecked();
+});
+it("keeps configuration loading failures on the page", async () => {
+  state.fetch.mockRejectedValueOnce(new Error("模型配置读取失败。"));
+  render(<AdminPage />);
+  const error = await screen.findByRole("alert");
+  expect(error).toHaveTextContent("模型配置读取失败");
+  expect(error).not.toHaveAttribute("data-slot", "toast");
 });
 it("fetches the saved provider list without enabling or overwriting existing models", async () => {
   render(<AdminPage />);

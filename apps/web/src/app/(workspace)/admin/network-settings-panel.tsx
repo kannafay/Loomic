@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -13,10 +14,10 @@ import { type NetworkSettings, networkSettingsSchema } from "@loomic/shared";
 import { useEffect, useState } from "react";
 
 export function NetworkSettingsPanel({ token }: { token: string }) {
+  const { success, error: showError } = useToast();
   const [value, setValue] = useState<NetworkSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   useEffect(() => {
     let canceled = false;
     void fetchNetworkSettings(token)
@@ -42,7 +43,6 @@ export function NetworkSettingsPanel({ token }: { token: string }) {
           {error}
         </p>
       )}
-      {notice && <output className="mt-4 block text-sm">{notice}</output>}
       {!value ? (
         !error && (
           <p className="mt-5 text-sm text-muted-foreground">
@@ -55,7 +55,6 @@ export function NetworkSettingsPanel({ token }: { token: string }) {
           onSubmit={(event) => {
             event.preventDefault();
             setError("");
-            setNotice("");
             const parsed = networkSettingsSchema.safeParse(value);
             if (!parsed.success) {
               setError(parsed.error.issues[0]?.message ?? "请检查代理配置。");
@@ -65,12 +64,12 @@ export function NetworkSettingsPanel({ token }: { token: string }) {
             void saveNetworkSettings(token, parsed.data)
               .then((result) => {
                 setValue(result);
-                setNotice(
+                success(
                   "全局代理已保存。API 立即生效，后台任务在下次请求时自动更新。",
                 );
               })
               .catch((err) =>
-                setError(
+                showError(
                   err instanceof Error ? err.message : "网络设置保存失败。",
                 ),
               )

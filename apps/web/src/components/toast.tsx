@@ -1,14 +1,18 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { XIcon } from "lucide-react";
 import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { ReactNode } from "react";
+import { Button } from "./ui/button";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -42,8 +46,20 @@ const TOAST_DURATION = 3000;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+
+  useEffect(() => {
+    const pendingTimers = timers.current;
+    return () => {
+      for (const timer of pendingTimers.values()) clearTimeout(timer);
+      pendingTimers.clear();
+    };
+  }, []);
 
   const remove = useCallback((id: string) => {
+    const timer = timers.current.get(id);
+    if (timer !== undefined) clearTimeout(timer);
+    timers.current.delete(id);
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
@@ -52,7 +68,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       // Use crypto.randomUUID() for collision-safe IDs across concurrent renders
       const id = crypto.randomUUID();
       setToasts((prev) => [...prev, { id, message, variant }]);
-      setTimeout(() => remove(id), TOAST_DURATION);
+      timers.current.set(
+        id,
+        setTimeout(() => remove(id), TOAST_DURATION),
+      );
     },
     [remove],
   );
@@ -70,8 +89,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={ctx}>
       {children}
 
-      {/* Toast container — fixed bottom-center */}
-      <div className="fixed bottom-6 left-1/2 z-[9999] flex -translate-x-1/2 flex-col items-center gap-2">
+      <div className="pointer-events-none fixed inset-x-4 bottom-6 z-[9999] flex flex-col items-center gap-2">
         <AnimatePresence>
           {toasts.map((t) => (
             <ToastItem key={t.id} toast={t} onDismiss={() => remove(t.id)} />
@@ -148,16 +166,28 @@ function ToastItem({
 
   return (
     <motion.div
+      data-slot="toast"
+      role={toast.variant === "error" ? "alert" : "status"}
+      aria-atomic="true"
       layout
       initial={{ opacity: 0, y: 16, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.95 }}
       transition={{ duration: 0.25, ease: [0.25, 0.46, 0.45, 0.94] }}
-      onClick={onDismiss}
-      className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-4 py-3 text-sm font-medium shadow-lg backdrop-blur-sm ${bg}`}
+      className={`pointer-events-auto flex w-full max-w-md items-center gap-2.5 rounded-lg px-4 py-3 text-sm font-medium shadow-lg ${bg}`}
     >
       {icon}
-      {toast.message}
+      <span className="min-w-0 flex-1 break-words">{toast.message}</span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        aria-label="关闭通知"
+        className="text-background/70 hover:bg-background/10 hover:text-background focus-visible:border-background/50 focus-visible:ring-background/40"
+        onClick={onDismiss}
+      >
+        <XIcon aria-hidden="true" className="size-3.5" />
+      </Button>
     </motion.div>
   );
 }

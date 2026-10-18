@@ -2,6 +2,7 @@
 
 import type { ModelInfo } from "@loomic/shared";
 import { useEffect, useState } from "react";
+import { useToast } from "./toast";
 
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
@@ -25,14 +26,11 @@ export function AgentSection({
   onSave,
   fetchModels,
 }: AgentSectionProps) {
+  const { success, error } = useToast();
   const [selectedModel, setSelectedModel] = useState(initialModel);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
   const hasChanges = selectedModel !== initialModel;
 
@@ -56,16 +54,12 @@ export function AgentSection({
     if (!selectedModel) return;
 
     setSaving(true);
-    setFeedback(null);
 
     try {
       await onSave(selectedModel);
-      setFeedback({ type: "success", message: "助手设置已更新。" });
+      success("助手设置已更新。");
     } catch {
-      setFeedback({
-        type: "error",
-        message: "设置更新失败，请重试。",
-      });
+      error("设置更新失败，请重试。");
     } finally {
       setSaving(false);
     }
@@ -113,14 +107,6 @@ export function AgentSection({
             工作空间中的新对话将默认使用此模型。
           </p>
         </div>
-
-        {feedback && (
-          <p
-            className={`text-sm ${feedback.type === "success" ? "text-success" : "text-destructive"}`}
-          >
-            {feedback.message}
-          </p>
-        )}
 
         <Button
           type="submit"

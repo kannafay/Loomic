@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useToast } from "./toast";
 
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -17,12 +18,9 @@ export function ProfileSection({
   email,
   onSave,
 }: ProfileSectionProps) {
+  const { success, error } = useToast();
   const [displayName, setDisplayName] = useState(initialName);
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<{
-    type: "success" | "error";
-    message: string;
-  } | null>(null);
 
   const hasChanges = displayName.trim() !== initialName;
 
@@ -32,16 +30,12 @@ export function ProfileSection({
     if (!trimmed) return;
 
     setSaving(true);
-    setFeedback(null);
 
     try {
       await onSave(trimmed);
-      setFeedback({ type: "success", message: "个人资料已更新。" });
+      success("个人资料已更新。");
     } catch {
-      setFeedback({
-        type: "error",
-        message: "个人资料更新失败，请重试。",
-      });
+      error("个人资料更新失败，请重试。");
     } finally {
       setSaving(false);
     }
@@ -70,14 +64,6 @@ export function ProfileSection({
             邮箱地址暂不支持修改。
           </p>
         </div>
-
-        {feedback && (
-          <p
-            className={`text-sm ${feedback.type === "success" ? "text-success" : "text-destructive"}`}
-          >
-            {feedback.message}
-          </p>
-        )}
 
         <Button type="submit" disabled={saving || !hasChanges} size="sm">
           {saving ? "正在保存…" : "保存"}

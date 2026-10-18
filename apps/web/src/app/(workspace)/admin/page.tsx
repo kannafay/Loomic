@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +37,6 @@ import type {
   ModelAdminResponse,
   ModelKind,
   ProviderConfig,
-  ProviderConnectionTest,
   ProviderWrite,
 } from "@loomic/shared";
 import {
@@ -95,6 +95,7 @@ function stagedModel(
 
 export default function AdminPage() {
   const { session, role, roleLoading, loading, refreshRole } = useAuth();
+  const { success, error: showError, toast } = useToast();
   const token = session?.access_token;
   const [tab, setTab] = useState<"models" | "users" | "network">("models");
   const [data, setData] = useState<ModelAdminResponse | null>(null);
@@ -108,12 +109,8 @@ export default function AdminPage() {
   const [modelDraft, setModelDraft] = useState<ModelDraft | null>(null);
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [pendingModels, setPendingModels] = useState<ConfiguredModel[]>([]);
-  const [connectionTest, setConnectionTest] = useState<
-    (ProviderConnectionTest & { signature: string }) | null
-  >(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   const chooseProvider = useCallback((provider: ProviderConfig) => {
     setApiKeyRevision((revision) => revision + 1);
@@ -122,9 +119,7 @@ export default function AdminPage() {
     setModelDraft(null);
     setShowDiscovery(false);
     setPendingModels([]);
-    setConnectionTest(null);
     setError("");
-    setNotice("");
     setProviderDraft({
       name: provider.name,
       category: provider.category,
@@ -168,11 +163,10 @@ export default function AdminPage() {
   async function perform(action: () => Promise<void>) {
     setBusy(true);
     setError("");
-    setNotice("");
     try {
       await action();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "操作失败，请重试。");
+      showError(err instanceof Error ? err.message : "操作失败，请重试。");
     } finally {
       setBusy(false);
     }
@@ -184,13 +178,6 @@ export default function AdminPage() {
     ? pendingModels
     : (data?.models.filter((model) => model.providerId === selectedId) ?? []);
   const visibleModels = providerModels.filter((model) => model.kind === kind);
-  const connectionSignature = JSON.stringify([
-    providerDraft,
-    selectedId,
-    adding,
-  ]);
-  const currentConnectionTest =
-    connectionTest?.signature === connectionSignature ? connectionTest : null;
 
   function usePreset(presetId: string) {
     const preset = data?.presets.find((item) => item.id === presetId);
@@ -310,11 +297,6 @@ export default function AdminPage() {
           {error}
         </p>
       )}
-      {notice && (
-        <output className="mb-4 block rounded-lg bg-accent/15 px-4 py-3 text-sm">
-          {notice}
-        </output>
-      )}
       <TabsContent value="models">
         <div className="grid items-start gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
           <aside className="min-w-0 rounded-xl border border-border bg-card p-2">
@@ -343,7 +325,6 @@ export default function AdminPage() {
                   );
                   setModelDraft(null);
                   setShowDiscovery(false);
-                  setNotice("");
                 }}
                 title="添加提供商"
               >
@@ -538,7 +519,7 @@ export default function AdminPage() {
                         );
                     await load();
                     chooseProvider(provider);
-                    setNotice("提供商已保存。勾选下方模型即可启用到前台。");
+                    success("提供商已保存。勾选下方模型即可启用到前台。");
                   });
                 }}
                 className="space-y-3 px-5 pt-4"
@@ -684,8 +665,6 @@ export default function AdminPage() {
                         disabled={busy || !data}
                         onClick={() => {
                           if (!token) return;
-                          const signature = connectionSignature;
-                          setConnectionTest(null);
                           void perform(async () => {
                             const result = await testProviderConnection(token, {
                               ...providerDraft,
@@ -693,7 +672,9 @@ export default function AdminPage() {
                                 ? { providerId: selectedId }
                                 : {}),
                             });
-                            setConnectionTest({ ...result, signature });
+                            const message = `${result.message} 用时 ${result.latencyMs} ms。`;
+                            if (result.status === "connected") success(message);
+                            else toast(message);
                           });
                         }}
                       >
@@ -711,14 +692,6 @@ export default function AdminPage() {
                       </Button>
                     </div>
                   </div>
-                  {currentConnectionTest && (
-                    <output
-                      className={`block rounded-lg px-3 py-2 text-xs leading-5 ${currentConnectionTest.status === "connected" ? "bg-emerald-500/10 text-emerald-800 dark:text-emerald-300" : "bg-amber-500/10 text-amber-800 dark:text-amber-300"}`}
-                    >
-                      {currentConnectionTest.message} 用时{" "}
-                      {currentConnectionTest.latencyMs} ms。
-                    </output>
-                  )}
                   <p className="text-[11px] leading-4 text-muted-foreground">
                     测试仅检查接口和鉴权，使用全局代理，不执行生成任务。
                   </p>
@@ -745,7 +718,6 @@ export default function AdminPage() {
                       disabled={busy}
                       onClick={() => {
                         setError("");
-                        setNotice("");
                         setModelDraft(null);
                         setShowDiscovery(true);
                       }}
@@ -787,7 +759,7 @@ export default function AdminPage() {
                                 await importPresetModels(token, selected.id);
                                 await load();
                               }
-                              setNotice("预设模型已补充，已有配置保持不变。");
+                              success("预设模型已补充，已有配置保持不变。");
                             });
                         }}
                       >
@@ -870,7 +842,7 @@ export default function AdminPage() {
                     onClose={() => setShowDiscovery(false)}
                     onImported={async (result) => {
                       if (!adding) await load();
-                      setNotice(
+                      success(
                         adding
                           ? `已加入 ${result.imported} 个待保存模型。保存提供商时一起生效。`
                           : `已导入 ${result.imported} 个模型${result.skipped ? `，跳过 ${result.skipped} 个已有模型` : ""}。请在对应标签中勾选启用。`,
@@ -936,7 +908,7 @@ export default function AdminPage() {
                                   model.id,
                                 );
                                 await load();
-                                setNotice(
+                                success(
                                   enabled
                                     ? "模型已启用，前台可以选择。"
                                     : "模型已停用。",
@@ -980,7 +952,7 @@ export default function AdminPage() {
                                     model.id,
                                   );
                                   await load();
-                                  setNotice("默认模型已更新。");
+                                  success("默认模型已更新。");
                                 });
                             }}
                           >
@@ -1052,9 +1024,7 @@ export default function AdminPage() {
                                 : [...current, value],
                             );
                             setModelDraft(null);
-                            setNotice(
-                              "模型已加入待保存列表，保存提供商后生效。",
-                            );
+                            success("模型已加入待保存列表，保存提供商后生效。");
                             return;
                           }
                           await saveConfiguredModel(
@@ -1067,7 +1037,7 @@ export default function AdminPage() {
                           );
                           await load();
                           setModelDraft(null);
-                          setNotice("模型配置已保存。");
+                          success("模型配置已保存。");
                         });
                       }}
                     >
@@ -1309,7 +1279,7 @@ export default function AdminPage() {
                               );
                               setUsers((await fetchAdminUsers(token)).users);
                               await refreshRole();
-                              setNotice("用户角色已更新。");
+                              success("用户角色已更新。");
                             });
                         }}
                       >
