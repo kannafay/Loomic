@@ -8,6 +8,7 @@ export async function generateVideo(
 ): Promise<GeneratedVideo> {
   let params = input;
   const provider = getVideoProvider(providerName);
+  const providerKind = provider.catalogProvider ?? provider.name;
   const model = provider.models.find((item) => item.id === params.model);
   if (params.lastFrame && !model?.capabilities.lastFrame)
     throw new GenerationError(
@@ -31,7 +32,7 @@ export async function generateVideo(
       "invalid_input",
       "当前模型不支持视频输入。",
     );
-  if (params.referenceAudios?.length && providerName !== "agnes")
+  if (params.referenceAudios?.length && providerKind !== "agnes")
     throw new GenerationError(
       providerName,
       "invalid_input",
@@ -39,8 +40,8 @@ export async function generateVideo(
     );
   if (
     params.firstFrame &&
-    providerName !== "google" &&
-    providerName !== "agnes"
+    providerKind !== "google" &&
+    providerKind !== "agnes"
   )
     params = { ...params, inputImages: [params.firstFrame] };
   return provider.generate(params);

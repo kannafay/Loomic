@@ -4,7 +4,7 @@ import type {
   VideoModelInfo,
   VideoProvider,
 } from "../types.js";
-import { GenerationError } from "../utils.js";
+import { GenerationError, waitForGeneration } from "../utils.js";
 
 export const METASO_DEFAULT_BASE_URL = "https://metaso.cn/api/minimax/";
 export const METASO_VIDEO_MODEL_ID = "metaso/minimax-h3";
@@ -97,7 +97,10 @@ export class MetasoVideoProvider implements VideoProvider {
   private readonly fetchFn: FetchLike;
   private readonly pollIntervalMs: number;
   private readonly maxWaitMs: number;
-  private readonly sleep: (milliseconds: number) => Promise<void>;
+  private readonly sleep: (
+    milliseconds: number,
+    signal?: AbortSignal,
+  ) => Promise<void>;
   private readonly now: () => number;
 
   constructor(
@@ -127,39 +130,44 @@ export class MetasoVideoProvider implements VideoProvider {
     );
     this.sleep =
       options.sleep ??
-      ((milliseconds) =>
-        new Promise((resolve) => {
-          setTimeout(resolve, milliseconds);
-        }));
+      ((milliseconds, signal) => waitForGeneration(milliseconds, signal));
     this.now = options.now ?? Date.now;
   }
 
   async generate(params: VideoGenerateParams): Promise<GeneratedVideo> {
+    params.signal?.throwIfAborted();
     const request = buildCreateRequest(params);
     const createResponse = await this.requestJson("v2/video_generation", {
       method: "POST",
+      signal: params.signal ?? null,
       body: JSON.stringify(request),
     });
     const taskId = readRequiredString(createResponse, "task_id");
 
-    return this.pollUntilComplete(taskId, {
-      duration: request.duration,
-      resolution: request.resolution,
-      ratio: request.ratio,
-    });
+    return this.pollUntilComplete(
+      taskId,
+      {
+        duration: request.duration,
+        resolution: request.resolution,
+        ratio: request.ratio,
+      },
+      params.signal,
+    );
   }
 
   private async pollUntilComplete(
     taskId: string,
     request: { duration: number; resolution: "768P" | "2K"; ratio: string },
+    signal?: AbortSignal,
   ): Promise<GeneratedVideo> {
     const deadline = this.now() + this.maxWaitMs;
     let lastStatus: string | undefined;
 
     while (this.now() < deadline) {
+      signal?.throwIfAborted();
       const response = await this.requestJson(
         `v2/query/video_generation/${encodeURIComponent(taskId)}`,
-        { method: "GET" },
+        { method: "GET", signal: signal ?? null },
       );
       const task = readTask(response);
       const status = readRequiredString(task, "status");
@@ -226,7 +234,7 @@ export class MetasoVideoProvider implements VideoProvider {
         );
       }
 
-      await this.sleep(this.pollIntervalMs);
+      await this.sleep(this.pollIntervalMs, signal);
     }
 
     if (lastStatus === "queued") {
@@ -268,9 +276,15 @@ export class MetasoVideoProvider implements VideoProvider {
             : {}),
           ...init.headers,
         },
-        signal: init.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: init.signal
+          ? AbortSignal.any([
+              init.signal,
+              AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            ])
+          : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
     } catch (error) {
+      init.signal?.throwIfAborted();
       const detail =
         error instanceof Error && error.name === "TimeoutError"
           ? "request timed out"

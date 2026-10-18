@@ -20,7 +20,7 @@ vi.mock("../src/hooks/use-generation-error-handler", () => ({
   useGenerationErrorHandler: () => ({ handleGenerationError: () => false }),
 }));
 vi.mock("@excalidraw/excalidraw", () => ({
-  convertToExcalidrawElements: (elements: unknown[]) => elements,
+  restoreElements: (elements: unknown[]) => elements,
 }));
 const model = {
   id: "google-official/veo-3.1-generate-preview",
@@ -65,7 +65,6 @@ function panel(modelId = model.id) {
       }
       accessToken="token"
       canvasScrollZoom={{ scrollX: 0, scrollY: 0, zoom: 1 }}
-      onClose={vi.fn()}
     />,
   );
 }
@@ -158,6 +157,7 @@ describe("Agnes video modes", () => {
           referenceAudios: ["https://media.example.com/a.mp3"],
           inputVideo: "https://media.example.com/v.mp4",
         }),
+        expect.any(AbortSignal),
       ),
     );
   });
@@ -277,6 +277,7 @@ describe("video generation modes", () => {
           firstFrame: expect.stringMatching(/^data:image\/png/),
           lastFrame: expect.stringMatching(/^data:image\/jpeg/),
         }),
+        expect.any(AbortSignal),
       ),
     );
   });
@@ -329,6 +330,7 @@ describe("video generation modes", () => {
           aspectRatio: "9:16",
           duration: 8,
         }),
+        expect.any(AbortSignal),
       ),
     );
   });

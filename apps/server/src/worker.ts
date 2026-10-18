@@ -10,6 +10,10 @@ import {
   createCreditService,
 } from "./features/credits/credit-service.js";
 import {
+  JobCanceledError,
+  runCancellableJob,
+} from "./features/jobs/job-cancellation.js";
+import {
   type ExecutorContext,
   getExecutor,
 } from "./features/jobs/job-executor.js";
@@ -211,6 +215,11 @@ async function processMessage(
     `${tag} Processing job ${jobId} (${jobType})${sessionShort ? ` session:${sessionShort}` : ""}`,
   );
 
+  const status = await ctx.jobService.getJobStatus(jobId);
+  if (["canceled", "succeeded", "dead_letter"].includes(status)) {
+    await ctx.pgmq.archive(queue, msg.msg_id);
+    return;
+  }
   const executor = getExecutor(jobType);
   if (!executor) {
     console.error(`${tag} No executor for job type: ${jobType}`);
@@ -231,18 +240,21 @@ async function processMessage(
   await ctx.jobService.markRunning(jobId);
 
   try {
-    if (ctx.modelConfigService) {
-      await refreshConfiguredProviders(ctx.modelConfigService, true);
-    }
-    const result = await executor(
-      jobId,
-      msg.message as Record<string, unknown>,
-      ctx,
-    );
+    const result = await runCancellableJob(jobId, ctx, async (context) => {
+      if (context.modelConfigService)
+        await refreshConfiguredProviders(context.modelConfigService, true);
+      context.signal?.throwIfAborted();
+      return executor(jobId, msg.message as Record<string, unknown>, context);
+    });
     await ctx.jobService.markSucceeded(jobId, result);
     await ctx.pgmq.deleteMsg(queue, msg.msg_id);
     console.log(`${tag} Job ${jobId} succeeded +${Date.now() - startTime}ms`);
   } catch (err) {
+    if (err instanceof JobCanceledError) {
+      await ctx.pgmq.archive(queue, msg.msg_id);
+      console.log(`${tag} Job ${jobId} canceled`);
+      return;
+    }
     const errorMessage = err instanceof Error ? err.message : String(err);
     const errorCode = (err as { code?: string })?.code ?? "executor_error";
 

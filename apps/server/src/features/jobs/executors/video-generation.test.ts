@@ -9,6 +9,7 @@ vi.mock("../../../generation/video-generation.js", () => ({
 }));
 vi.mock("../../../generation/providers/registry.js", () => ({
   resolveVideoProviderName: resolveProvider,
+  getVideoProvider: () => ({ catalogProvider: resolveProvider() }),
 }));
 import { getExecutor } from "../job-executor.js";
 import "./video-generation.js";
@@ -18,6 +19,48 @@ beforeEach(() => {
 });
 
 describe("video worker input propagation", () => {
+  it("does not download or store a late provider result after cancellation", async () => {
+    const controller = new AbortController();
+    let finish!: (result: unknown) => void;
+    generate.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const admin = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            single: async () => ({
+              data: {
+                workspace_id: "workspace",
+                payload: {
+                  prompt: "云海",
+                  model: "google-official/veo-3.1-generate-preview",
+                },
+              },
+            }),
+          }),
+        }),
+      }),
+      storage: { from: vi.fn() },
+    };
+    const pending = getExecutor("video_generation")?.("job", {}, {
+      signal: controller.signal,
+      getAdminClient: () => admin,
+      renewVt: vi.fn(),
+    } as unknown as ExecutorContext);
+    const assertion = expect(pending).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    await vi.waitFor(() => expect(generate).toHaveBeenCalledOnce());
+    expect(generate.mock.calls[0]?.[1].signal).toBe(controller.signal);
+    controller.abort();
+    finish({ url: "data:video/mp4;base64,dmlkZW8=", mimeType: "video/mp4" });
+    await assertion;
+    expect(admin.storage.from).not.toHaveBeenCalled();
+  });
   it("retains all generation inputs across the queued payload boundary", async () => {
     generate.mockResolvedValue({
       url: "data:video/mp4;base64,dmlkZW8=",

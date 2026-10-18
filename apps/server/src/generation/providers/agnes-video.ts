@@ -4,7 +4,7 @@ import type {
   VideoModelInfo,
   VideoProvider,
 } from "../types.js";
-import { fetchAsBase64 } from "../utils.js";
+import { fetchAsBase64, waitForGeneration } from "../utils.js";
 import {
   AgnesApiError,
   AgnesClient,
@@ -156,12 +156,13 @@ export class AgnesVideoProvider implements VideoProvider {
   }
 
   async generate(params: VideoGenerateParams): Promise<GeneratedVideo> {
+    params.signal?.throwIfAborted();
     buildAgnesVideoRequest(params, this.models);
     const imageCache = new Map<string, Promise<string>>();
     const inlineImage = (url: string) => {
       let pending = imageCache.get(url);
       if (!pending) {
-        pending = fetchAsBase64(this.name, url).then(
+        pending = fetchAsBase64(this.name, url, params.signal).then(
           ({ data, mimeType }) =>
             `data:${mimeType.split(";")[0]};base64,${data}`,
         );
@@ -198,6 +199,7 @@ export class AgnesVideoProvider implements VideoProvider {
     // Never retry task creation: a lost create response can still represent a billed task.
     const created = await this.client.request("videos", {
       method: "POST",
+      signal: params.signal ?? null,
       body: JSON.stringify(request),
     });
     if (typeof created.video_id !== "string" || !created.video_id)
@@ -213,15 +215,18 @@ export class AgnesVideoProvider implements VideoProvider {
     const deadline = now() + (this.options.maxWaitMs ?? 600_000);
     const sleep =
       this.options.sleep ??
-      ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+      ((ms: number) => waitForGeneration(ms, params.signal));
     // The China endpoint rate-limits faster polling even though the docs suggest 1–2s.
     const interval = this.options.pollIntervalMs ?? 10_000;
     let delay = interval;
 
     while (now() < deadline) {
+      params.signal?.throwIfAborted();
       let result: Record<string, unknown>;
       try {
-        result = await this.client.request(`../agnesapi?${query}`);
+        result = await this.client.request(`../agnesapi?${query}`, {
+          signal: params.signal ?? null,
+        });
       } catch (error) {
         if (
           error instanceof AgnesApiError &&

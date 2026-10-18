@@ -7,7 +7,7 @@ import type {
   VideoModelInfo,
   VideoProvider,
 } from "../types.js";
-import { GenerationError } from "../utils.js";
+import { GenerationError, waitForGeneration } from "../utils.js";
 import {
   buildGoogleVideoInput,
   googleVideoCapabilities,
@@ -217,10 +217,6 @@ function resolutionToDimensions(
   return { width: base.height, height: Math.round(base.height / ratio) };
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 // ── Provider ─────────────────────────────────────────────────────────────
 
 export class GoogleVideoProvider implements VideoProvider {
@@ -254,6 +250,7 @@ export class GoogleVideoProvider implements VideoProvider {
   }
 
   async generate(params: VideoGenerateParams): Promise<GeneratedVideo> {
+    params.signal?.throwIfAborted();
     const apiModel = this.modelMap[params.model];
     if (!apiModel) {
       throw new GenerationError(
@@ -313,6 +310,7 @@ export class GoogleVideoProvider implements VideoProvider {
         ...(inputs.image ? { image: inputs.image } : {}),
         ...(inputs.video ? { video: inputs.video } : {}),
         config: {
+          ...(params.signal ? { abortSignal: params.signal } : {}),
           ...inputs.config,
           aspectRatio,
           durationSeconds,
@@ -321,6 +319,7 @@ export class GoogleVideoProvider implements VideoProvider {
         },
       });
     } catch (err) {
+      params.signal?.throwIfAborted();
       const detail = err instanceof Error ? err.message : String(err);
       console.error("[google-video] generateVideos API error:", detail);
       if (
@@ -351,12 +350,14 @@ export class GoogleVideoProvider implements VideoProvider {
           `Video generation timed out after ${MAX_POLL_DURATION_MS / 1000}s`,
         );
       }
-      await sleep(POLL_INTERVAL_MS);
+      await waitForGeneration(POLL_INTERVAL_MS, params.signal);
       try {
         operation = await this.client.operations.getVideosOperation({
           operation,
+          ...(params.signal ? { config: { abortSignal: params.signal } } : {}),
         });
       } catch (err) {
+        params.signal?.throwIfAborted();
         const detail = err instanceof Error ? err.message : String(err);
         console.error("[google-video] polling error:", detail);
         throw new GenerationError(

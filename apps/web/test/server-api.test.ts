@@ -7,12 +7,38 @@ import {
   fetchProjects,
   fetchVideoModels,
   fetchViewer,
+  generateVideoDirect,
 } from "../src/lib/server-api";
 
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
 describe("authenticated server API", () => {
+  it("sends all video reference inputs and the caller's cancellation signal", async () => {
+    const controller = new AbortController();
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ url: "video.mp4" }),
+    });
+    await generateVideoDirect(
+      "token",
+      "云海",
+      {
+        model: "agnes/video",
+        referenceImages: ["https://media.example.com/image.png"],
+        referenceAudios: ["https://media.example.com/audio.mp3"],
+        inputVideo: "https://media.example.com/video.mp4",
+      },
+      controller.signal,
+    );
+    const init = mockFetch.mock.calls[0]?.[1] as RequestInit;
+    expect(init.signal).toBe(controller.signal);
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      referenceImages: ["https://media.example.com/image.png"],
+      referenceAudios: ["https://media.example.com/audio.mp3"],
+      inputVideo: "https://media.example.com/video.mp4",
+    });
+  });
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("NEXT_PUBLIC_SERVER_BASE_URL", "http://localhost:3001");

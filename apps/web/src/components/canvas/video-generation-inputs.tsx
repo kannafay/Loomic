@@ -14,13 +14,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, X } from "lucide-react";
 import { useRef } from "react";
 import type {
+  VideoFrame,
+  VideoInputMode,
+} from "../../lib/canvas-video-generator";
+import type {
   VideoExtensionSource,
   VideoModelInfo,
 } from "../../lib/server-api";
 import { AgnesVideoInputs } from "./agnes-video-inputs";
 
-export type VideoInputMode = "text" | "frames" | "reference" | "extend";
-export type VideoFrame = { dataUrl: string; name: string };
+export type {
+  VideoFrame,
+  VideoInputMode,
+} from "../../lib/canvas-video-generator";
 
 export function VideoGenerationInputs({
   mode,

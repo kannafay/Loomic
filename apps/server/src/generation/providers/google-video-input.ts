@@ -86,7 +86,7 @@ export async function buildGoogleVideoInput(
     throw new GenerationError("google", "invalid_input", message);
   };
   const imageInput = async (source: string) => {
-    const image = await fetchAsBase64("google", source);
+    const image = await fetchAsBase64("google", source, params.signal);
     if (!["image/png", "image/jpeg", "image/webp"].includes(image.mimeType))
       invalid("图片仅支持 PNG、JPEG 和 WebP。");
     return { imageBytes: image.data, mimeType: image.mimeType };
@@ -106,7 +106,11 @@ export async function buildGoogleVideoInput(
       })),
     );
   if (params.inputVideo) {
-    const video = await fetchAsBase64("google", params.inputVideo);
+    const video = await fetchAsBase64(
+      "google",
+      params.inputVideo,
+      params.signal,
+    );
     if (video.mimeType !== "video/mp4") invalid("视频延长需要 MP4 格式。");
     result.video = { videoBytes: video.data, mimeType: video.mimeType };
   }

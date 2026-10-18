@@ -585,11 +585,13 @@ export async function generateVideoDirect(
     inputVideo?: string;
     sourceVideoJobId?: string;
   },
+  signal?: AbortSignal,
 ): Promise<GenerateVideoResponse> {
   const response = await fetch(
     `${getServerBaseUrl()}/api/agent/generate-video`,
     {
       method: "POST",
+      signal: signal ?? null,
       headers: authJsonHeaders(accessToken),
       body: JSON.stringify({
         prompt,
@@ -605,6 +607,10 @@ export async function generateVideoDirect(
         ...(options?.referenceImages?.length
           ? { referenceImages: options.referenceImages }
           : {}),
+        ...(options?.referenceAudios?.length
+          ? { referenceAudios: options.referenceAudios }
+          : {}),
+        ...(options?.inputVideo ? { inputVideo: options.inputVideo } : {}),
         ...(options?.sourceVideoJobId
           ? { sourceVideoJobId: options.sourceVideoJobId }
           : {}),

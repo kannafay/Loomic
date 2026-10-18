@@ -29,6 +29,7 @@ import {
   getImageGeneratorData,
   isImageGeneratorElement,
 } from "../lib/canvas-image-generator";
+import { stopCanvasVideoGenerations } from "../lib/canvas-video-generation";
 import {
   type VideoGeneratorData,
   createVideoGeneratorElement,
@@ -259,7 +260,10 @@ export function CanvasToolMenu({
   // careful to avoid unnecessary state updates that trigger re-renders.
   useEffect(() => {
     if (!excalidrawApi) return;
-    return () => stopCanvasImageGenerations(excalidrawApi);
+    return () => {
+      stopCanvasImageGenerations(excalidrawApi);
+      stopCanvasVideoGenerations(excalidrawApi);
+    };
   }, [excalidrawApi]);
 
   useEffect(() => {
@@ -331,6 +335,11 @@ export function CanvasToolMenu({
               height: sel.height as number,
             });
           } else if (isVideoGeneratorElement(sel)) {
+            setVideoGenData((previous) =>
+              previous === sel.customData
+                ? previous
+                : getVideoGeneratorData(sel),
+            );
             if (currentVideoId !== sel.id) {
               const data = getVideoGeneratorData(sel);
               setActiveVideoGenId(sel.id as string);
@@ -487,12 +496,6 @@ export function CanvasToolMenu({
     }
   }, [excalidrawApi]);
 
-  const handleCloseVideoGenerator = useCallback(() => {
-    setActiveVideoGenId(null);
-    setVideoGenData(null);
-    setVideoGenBounds(null);
-  }, []);
-
   const handleCloseVideoPlayer = useCallback(() => {
     setActiveVideoPlayerId(null);
     setVideoPlayerData(null);
@@ -593,6 +596,7 @@ export function CanvasToolMenu({
       {/* Video Generator Panel -- floats below the selected placeholder */}
       {excalidrawApi && activeVideoGenId && videoGenData && videoGenBounds && (
         <VideoGeneratorPanel
+          key={activeVideoGenId}
           hidden={contextMenuOpen}
           elementId={activeVideoGenId}
           elementBounds={videoGenBounds}
@@ -600,7 +604,6 @@ export function CanvasToolMenu({
           excalidrawApi={excalidrawApi}
           accessToken={accessToken}
           canvasScrollZoom={canvasScrollZoom}
-          onClose={handleCloseVideoGenerator}
         />
       )}
 

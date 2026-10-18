@@ -1,8 +1,5 @@
 "use client";
 
-import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/data/transform";
-
-import type { ExcalidrawElement } from "@excalidraw/excalidraw/element/types";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
 import { Label } from "@/components/ui/label";
@@ -20,10 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 import type { VideoResolution } from "@loomic/shared";
+import { Download, Square } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -36,6 +34,11 @@ import { createPortal } from "react-dom";
 
 import { useGenerationErrorHandler } from "../../hooks/use-generation-error-handler";
 import {
+  generateCanvasVideo,
+  isCanvasVideoGenerating,
+  stopCanvasVideoGeneration,
+} from "../../lib/canvas-video-generation";
+import {
   type VideoGeneratorData,
   resizeVideoGeneratorElement,
   updateVideoGeneratorElement,
@@ -44,11 +47,7 @@ import type {
   VideoExtensionSource,
   VideoModelInfo,
 } from "../../lib/server-api";
-import {
-  fetchVideoModels,
-  fetchVideoSources,
-  generateVideoDirect,
-} from "../../lib/server-api";
+import { fetchVideoModels, fetchVideoSources } from "../../lib/server-api";
 import {
   type VideoFrame,
   VideoGenerationInputs,
@@ -64,7 +63,6 @@ type VideoGeneratorPanelProps = {
   excalidrawApi: ExcalidrawImperativeAPI;
   accessToken: string;
   canvasScrollZoom: { scrollX: number; scrollY: number; zoom: number };
-  onClose: () => void;
 };
 
 const ASPECT_RATIOS = ["16:9", "9:16"] as const;
@@ -88,7 +86,6 @@ export function VideoGeneratorPanel({
   excalidrawApi,
   accessToken,
   canvasScrollZoom,
-  onClose,
 }: VideoGeneratorPanelProps) {
   const [prompt, setPrompt] = useState(data.prompt);
   const [model, setModel] = useState(data.model);
@@ -98,15 +95,29 @@ export function VideoGeneratorPanel({
   const [loading, setLoading] = useState(data.status === "generating");
   const [error, setError] = useState<string | null>(data.errorMessage ?? null);
   const [models, setModels] = useState<VideoModelInfo[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelsLoadError, setModelsLoadError] = useState(false);
+  const modelRef = useRef(model);
+  modelRef.current = model;
   const [showParamsPopover, setShowParamsPopover] = useState(false);
-  const [mode, setMode] = useState<VideoInputMode>("text");
-  const [firstFrame, setFirstFrame] = useState<VideoFrame | null>(null);
-  const [lastFrame, setLastFrame] = useState<VideoFrame | null>(null);
-  const [references, setReferences] = useState<VideoFrame[]>([]);
-  const [referenceAudios, setReferenceAudios] = useState<string[]>([]);
-  const [referenceVideo, setReferenceVideo] = useState("");
+  const [mode, setMode] = useState<VideoInputMode>(data.inputMode ?? "text");
+  const [firstFrame, setFirstFrame] = useState<VideoFrame | null>(
+    data.firstFrame ?? null,
+  );
+  const [lastFrame, setLastFrame] = useState<VideoFrame | null>(
+    data.lastFrame ?? null,
+  );
+  const [references, setReferences] = useState<VideoFrame[]>(
+    data.referenceImages ?? [],
+  );
+  const [referenceAudios, setReferenceAudios] = useState<string[]>(
+    data.referenceAudios ?? [],
+  );
+  const [referenceVideo, setReferenceVideo] = useState(
+    data.referenceVideo ?? "",
+  );
   const [sources, setSources] = useState<VideoExtensionSource[]>([]);
-  const [sourceJobId, setSourceJobId] = useState("");
+  const [sourceJobId, setSourceJobId] = useState(data.sourceJobId ?? "");
   const [sourcesLoading, setSourcesLoading] = useState(false);
   const [panelPosition, setPanelPosition] = useState({ left: 8, top: 8 });
 
@@ -115,43 +126,70 @@ export function VideoGeneratorPanel({
   const accessTokenRef = useRef(accessToken);
   accessTokenRef.current = accessToken;
   const { handleGenerationError } = useGenerationErrorHandler();
-  // AbortController for in-flight generation requests so we can cancel on unmount
-  const abortRef = useRef<AbortController | null>(null);
+  const inputSettings = useMemo(
+    () => ({
+      inputMode: mode,
+      firstFrame,
+      lastFrame,
+      referenceImages: references,
+      referenceAudios,
+      referenceVideo,
+      sourceJobId,
+    }),
+    [
+      mode,
+      firstFrame,
+      lastFrame,
+      references,
+      referenceAudios,
+      referenceVideo,
+      sourceJobId,
+    ],
+  );
+  const savedInputsRef = useRef(inputSettings);
+  useEffect(() => {
+    if (savedInputsRef.current === inputSettings) return;
+    savedInputsRef.current = inputSettings;
+    updateVideoGeneratorElement(excalidrawApi, elementId, inputSettings);
+  }, [inputSettings, excalidrawApi, elementId]);
 
   // Fetch available models with error logging
   useEffect(() => {
     let cancelled = false;
+    setModelsLoading(true);
+    setModelsLoadError(false);
     fetchVideoModels()
       .then((r) => {
         if (cancelled) return;
         setModels(r.models);
-        setModel((current) => {
-          if (r.models.length === 0 || r.models.some((m) => m.id === current)) {
-            return current;
-          }
-          const fallback = r.models[0];
-          if (!fallback) return current;
-          const fallbackId = fallback.id;
-          updateVideoGeneratorElement(excalidrawApi, elementId, {
-            model: fallbackId,
-          });
-          return fallbackId;
+        const current = modelRef.current;
+        if (current || !r.models.length) return;
+        const initial =
+          r.models.find((candidate) => candidate.isDefault) ?? r.models[0];
+        if (!initial) return;
+        modelRef.current = initial.id;
+        setModel(initial.id);
+        updateVideoGeneratorElement(excalidrawApi, elementId, {
+          model: initial.id,
         });
       })
       .catch((err) => {
+        if (cancelled) return;
+        setModelsLoadError(true);
         console.warn("[video-gen] Failed to fetch models:", err);
+      })
+      .finally(() => {
+        if (!cancelled) setModelsLoading(false);
       });
     return () => {
       cancelled = true;
     };
   }, [excalidrawApi, elementId]);
 
-  // Cancel in-flight generation on unmount to prevent memory leaks
   useEffect(() => {
-    return () => {
-      abortRef.current?.abort();
-    };
-  }, []);
+    setLoading(data.status === "generating");
+    setError(data.errorMessage ?? null);
+  }, [data.status, data.errorMessage]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -193,6 +231,11 @@ export function VideoGeneratorPanel({
   }, [screenX, screenY]);
 
   const currentModel = models.find((m) => m.id === model);
+  const currentElement = excalidrawApi
+    .getSceneElements()
+    .find((el) => el.id === elementId);
+  const videoUrl =
+    currentElement?.type === "embeddable" ? currentElement.link : null;
   const isAgnes = currentModel?.provider === "agnes";
   const isVeo = currentModel?.id.includes("/veo-") ?? false;
   const aspectRatioOptions = isAgnes
@@ -227,6 +270,7 @@ export function VideoGeneratorPanel({
     (mode === "extend" && !!sourceJobId);
 
   useEffect(() => {
+    if (!currentModel) return;
     const caps = currentModel?.capabilities;
     if (
       (mode === "reference" && !caps?.referenceImages) ||
@@ -237,6 +281,7 @@ export function VideoGeneratorPanel({
   }, [currentModel, mode]);
 
   useEffect(() => {
+    if (!currentModel) return;
     const nextDuration = durationOptions.includes(duration)
       ? duration
       : durationOptions.includes(8)
@@ -260,6 +305,7 @@ export function VideoGeneratorPanel({
     resolution,
     durationOptions,
     resolutionOptions,
+    currentModel,
     excalidrawApi,
     elementId,
   ]);
@@ -286,7 +332,11 @@ export function VideoGeneratorPanel({
   const handleAspectRatioChange = useCallback(
     (ratio: string) => {
       setAspectRatio(ratio);
-      resizeVideoGeneratorElement(excalidrawApi, elementId, ratio);
+      const element = excalidrawApi
+        .getSceneElements()
+        .find((el) => el.id === elementId);
+      if (element?.type !== "embeddable")
+        resizeVideoGeneratorElement(excalidrawApi, elementId, ratio);
       updateVideoGeneratorElement(excalidrawApi, elementId, {
         aspectRatio: ratio,
       });
@@ -339,7 +389,14 @@ export function VideoGeneratorPanel({
   );
 
   const handleGenerate = useCallback(async () => {
-    if (!prompt.trim() || loading || !validInput) return;
+    if (
+      !prompt.trim() ||
+      loading ||
+      modelsLoading ||
+      !currentModel ||
+      !validInput
+    )
+      return;
     if (
       mode === "reference" &&
       references.length > (currentModel?.limits?.maxInputImages ?? 3)
@@ -354,26 +411,22 @@ export function VideoGeneratorPanel({
       return;
     }
 
-    // Cancel any previous in-flight request
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-
     setLoading(true);
     setError(null);
-    updateVideoGeneratorElement(excalidrawApi, elementId, {
-      status: "generating",
-      prompt: prompt.trim(),
-      model,
-      aspectRatio,
-      duration,
-      resolution,
-    });
-
     try {
-      const result = await generateVideoDirect(
+      await generateCanvasVideo(
+        excalidrawApi,
+        elementId,
         accessTokenRef.current,
-        prompt.trim(),
+        {
+          ...data,
+          ...inputSettings,
+          prompt: prompt.trim(),
+          model,
+          aspectRatio,
+          duration,
+          resolution,
+        },
         {
           model,
           duration,
@@ -402,60 +455,19 @@ export function VideoGeneratorPanel({
           ...(mode === "extend" ? { sourceVideoJobId: sourceJobId } : {}),
         },
       );
-
-      // Check if this generation was cancelled while awaiting
-      if (controller.signal.aborted) return;
-
-      // Create embeddable element for inline video playback on canvas.
-      // Dynamic import -- excalidraw is client-only.
-      const { convertToExcalidrawElements } = await import(
-        "@excalidraw/excalidraw"
-      );
-      if (controller.signal.aborted) return;
-
-      const newElements = convertToExcalidrawElements([
-        {
-          type: "embeddable",
-          link: result.url,
-          x: elementBounds.x,
-          y: elementBounds.y,
-          width: elementBounds.width,
-          height: elementBounds.height,
-          customData: {
-            isVideo: true,
-            mimeType: result.mimeType,
-            durationSeconds: result.durationSeconds,
-            title: prompt.trim().slice(0, 60),
-            prompt: prompt.trim(),
-          },
-        } as unknown as ExcalidrawElementSkeleton,
-      ]);
-
-      // Replace generator placeholder with video embeddable element
-      const elements = excalidrawApi
-        .getSceneElements()
-        .map((el) => (el.id === elementId ? { ...el, isDeleted: true } : el));
-      excalidrawApi.updateScene({
-        elements: [...elements, ...newElements],
-        captureUpdate: "IMMEDIATELY",
-      });
-
-      onClose();
     } catch (err) {
-      // Ignore aborted requests (user cancelled or component unmounted)
-      if (controller.signal.aborted) return;
-
       console.error("[video-gen] Generation error:", err);
       handleGenerationError(err, "视频生成失败，请重试或更换模型。");
-      setLoading(false);
-      updateVideoGeneratorElement(excalidrawApi, elementId, {
-        status: "error",
-        errorMessage: "生成失败",
-      });
+      setError("生成失败，请重试或更换模型。");
+    } finally {
+      if (!isCanvasVideoGenerating(excalidrawApi, elementId)) setLoading(false);
     }
   }, [
     prompt,
     loading,
+    modelsLoading,
+    data,
+    inputSettings,
     model,
     aspectRatio,
     duration,
@@ -472,10 +484,14 @@ export function VideoGeneratorPanel({
     currentModel,
     excalidrawApi,
     elementId,
-    elementBounds,
-    onClose,
     handleGenerationError,
   ]);
+
+  const handleStop = () => {
+    stopCanvasVideoGeneration(excalidrawApi, elementId);
+    setLoading(false);
+    setError(null);
+  };
 
   const resolutionLabel = resolution;
   const paramsLabel = `${aspectRatio} · ${mode === "extend" ? "+7s" : `${duration}s`} · ${resolutionLabel}`;
@@ -526,6 +542,13 @@ export function VideoGeneratorPanel({
           ref={textareaRef}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
+          onBlur={() => {
+            const element = excalidrawApi
+              .getSceneElements()
+              .find((el) => el.id === elementId);
+            if (element?.customData?.prompt !== prompt)
+              updateVideoGeneratorElement(excalidrawApi, elementId, { prompt });
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -551,104 +574,121 @@ export function VideoGeneratorPanel({
 
       {/* Bottom toolbar */}
       <div className="flex items-center justify-between px-2 pb-2">
-        <Popover open={showParamsPopover} onOpenChange={setShowParamsPopover}>
-          <PopoverTrigger
-            render={<Button variant="ghost" size="sm" disabled={loading} />}
-          >
-            {paramsLabel}
-          </PopoverTrigger>
-          <PopoverContent
-            side="top"
-            align="start"
-            aria-label="视频参数"
-            className="w-64 gap-3 p-3"
-          >
-            <div className="space-y-1.5">
-              <Label htmlFor={`${elementId}-ratio`}>画面比例</Label>
-              <Select
-                value={aspectRatio}
-                items={(mode === "extend"
-                  ? [aspectRatio]
-                  : aspectRatioOptions
-                ).map((value) => ({ value, label: value }))}
-                onValueChange={(value) => {
-                  if (value) handleAspectRatioChange(value);
-                }}
-              >
-                <SelectTrigger id={`${elementId}-ratio`} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false}>
-                  <SelectGroup>
-                    {(mode === "extend"
-                      ? [aspectRatio]
-                      : aspectRatioOptions
-                    ).map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={`${elementId}-duration`}>时长</Label>
-              <Select
-                value={duration}
-                items={durationOptions.map((value) => ({
-                  value,
-                  label: mode === "extend" ? "续写 7 秒" : `${value} 秒`,
-                }))}
-                onValueChange={(value) => {
-                  if (value) handleDurationChange(value);
-                }}
-              >
-                <SelectTrigger id={`${elementId}-duration`} className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false}>
-                  <SelectGroup>
-                    {durationOptions.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {mode === "extend" ? "续写 7 秒" : `${value} 秒`}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor={`${elementId}-resolution`}>分辨率</Label>
-              <Select
-                value={resolution}
-                items={resolutionOptions.map((value) => ({
-                  value,
-                  label: value,
-                }))}
-                onValueChange={(value) => {
-                  if (value) handleResolutionChange(value as VideoResolution);
-                }}
-              >
-                <SelectTrigger
-                  id={`${elementId}-resolution`}
-                  className="w-full"
+        <div className="flex items-center gap-1">
+          <Popover open={showParamsPopover} onOpenChange={setShowParamsPopover}>
+            <PopoverTrigger
+              render={<Button variant="ghost" size="sm" disabled={loading} />}
+            >
+              {paramsLabel}
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="start"
+              aria-label="视频参数"
+              className="w-64 gap-3 p-3"
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor={`${elementId}-ratio`}>画面比例</Label>
+                <Select
+                  value={aspectRatio}
+                  items={(mode === "extend"
+                    ? [aspectRatio]
+                    : aspectRatioOptions
+                  ).map((value) => ({ value, label: value }))}
+                  onValueChange={(value) => {
+                    if (value) handleAspectRatioChange(value);
+                  }}
                 >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false}>
-                  <SelectGroup>
-                    {resolutionOptions.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {value}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
-          </PopoverContent>
-        </Popover>
+                  <SelectTrigger id={`${elementId}-ratio`} className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectGroup>
+                      {(mode === "extend"
+                        ? [aspectRatio]
+                        : aspectRatioOptions
+                      ).map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`${elementId}-duration`}>时长</Label>
+                <Select
+                  value={duration}
+                  items={durationOptions.map((value) => ({
+                    value,
+                    label: mode === "extend" ? "续写 7 秒" : `${value} 秒`,
+                  }))}
+                  onValueChange={(value) => {
+                    if (value) handleDurationChange(value);
+                  }}
+                >
+                  <SelectTrigger
+                    id={`${elementId}-duration`}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectGroup>
+                      {durationOptions.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {mode === "extend" ? "续写 7 秒" : `${value} 秒`}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor={`${elementId}-resolution`}>分辨率</Label>
+                <Select
+                  value={resolution}
+                  items={resolutionOptions.map((value) => ({
+                    value,
+                    label: value,
+                  }))}
+                  onValueChange={(value) => {
+                    if (value) handleResolutionChange(value as VideoResolution);
+                  }}
+                >
+                  <SelectTrigger
+                    id={`${elementId}-resolution`}
+                    className="w-full"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent alignItemWithTrigger={false}>
+                    <SelectGroup>
+                      {resolutionOptions.map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {value}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </PopoverContent>
+          </Popover>
+          {videoUrl && (
+            <a
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+              href={videoUrl}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Download className="size-3.5" />
+              下载视频
+            </a>
+          )}
+        </div>
 
         {/* Right: model selector + generate */}
         <div className="flex items-center gap-1">
@@ -658,7 +698,7 @@ export function VideoGeneratorPanel({
               value: candidate.id,
               label: candidate.displayName,
             }))}
-            disabled={loading || !models.length}
+            disabled={loading || modelsLoading || !models.length}
             onValueChange={(value) => {
               if (value) handleModelChange(value);
             }}
@@ -675,7 +715,14 @@ export function VideoGeneratorPanel({
                 />
               )}
               <SelectValue>
-                {currentModel?.displayName ?? model.split("/").pop()}
+                {modelsLoading
+                  ? "正在加载模型…"
+                  : (currentModel?.displayName ??
+                    (modelsLoadError
+                      ? "模型加载失败"
+                      : models.length
+                        ? "请选择模型"
+                        : "暂无可用模型"))}
               </SelectValue>
             </SelectTrigger>
             <SelectContent
@@ -705,14 +752,18 @@ export function VideoGeneratorPanel({
           <Button
             variant="default"
             type="button"
-            onClick={() => void handleGenerate()}
-            disabled={!prompt.trim() || loading || !validInput}
+            onClick={() => (loading ? handleStop() : void handleGenerate())}
+            aria-label={loading ? "停止生成视频" : "生成视频"}
+            disabled={
+              !loading &&
+              (!prompt.trim() || modelsLoading || !currentModel || !validInput)
+            }
             className="flex h-8 items-center justify-center gap-1 rounded-full bg-primary px-3 text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
           >
             {loading ? (
               <>
-                <div className="h-3.5 w-3.5 animate-spin rounded-full border-[1.5px] border-current border-t-transparent" />
-                <span className="text-xs">生成中</span>
+                <Square className="size-3.5" fill="currentColor" />
+                <span className="text-xs">停止生成</span>
               </>
             ) : (
               <span className="text-xs">生成视频</span>

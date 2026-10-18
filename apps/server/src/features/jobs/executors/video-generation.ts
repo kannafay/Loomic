@@ -1,10 +1,14 @@
-import { resolveVideoProviderName } from "../../../generation/providers/registry.js";
+import {
+  getVideoProvider,
+  resolveVideoProviderName,
+} from "../../../generation/providers/registry.js";
 import { generateVideo } from "../../../generation/video-generation.js";
 import { type ExecutorContext, registerExecutor } from "../job-executor.js";
 
 registerExecutor(
   "video_generation",
   async (jobId, _rawPayload, ctx: ExecutorContext) => {
+    ctx.signal?.throwIfAborted();
     const t0 = Date.now();
 
     const admin = ctx.getAdminClient();
@@ -50,6 +54,8 @@ registerExecutor(
     if (ctx.modelConfigService)
       await ctx.modelConfigService.resolve("video", model);
     const providerName = resolveVideoProviderName(model);
+    const providerKind =
+      getVideoProvider(providerName).catalogProvider ?? providerName;
 
     // Renew VT every 120s (roughly half of the 300s video queue VT) to prevent
     // the message from becoming visible during long video generation.
@@ -61,6 +67,7 @@ registerExecutor(
     try {
       lap("replicate_call_start");
       const generated = await generateVideo(providerName, {
+        ...(ctx.signal ? { signal: ctx.signal } : {}),
         prompt: payload.prompt,
         model,
         ...(payload.duration != null ? { duration: payload.duration } : {}),
@@ -93,6 +100,7 @@ registerExecutor(
           ? { enableAudio: payload.enable_audio }
           : {}),
       });
+      ctx.signal?.throwIfAborted();
       lap("replicate_call_done");
 
       // Vertex AI returns inline base64 data URIs; Developer API returns HTTP URLs.
@@ -103,7 +111,9 @@ registerExecutor(
           throw new Error("Invalid data URI: no comma separator");
         buffer = Buffer.from(generated.url.slice(commaIdx + 1), "base64");
       } else {
-        const response = await fetch(generated.url);
+        const response = await fetch(generated.url, {
+          signal: ctx.signal ?? null,
+        });
         if (!response.ok) {
           throw new Error(
             `Failed to download video: ${response.status} ${response.statusText}`,
@@ -113,6 +123,7 @@ registerExecutor(
         buffer = Buffer.from(arrayBuffer);
       }
       lap("video_download_done");
+      ctx.signal?.throwIfAborted();
 
       const ext = generated.mimeType === "video/webm" ? "webm" : "mp4";
       const timestamp = Date.now();
@@ -129,6 +140,7 @@ registerExecutor(
         throw new Error(`Storage upload failed: ${uploadError.message}`);
       }
       lap("storage_upload_done");
+      ctx.signal?.throwIfAborted();
 
       const { data: assetRow, error: assetError } = await admin
         .from("asset_objects")
@@ -165,6 +177,7 @@ registerExecutor(
         mime_type: generated.mimeType ?? "video/mp4",
       };
     } catch (err) {
+      ctx.signal?.throwIfAborted();
       const detail = err instanceof Error ? err.message : String(err);
       const wrapped = new Error(
         `Video generation failed for model ${model}: ${detail}`,
@@ -174,7 +187,7 @@ registerExecutor(
       (wrapped as Error & { code?: string }).code =
         // Agnes creates asynchronous tasks without a documented idempotency key.
         // Polls retry inside the provider; replaying the whole job could create a second paid video.
-        providerName === "agnes"
+        providerKind === "agnes"
           ? "agnes_video_error"
           : ((err as { code?: string })?.code ?? "executor_error");
       throw wrapped;

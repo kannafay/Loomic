@@ -1,4 +1,3 @@
-import type { ExcalidrawElementSkeleton } from "@excalidraw/excalidraw/data/transform";
 import type {
   ExcalidrawElement,
   FileId,
@@ -242,9 +241,7 @@ export async function insertVideoOnCanvas(
   artifact: VideoArtifact,
 ): Promise<void> {
   // Dynamic import — excalidraw is client-only and cannot be imported at module level
-  const { convertToExcalidrawElements } = await import(
-    "@excalidraw/excalidraw"
-  );
+  const { restoreElements } = await import("@excalidraw/excalidraw");
 
   let x: number;
   let y: number;
@@ -286,23 +283,29 @@ export async function insertVideoOnCanvas(
     }
   }
 
-  const newElements = convertToExcalidrawElements([
-    {
-      type: "embeddable",
-      link: artifact.url,
-      x,
-      y,
-      width,
-      height,
-      customData: {
-        isVideo: true,
-        mimeType: artifact.mimeType as BinaryFileData["mimeType"],
-        durationSeconds: artifact.durationSeconds,
-        title: artifact.title?.slice(0, 60),
-        prompt: artifact.title,
-      },
-    } as unknown as ExcalidrawElementSkeleton,
-  ]);
+  const newElements = restoreElements(
+    [
+      {
+        type: "embeddable",
+        strokeColor: "transparent",
+        backgroundColor: "transparent",
+        roughness: 0,
+        link: artifact.url,
+        x,
+        y,
+        width,
+        height,
+        customData: {
+          isVideo: true,
+          mimeType: artifact.mimeType as BinaryFileData["mimeType"],
+          durationSeconds: artifact.durationSeconds,
+          title: artifact.title?.slice(0, 60),
+          prompt: artifact.title,
+        },
+      } as unknown as ExcalidrawElement,
+    ],
+    null,
+  );
 
   const existing = api.getSceneElements();
   api.updateScene({

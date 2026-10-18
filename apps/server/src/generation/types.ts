@@ -53,6 +53,7 @@ export interface ImageProvider {
 }
 
 export interface VideoGenerateParams {
+  signal?: AbortSignal;
   prompt: string;
   model: string;
   resolution?: "480p" | "720p" | "1080p" | "4k";

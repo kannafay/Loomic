@@ -7,6 +7,7 @@ import type { ModelConfigService } from "../model-config/model-config-service.js
 import type { JobService } from "./job-service.js";
 
 export type ExecutorContext = {
+  signal?: AbortSignal;
   modelConfigService?: ModelConfigService;
   jobService: JobService;
   pgmq: PgmqClient;

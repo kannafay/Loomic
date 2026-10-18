@@ -23,7 +23,7 @@ import { buildAgnesVideoRequest } from "../generation/providers/agnes-video.js";
 import { validateGoogleVideoInput } from "../generation/providers/google-video-input.js";
 import { resolveImageProviderName } from "../generation/providers/registry.js";
 import { getAvailableVideoModels } from "../generation/providers/registry.js";
-import { GenerationError } from "../generation/utils.js";
+import { GenerationError, waitForGeneration } from "../generation/utils.js";
 import { getVideoExtensionSource } from "../generation/video-source.js";
 import type {
   AuthenticatedUser,
@@ -280,12 +280,46 @@ export async function registerGenerateRoutes(
         );
       }
 
-      const model = options.modelConfigService
-        ? (await options.modelConfigService.resolve("video", payload.model))
-            .model.key
-        : (payload.model ?? "google-official/veo-3.1-generate-preview");
+      const jobService = options.jobService;
+      const controller = new AbortController();
+      const { signal } = controller;
+      let jobId: string | undefined;
+      let cancellation: Promise<void> | undefined;
+      const cancel = () => {
+        if (!jobId) return Promise.resolve();
+        cancellation ??= jobService
+          .cancelJob(user, jobId)
+          .then(() => {})
+          .catch((error) => {
+            // A completion that won the race is already terminal and must stay so.
+            if (
+              !(
+                error instanceof JobServiceError &&
+                error.code === "job_not_found"
+              )
+            )
+              request.log.error(
+                { err: error, jobId },
+                "Failed to cancel disconnected video request",
+              );
+          });
+        return cancellation;
+      };
+      const onDisconnect = () => {
+        if (!reply.raw.writableEnded) {
+          controller.abort();
+          void cancel();
+        }
+      };
+      reply.raw.on("close", onDisconnect);
+      if (reply.raw.destroyed || request.raw.aborted) controller.abort();
 
       try {
+        signal.throwIfAborted();
+        const model = options.modelConfigService
+          ? (await options.modelConfigService.resolve("video", payload.model))
+              .model.key
+          : (payload.model ?? "google-official/veo-3.1-generate-preview");
         // ── Tier guard + credit checks ──
         const viewer = await options.viewerService.ensureViewer(user);
         const workspaceId = viewer.workspace.id;
@@ -432,6 +466,7 @@ export async function registerGenerateRoutes(
         }
 
         // ── Create job ──
+        signal.throwIfAborted();
         const job = await options.jobService.createJob(user, {
           workspaceId,
           jobType: "video_generation",
@@ -464,6 +499,8 @@ export async function registerGenerateRoutes(
               : {}),
           },
         });
+        jobId = job.id;
+        signal.throwIfAborted();
 
         // ── Deduct credits BEFORE generation ──
         if (options.creditService && creditsCost > 0) {
@@ -491,6 +528,7 @@ export async function registerGenerateRoutes(
           job.id,
           POLL_INTERVAL,
           MAX_WAIT,
+          signal,
         );
 
         if ("error" in result) {
@@ -514,6 +552,12 @@ export async function registerGenerateRoutes(
           durationSeconds: result.duration_seconds,
         });
       } catch (error) {
+        if (signal.aborted) {
+          await cancel();
+          return reply.code(499).send({
+            error: { code: "cancelled", message: "已停止生成视频。" },
+          });
+        }
         if (
           error instanceof GenerationError &&
           error.code === "invalid_input"
@@ -555,6 +599,8 @@ export async function registerGenerateRoutes(
             },
           }),
         );
+      } finally {
+        reply.raw.off("close", onDisconnect);
       }
     },
   );
@@ -578,13 +624,15 @@ async function pollJobUntilDone(
   jobId: string,
   pollInterval: number,
   maxWait: number,
+  signal?: AbortSignal,
 ): Promise<PollResult> {
   const start = Date.now();
 
   while (Date.now() - start < maxWait) {
-    await delay(pollInterval);
+    await waitForGeneration(pollInterval, signal);
 
     const current = await jobService.getJobAdmin(jobId);
+    signal?.throwIfAborted();
 
     if (current.status === "succeeded" && current.result) {
       const r = current.result as Record<string, unknown>;
@@ -613,10 +661,6 @@ async function pollJobUntilDone(
   }
 
   return { error: `Job timed out after ${maxWait / 1000}s` };
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // ── Image download + upload helper ──────────────────────────

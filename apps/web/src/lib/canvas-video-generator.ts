@@ -12,7 +12,14 @@ import { getViewportCenter } from "./canvas-elements";
 const RATIO_DIMENSIONS: Record<string, { w: number; h: number }> = {
   "16:9": { w: 1024, h: 576 },
   "9:16": { w: 576, h: 1024 },
+  "1:1": { w: 1024, h: 1024 },
+  "4:3": { w: 1024, h: 768 },
+  "3:4": { w: 768, h: 1024 },
+  "21:9": { w: 1024, h: 439 },
 };
+
+export type VideoInputMode = "text" | "frames" | "reference" | "extend";
+export type VideoFrame = { dataUrl: string; name: string };
 
 export type VideoGeneratorStatus =
   | "idle"
@@ -29,7 +36,14 @@ export type VideoGeneratorData = {
   duration: number;
   resolution: string;
   inputImages?: string[];
-  errorMessage?: string;
+  inputMode?: VideoInputMode;
+  firstFrame?: VideoFrame | null;
+  lastFrame?: VideoFrame | null;
+  referenceImages?: VideoFrame[];
+  referenceAudios?: string[];
+  referenceVideo?: string;
+  sourceJobId?: string;
+  errorMessage?: string | undefined;
 };
 
 function generateId(): string {
@@ -77,7 +91,7 @@ export function createVideoGeneratorElement(
     type: "video-generator",
     status: "idle",
     prompt: "",
-    model: options?.model ?? "google-official/veo-3.1-generate-preview",
+    model: options?.model ?? "",
     aspectRatio,
     duration: options?.duration ?? 5,
     resolution: options?.resolution ?? "720p",

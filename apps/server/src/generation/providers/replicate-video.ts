@@ -4,7 +4,7 @@ import type {
   VideoModelInfo,
   VideoProvider,
 } from "../types.js";
-import { GenerationError } from "../utils.js";
+import { GenerationError, waitForGeneration } from "../utils.js";
 
 const REPLICATE_API_BASE = "https://api.replicate.com/v1";
 
@@ -418,7 +418,9 @@ export class ReplicateVideoProvider implements VideoProvider {
           Prefer: "wait=300",
         },
         body: JSON.stringify({ input }),
-        signal: AbortSignal.timeout(330_000), // 330s — slightly above Prefer: wait=300
+        signal: params.signal
+          ? AbortSignal.any([params.signal, AbortSignal.timeout(330_000)])
+          : AbortSignal.timeout(330_000),
       },
     );
 
@@ -441,7 +443,7 @@ export class ReplicateVideoProvider implements VideoProvider {
     // If prediction is still processing (Prefer: wait timed out), poll for result
     let output = data.output;
     if (!output && data.status === "processing" && data.urls?.get) {
-      output = await this.pollForResult(data.urls.get);
+      output = await this.pollForResult(data.urls.get, 300_000, params.signal);
     }
 
     const outputUrl = Array.isArray(output) ? output[0] : output;
@@ -465,16 +467,19 @@ export class ReplicateVideoProvider implements VideoProvider {
   private async pollForResult(
     predictionUrl: string,
     maxWaitMs = 300_000,
+    signal?: AbortSignal,
   ): Promise<string | null> {
     const start = Date.now();
     const interval = 5000;
 
     while (Date.now() - start < maxWaitMs) {
-      await new Promise((r) => setTimeout(r, interval));
+      await waitForGeneration(interval, signal);
 
       const res = await fetch(predictionUrl, {
         headers: { Authorization: `Bearer ${this.apiToken}` },
-        signal: AbortSignal.timeout(15_000), // 15s per poll request
+        signal: signal
+          ? AbortSignal.any([signal, AbortSignal.timeout(15_000)])
+          : AbortSignal.timeout(15_000),
       });
       if (!res.ok) continue;
 

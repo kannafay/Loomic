@@ -1,3 +1,12 @@
+import { setTimeout as delay } from "node:timers/promises";
+
+export async function waitForGeneration(
+  ms: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  await delay(ms, undefined, { signal });
+}
+
 const KNOWN_RATIOS: Record<string, { width: number; height: number }> = {
   "1:1": { width: 1024, height: 1024 },
   "16:9": { width: 1024, height: 576 },

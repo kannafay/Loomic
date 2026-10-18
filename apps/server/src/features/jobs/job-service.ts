@@ -60,6 +60,7 @@ export type JobService = {
   ): Promise<BackgroundJob[]>;
   cancelJob(user: AuthenticatedUser, jobId: string): Promise<BackgroundJob>;
   getJobAdmin(jobId: string): Promise<BackgroundJob>;
+  getJobStatus(jobId: string): Promise<BackgroundJobStatus>;
 
   // Admin-only methods (use admin client, no user auth)
   setCreditsInfo(
@@ -237,7 +238,8 @@ export function createJobService(options: {
         .from("background_jobs")
         .update({ status: "canceled", canceled_at: new Date().toISOString() })
         .eq("id", jobId)
-        .in("status", ["queued", "running"])
+        .eq("created_by", user.id)
+        .in("status", ["queued", "running", "failed"])
         .select(SELECT_COLS)
         .maybeSingle();
 
@@ -281,6 +283,24 @@ export function createJobService(options: {
 
     // --- Admin-only methods (admin client, bypasses RLS) ---
 
+    async getJobStatus(jobId) {
+      const { data, error } = await options
+        .getAdminClient()
+        .from("background_jobs")
+        .select("status")
+        .eq("id", jobId)
+        .maybeSingle();
+      if (error)
+        throw new JobServiceError(
+          "job_query_failed",
+          "Failed to query job status.",
+          500,
+        );
+      if (!data)
+        throw new JobServiceError("job_not_found", "Job not found.", 404);
+      return data.status;
+    },
+
     async setCreditsInfo(jobId, creditsCost, transactionId) {
       const admin = options.getAdminClient();
       await admin
@@ -298,7 +318,7 @@ export function createJobService(options: {
         .from("background_jobs")
         .update({ status: "running", started_at: new Date().toISOString() })
         .eq("id", jobId)
-        .eq("status", "queued");
+        .in("status", ["queued", "failed"]);
     },
 
     async markSucceeded(jobId, result) {
@@ -310,7 +330,8 @@ export function createJobService(options: {
           result: result as NonNullable<Json>,
           completed_at: new Date().toISOString(),
         })
-        .eq("id", jobId);
+        .eq("id", jobId)
+        .in("status", ["queued", "running", "failed"]);
     },
 
     async markFailed(jobId, errorCode, errorMessage) {
@@ -323,7 +344,8 @@ export function createJobService(options: {
           error_message: errorMessage,
           failed_at: new Date().toISOString(),
         })
-        .eq("id", jobId);
+        .eq("id", jobId)
+        .in("status", ["queued", "running", "failed"]);
     },
 
     async markDeadLetter(jobId, errorCode, errorMessage) {
@@ -336,7 +358,8 @@ export function createJobService(options: {
           error_message: errorMessage,
           failed_at: new Date().toISOString(),
         })
-        .eq("id", jobId);
+        .eq("id", jobId)
+        .in("status", ["queued", "running", "failed"]);
     },
 
     async incrementAttempt(jobId) {
