@@ -7,7 +7,6 @@ import type {
 } from "@loomic/shared";
 import { withProviderProxy } from "../../config/network-proxy.js";
 import { ModelConfigError } from "./errors.js";
-import { MODEL_PRESETS } from "./presets.js";
 
 type DiscoveryProvider = {
   protocol: ModelProtocol;
@@ -34,10 +33,6 @@ function suggestKind(
   id: string,
   model: RecordValue,
 ): ModelKind | null {
-  const known = MODEL_PRESETS.find(
-    (preset) => preset.id === provider.preset,
-  )?.models.find((item) => item.apiModel === id);
-  if (known) return known.kind;
   if (provider.protocol === "anthropic") return "text";
   if (/embed|rerank|moderation|(?:^|[-_])aqa(?:$|[-_])/i.test(id)) return null;
   const outputs = strings(model.output_modalities).map((value) =>
@@ -169,20 +164,14 @@ export async function discoverProviderModels(
         continue;
       if (models.size >= MAX_MODELS)
         return { models: [...models.values()], truncated: true };
-      const known = MODEL_PRESETS.find(
-        (preset) => preset.id === provider.preset,
-      )?.models.find((model) => model.apiModel === id);
       const displayName =
         string(item.displayName) ||
         string(item.display_name) ||
         (provider.protocol !== "gemini" ? string(item.name) : "");
       models.set(id, {
         apiModel: id,
-        name: safeText(displayName || known?.name || id, 120),
-        description: safeText(
-          string(item.description) || known?.description || "",
-          2000,
-        ),
+        name: safeText(displayName || id, 120),
+        description: safeText(string(item.description), 2000),
         kind: suggestKind(provider, id, item),
       });
     }

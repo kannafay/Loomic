@@ -88,8 +88,6 @@ export const saveProviderConfig = (
     id ? "PUT" : "POST",
     value,
   );
-export const importPresetModels = (token: string, id: string) =>
-  request(token, `/providers/${id}/import-models`, "POST");
 export const fetchProviderModels = (token: string, id: string) =>
   request<ModelDiscoveryResponse>(token, `/providers/${id}/discover-models`);
 export const importDiscoveredModels = (
@@ -116,6 +114,8 @@ export const saveConfiguredModel = (
   );
 export const setDefaultConfiguredModel = (token: string, id: string) =>
   request(token, `/models/${id}/default`, "POST");
+export const deleteConfiguredModel = (token: string, id: string) =>
+  request<{ ok: true }>(token, `/models/${id}`, "DELETE");
 export type { AdminUser } from "@loomic/shared";
 export const createAdminUser = (token: string, value: AdminUserCreate) =>
   request<{ user: AdminUser }>(token, "/users", "POST", value);

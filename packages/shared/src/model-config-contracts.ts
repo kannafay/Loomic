@@ -110,22 +110,17 @@ export const providerCreationSchema = z.object({
     .array(configuredModelWriteSchema.omit({ providerId: true }))
     .max(1000),
 });
-export const modelPresetSchema = z.object({
+export const providerPresetSchema = z.object({
   id: z.string(),
   name: z.string(),
   category: providerCategorySchema,
   protocol: modelProtocolSchema,
   baseUrl: z.string(),
-  models: z.array(
-    configuredModelWriteSchema
-      .omit({ providerId: true })
-      .extend({ legacyKey: z.string().optional() }),
-  ),
 });
 export const modelAdminResponseSchema = z.object({
   providers: z.array(providerConfigSchema),
   models: z.array(configuredModelSchema),
-  presets: z.array(modelPresetSchema),
+  presets: z.array(providerPresetSchema),
 });
 export const discoveredModelSchema = configuredModelWriteSchema
   .pick({ apiModel: true, name: true, description: true })
@@ -162,6 +157,6 @@ export type ProviderConfig = z.infer<typeof providerConfigSchema>;
 export type ProviderOrder = z.infer<typeof providerOrderSchema>;
 export type ConfiguredModelWrite = z.infer<typeof configuredModelWriteSchema>;
 export type ConfiguredModel = z.infer<typeof configuredModelSchema>;
-export type ModelPreset = z.infer<typeof modelPresetSchema>;
+export type ProviderPreset = z.infer<typeof providerPresetSchema>;
 export type ModelAdminResponse = z.infer<typeof modelAdminResponseSchema>;
 export type SystemRole = z.infer<typeof systemRoleSchema>;

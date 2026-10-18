@@ -168,16 +168,6 @@ export async function registerModelAdminRoutes(
       service.saveModel(userId, configuredModelWriteSchema.parse(request.body)),
     ),
   );
-  app.post<{ Params: { id: string } }>(
-    "/api/admin/providers/:id/import-models",
-    (request, reply) =>
-      run(request, reply, true, (userId) =>
-        service.importPresetModels(
-          userId,
-          z.string().uuid().parse(request.params.id),
-        ),
-      ),
-  );
   app.put<{ Params: { id: string } }>(
     "/api/admin/models/:id",
     (request, reply) =>
@@ -194,6 +184,13 @@ export async function registerModelAdminRoutes(
     (request, reply) =>
       run(request, reply, true, (userId) =>
         service.setDefault(userId, z.string().uuid().parse(request.params.id)),
+      ),
+  );
+  app.delete<{ Params: { id: string } }>(
+    "/api/admin/models/:id",
+    (request, reply) =>
+      run(request, reply, true, (userId) =>
+        service.deleteModel(userId, z.string().uuid().parse(request.params.id)),
       ),
   );
   app.get("/api/admin/users", (request, reply) =>

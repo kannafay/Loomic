@@ -22,12 +22,12 @@ async function setup() {
     reorderProviders: vi.fn(),
     revealProviderApiKey: vi.fn(async () => ({ apiKey: "saved-test-key" })),
     saveModel: vi.fn(),
+    deleteModel: vi.fn(),
     setRole: vi.fn(),
     users: vi.fn(),
     createUser: vi.fn(),
     updateUser: vi.fn(),
     deleteUser: vi.fn(),
-    importPresetModels: vi.fn(),
     discoverModels: vi.fn(async () => ({ models: [], truncated: false })),
     importDiscoveredModels: vi.fn(async () => ({ imported: 1, skipped: 0 })),
     setDefault: vi.fn(),
@@ -57,6 +57,37 @@ async function setup() {
   return { app, service };
 }
 describe("model administration authorization", () => {
+  it("validates model deletion and allows only authenticated administrators", async () => {
+    const { app, service } = await setup();
+    const id = "11111111-1111-4111-8111-111111111111";
+    for (const [authorization, expected] of [
+      [undefined, 401],
+      ["Bearer ordinary", 403],
+    ] as const) {
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/admin/models/${id}`,
+        headers: authorization ? { authorization } : {},
+      });
+      expect(response.statusCode).toBe(expected);
+    }
+    expect(service.deleteModel).not.toHaveBeenCalled();
+    const invalid = await app.inject({
+      method: "DELETE",
+      url: "/api/admin/models/invalid",
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(service.deleteModel).not.toHaveBeenCalled();
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/api/admin/models/${id}`,
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true });
+    expect(service.deleteModel).toHaveBeenCalledExactlyOnceWith("admin", id);
+  });
   it("validates and persists an administrator's provider ordering", async () => {
     const { app, service } = await setup();
     const providerIds = [
@@ -277,7 +308,7 @@ describe("model administration authorization", () => {
       ["POST", "/api/admin/models"],
       ["PUT", `/api/admin/models/${id}`],
       ["POST", `/api/admin/models/${id}/default`],
-      ["POST", `/api/admin/providers/${id}/import-models`],
+      ["DELETE", `/api/admin/models/${id}`],
       ["GET", `/api/admin/providers/${id}/discover-models`],
       ["POST", `/api/admin/providers/${id}/import-discovered-models`],
       ["PUT", `/api/admin/users/${id}/role`],

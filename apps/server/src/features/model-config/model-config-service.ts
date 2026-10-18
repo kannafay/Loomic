@@ -29,7 +29,7 @@ import type { AdminSupabaseClient } from "../../supabase/admin.js";
 import { ModelConfigError } from "./errors.js";
 import { discoverProviderModels } from "./model-discovery.js";
 import { createNetworkSettingsService } from "./network-settings.js";
-import { MODEL_PRESETS } from "./presets.js";
+import { PROVIDER_PRESETS } from "./provider-presets.js";
 import { decryptApiKey, encryptApiKey } from "./secrets.js";
 import {
   createManagedUser,
@@ -169,7 +169,7 @@ export function createModelConfigService(options: {
       return {
         providers: providers.data.map(publicProvider),
         models: models.data.map(publicModel),
-        presets: MODEL_PRESETS,
+        presets: PROVIDER_PRESETS,
       };
     },
     async reorderProviders(userId: string, input: ProviderOrder) {
@@ -425,6 +425,19 @@ export function createModelConfigService(options: {
       if (!result.data) throw new ModelConfigError("模型配置保存失败。", 500);
       return publicModel(result.data);
     },
+    async deleteModel(userId: string, id: string) {
+      await service.requireAdmin(userId);
+      const { data, error } = await options
+        .getAdminClient()
+        .from("configured_models")
+        .delete()
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
+      if (error) throw new ModelConfigError("模型删除失败，请重试。", 503);
+      if (!data) throw new ModelConfigError("模型不存在或已删除。", 404);
+      invalidate();
+    },
     async setDefault(userId: string, id: string) {
       await service.requireAdmin(userId);
       const { error } = await options
@@ -432,42 +445,6 @@ export function createModelConfigService(options: {
         .rpc("set_default_configured_model", { p_model_id: id });
       if (error)
         throw new ModelConfigError("请先启用模型和提供商，再设为默认。");
-      invalidate();
-    },
-    async importPresetModels(userId: string, providerId: string) {
-      await service.requireAdmin(userId);
-      const client = options.getAdminClient();
-      const { data: provider, error: readError } = await client
-        .from("model_providers")
-        .select("preset")
-        .eq("id", providerId)
-        .maybeSingle();
-      if (readError || !provider)
-        throw new ModelConfigError("提供商不存在。", 404);
-      const preset = MODEL_PRESETS.find((p) => p.id === provider.preset);
-      if (!preset) throw new ModelConfigError("没有可导入的预设模型。");
-      const rows = preset.models.map((model) => {
-        const id = randomUUID();
-        return {
-          id,
-          provider_id: providerId,
-          model_key: `configured/${id}`,
-          kind: model.kind,
-          api_model: model.apiModel,
-          name: model.name,
-          description: model.description,
-          adapter: model.adapter,
-          enabled: false,
-          options: model.options as NonNullable<Json>,
-        };
-      });
-      if (rows.length) {
-        const { error } = await client.from("configured_models").upsert(rows, {
-          onConflict: "provider_id,kind,api_model",
-          ignoreDuplicates: true,
-        });
-        dbError(error);
-      }
       invalidate();
     },
     async discoverModels(userId: string, providerId: string) {
@@ -558,7 +535,6 @@ export function createModelConfigService(options: {
       ) {
         throw new ModelConfigError("Anthropic 接口目前只支持文本模型。");
       }
-      const preset = MODEL_PRESETS.find((item) => item.id === provider.preset);
       const unique = [
         ...new Map(
           models.map((model) => [`${model.kind}:${model.apiModel}`, model]),
@@ -566,10 +542,6 @@ export function createModelConfigService(options: {
       ];
       const rows = unique.map((model) => {
         const id = randomUUID();
-        const known = preset?.models.find(
-          (item) =>
-            item.apiModel === model.apiModel && item.kind === model.kind,
-        );
         return {
           id,
           provider_id: providerId,
@@ -579,12 +551,11 @@ export function createModelConfigService(options: {
           name: model.name,
           description: model.description,
           adapter:
-            known?.adapter ??
-            (provider.preset === "agnes" &&
+            provider.preset === "agnes" &&
             (model.kind === "image" || model.kind === "video")
               ? "agnes"
-              : "auto"),
-          options: (known?.options ?? {}) as NonNullable<Json>,
+              : "auto",
+          options: {},
           enabled: false,
         };
       });

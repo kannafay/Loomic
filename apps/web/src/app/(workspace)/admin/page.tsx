@@ -2,6 +2,13 @@
 
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,8 +27,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import {
   createProviderWithModels,
+  deleteConfiguredModel,
   fetchModelAdmin,
-  importPresetModels,
   saveConfiguredModel,
   saveProviderConfig,
   saveProviderOrder,
@@ -39,13 +46,15 @@ import type {
 } from "@loomic/shared";
 import {
   CheckIcon,
-  ListPlusIcon,
+  DownloadIcon,
   PencilIcon,
   PlugZapIcon,
   PlusIcon,
   SaveIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ModelDeleteDialog } from "./model-delete-dialog";
 import { NetworkSettingsPanel } from "./network-settings-panel";
 import { ProviderApiKeyInput } from "./provider-api-key-input";
 import { ProviderAvatar } from "./provider-avatar";
@@ -107,22 +116,24 @@ export default function AdminPage() {
   const [apiKeyRevision, setApiKeyRevision] = useState(0);
   const [kind, setKind] = useState<ModelKind>("text");
   const [modelDraft, setModelDraft] = useState<ModelDraft | null>(null);
+  const [modelEditorOpen, setModelEditorOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletionModel, setDeletionModel] = useState<ConfiguredModel | null>(
+    null,
+  );
+  const deletionPending = useRef(false);
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [pendingModels, setPendingModels] = useState<ConfiguredModel[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const modelNameInput = useRef<HTMLInputElement>(null);
-  const modelEditorOpen = modelDraft !== null;
-
-  useEffect(() => {
-    if (modelEditorOpen) modelNameInput.current?.focus();
-  }, [modelEditorOpen]);
 
   const chooseProvider = useCallback((provider: ProviderConfig) => {
     setApiKeyRevision((revision) => revision + 1);
     setSelectedId(provider.id);
     setAdding(false);
     setModelDraft(null);
+    setModelEditorOpen(false);
     setShowDiscovery(false);
     setPendingModels([]);
     setError("");
@@ -198,6 +209,7 @@ export default function AdminPage() {
   }
   function editModel(model?: ConfiguredModel) {
     if (!adding && !selectedId) return;
+    setModelEditorOpen(true);
     const options =
       model?.options ??
       (kind === "video"
@@ -367,7 +379,7 @@ export default function AdminPage() {
                 </h2>
                 <p className="mt-1 text-xs leading-5 text-muted-foreground">
                   {adding
-                    ? "选择预设填入默认值，也可以从空白配置开始。"
+                    ? "选择提供商填写连接信息，也可以从自定义配置开始。"
                     : "配置由管理员维护，启用的模型供所有用户使用。"}
                 </p>
               </div>
@@ -657,53 +669,24 @@ export default function AdminPage() {
                     <h2 className="text-sm font-semibold">可用模型</h2>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {adding
-                        ? "先获取模型列表并选择添加，保存提供商时一起生效。"
+                        ? "获取模型列表或手动添加，保存提供商时一起生效。"
                         : "只有勾选启用的模型，才会出现在前台。"}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {providerDraft.preset !== "custom" && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-muted-foreground hover:text-foreground"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => {
-                          if (token)
-                            void perform(async () => {
-                              if (adding) {
-                                const preset = data?.presets.find(
-                                  (item) => item.id === providerDraft.preset,
-                                );
-                                const missing =
-                                  preset?.models.filter(
-                                    (model) =>
-                                      !pendingModels.some(
-                                        (existing) =>
-                                          existing.apiModel ===
-                                            model.apiModel &&
-                                          existing.kind === model.kind,
-                                      ),
-                                  ) ?? [];
-                                setPendingModels((current) => [
-                                  ...current,
-                                  ...missing.map((model) =>
-                                    stagedModel({ ...model, enabled: false }),
-                                  ),
-                                ]);
-                              } else if (selected) {
-                                await importPresetModels(token, selected.id);
-                                await load();
-                              }
-                              success("预设模型已补充，已有配置保持不变。");
-                            });
-                        }}
-                      >
-                        <ListPlusIcon aria-hidden="true" className="size-3.5" />
-                        补充预设
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setError("");
+                        editModel();
+                      }}
+                    >
+                      <PlusIcon aria-hidden="true" className="size-3.5" />
+                      手动添加
+                    </Button>
                     <Button
                       variant="default"
                       size="sm"
@@ -715,8 +698,8 @@ export default function AdminPage() {
                         setShowDiscovery(true);
                       }}
                     >
-                      <PlusIcon aria-hidden="true" className="size-3.5" />
-                      添加模型
+                      <DownloadIcon aria-hidden="true" className="size-3.5" />
+                      获取模型列表
                     </Button>
                   </div>
                 </div>
@@ -740,30 +723,19 @@ export default function AdminPage() {
                                     `${model.kind}:${model.apiModel}`,
                                   ),
                               )
-                              .map((model) => {
-                                const known = data?.presets
-                                  .find(
-                                    (preset) =>
-                                      preset.id === providerDraft.preset,
-                                  )
-                                  ?.models.find(
-                                    (item) =>
-                                      item.apiModel === model.apiModel &&
-                                      item.kind === model.kind,
-                                  );
-                                return stagedModel({
+                              .map((model) =>
+                                stagedModel({
                                   ...model,
                                   enabled: false,
                                   adapter:
-                                    known?.adapter ??
-                                    (providerDraft.preset === "agnes" &&
+                                    providerDraft.preset === "agnes" &&
                                     (model.kind === "image" ||
                                       model.kind === "video")
                                       ? "agnes"
-                                      : "auto"),
-                                  options: known?.options ?? {},
-                                });
-                              });
+                                      : "auto",
+                                  options: {},
+                                }),
+                              );
                             setPendingModels((current) => [
                               ...current,
                               ...additions,
@@ -916,256 +888,324 @@ export default function AdminPage() {
                           <PencilIcon aria-hidden="true" className="size-3.5" />
                           编辑
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          type="button"
+                          aria-label={`删除 ${model.name}`}
+                          title="删除模型"
+                          disabled={busy}
+                          className="shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => {
+                            setDeletionModel(model);
+                            setDeleteOpen(true);
+                          }}
+                        >
+                          <Trash2Icon aria-hidden="true" className="size-3.5" />
+                        </Button>
                       </div>
                     ))}
                     {visibleModels.length === 0 && (
                       <p className="px-5 py-8 text-center text-xs leading-5 text-muted-foreground">
                         暂无{KINDS.find((item) => item.id === kind)?.name}
-                        模型，点击“添加模型”获取列表并选择。
+                        模型，可获取模型列表或手动添加。
                       </p>
                     )}
                   </TabsContent>
                   {modelDraft && (
-                    <form
-                      className="space-y-4 border-t border-border bg-muted/20 p-5 [&_label]:text-xs [&_label]:font-medium"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (!token) return;
-                        void perform(async () => {
-                          let options: unknown;
-                          try {
-                            options = JSON.parse(modelDraft.optionsText);
-                          } catch {
-                            throw new Error("高级参数必须是有效的 JSON 对象。");
-                          }
-                          if (
-                            !options ||
-                            typeof options !== "object" ||
-                            Array.isArray(options)
-                          )
-                            throw new Error("高级参数必须是 JSON 对象。");
-                          if (adding) {
-                            const value = stagedModel(
-                              {
-                                ...modelDraft.value,
-                                options: options as Record<string, unknown>,
-                              },
-                              modelDraft.id,
-                            );
-                            if (
-                              pendingModels.some(
-                                (model) =>
-                                  model.id !== value.id &&
-                                  model.kind === value.kind &&
-                                  model.apiModel === value.apiModel,
-                              )
-                            )
-                              throw new Error("该类型下已添加这个模型 ID。");
-                            setPendingModels((current) =>
-                              modelDraft.id
-                                ? current.map((model) =>
-                                    model.id === modelDraft.id ? value : model,
-                                  )
-                                : [...current, value],
-                            );
-                            setModelDraft(null);
-                            success("模型已加入待保存列表，保存提供商后生效。");
-                            return;
-                          }
-                          await saveConfiguredModel(
-                            token,
-                            {
-                              ...modelDraft.value,
-                              options: options as Record<string, unknown>,
-                            },
-                            modelDraft.id,
-                          );
-                          await load();
-                          setModelDraft(null);
-                          success("模型配置已保存。");
-                        });
+                    <Dialog
+                      open={modelEditorOpen}
+                      onOpenChange={(open) => {
+                        if (!busy) setModelEditorOpen(open);
+                      }}
+                      onOpenChangeComplete={(open) => {
+                        if (!open) setModelDraft(null);
                       }}
                     >
-                      <h3 className="text-sm font-semibold">
-                        {modelDraft.id ? "编辑模型" : "添加模型"}
-                      </h3>
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <label
-                          htmlFor="page-model-draft-value-name"
-                          className="space-y-1.5 text-sm"
-                        >
-                          <span>显示名称</span>
-                          <Input
-                            ref={modelNameInput}
-                            id="page-model-draft-value-name"
-                            required
-                            value={modelDraft.value.name}
-                            onChange={(event) =>
-                              setModelDraft({
-                                ...modelDraft,
-                                value: {
-                                  ...modelDraft.value,
-                                  name: event.target.value,
-                                },
-                              })
-                            }
-                          />
-                        </label>
-                        <label
-                          htmlFor="page-model-draft-value-api-model"
-                          className="space-y-1.5 text-sm"
-                        >
-                          <span>模型 ID</span>
-                          <Input
-                            id="page-model-draft-value-api-model"
-                            required
-                            value={modelDraft.value.apiModel}
-                            onChange={(event) =>
-                              setModelDraft({
-                                ...modelDraft,
-                                value: {
-                                  ...modelDraft.value,
-                                  apiModel: event.target.value,
-                                },
-                              })
-                            }
-                            placeholder="接口实际接受的模型名称"
-                            spellCheck={false}
-                          />
-                        </label>
-                      </div>
-                      <label
-                        htmlFor="page-model-draft-value-description"
-                        className="block space-y-1.5 text-sm"
+                      <DialogContent
+                        initialFocus={modelNameInput}
+                        showCloseButton={!busy}
+                        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl"
                       >
-                        <span>说明</span>
-                        <Input
-                          id="page-model-draft-value-description"
-                          value={modelDraft.value.description}
-                          onChange={(event) =>
-                            setModelDraft({
-                              ...modelDraft,
-                              value: {
-                                ...modelDraft.value,
-                                description: event.target.value,
-                              },
-                            })
-                          }
-                        />
-                      </label>
-                      {(kind === "image" || kind === "video") && (
-                        <label
-                          htmlFor="page-3"
-                          className="block space-y-1.5 text-sm"
-                        >
-                          <span>媒体接口</span>
-                          <Select
-                            items={[
-                              { value: "auto", label: "跟随提供商接口类型" },
-                              { value: "agnes", label: "Agnes 图片／视频接口" },
-                              ...(kind === "video"
-                                ? [{ value: "veo", label: "Gemini Veo 接口" }]
-                                : []),
-                            ]}
-                            value={modelDraft.value.adapter}
-                            onValueChange={(value) =>
-                              setModelDraft({
-                                ...modelDraft,
-                                value: {
-                                  ...modelDraft.value,
-                                  adapter:
-                                    value as ConfiguredModelWrite["adapter"],
-                                },
-                              })
+                        <DialogHeader>
+                          <DialogTitle>
+                            {modelDraft.id ? "编辑模型" : "添加模型"}
+                          </DialogTitle>
+                          <DialogDescription>
+                            {
+                              KINDS.find(
+                                (item) => item.id === modelDraft.value.kind,
+                              )?.name
                             }
+                            模型 · {providerDraft.name || "新提供商"}
+                            {adding
+                              ? "，保存提供商时一起生效。"
+                              : "，保存后立即生效。"}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <form
+                          className="space-y-4 [&_label]:text-xs [&_label]:font-medium"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            if (!token) return;
+                            void perform(async () => {
+                              let options: unknown;
+                              try {
+                                options = JSON.parse(modelDraft.optionsText);
+                              } catch {
+                                throw new Error(
+                                  "高级参数必须是有效的 JSON 对象。",
+                                );
+                              }
+                              if (
+                                !options ||
+                                typeof options !== "object" ||
+                                Array.isArray(options)
+                              )
+                                throw new Error("高级参数必须是 JSON 对象。");
+                              if (adding) {
+                                const value = stagedModel(
+                                  {
+                                    ...modelDraft.value,
+                                    options: options as Record<string, unknown>,
+                                  },
+                                  modelDraft.id,
+                                );
+                                if (
+                                  pendingModels.some(
+                                    (model) =>
+                                      model.id !== value.id &&
+                                      model.kind === value.kind &&
+                                      model.apiModel === value.apiModel,
+                                  )
+                                )
+                                  throw new Error(
+                                    "该类型下已添加这个模型 ID。",
+                                  );
+                                setPendingModels((current) =>
+                                  modelDraft.id
+                                    ? current.map((model) =>
+                                        model.id === modelDraft.id
+                                          ? value
+                                          : model,
+                                      )
+                                    : [...current, value],
+                                );
+                                setModelEditorOpen(false);
+                                success(
+                                  "模型已加入待保存列表，保存提供商后生效。",
+                                );
+                                return;
+                              }
+                              await saveConfiguredModel(
+                                token,
+                                {
+                                  ...modelDraft.value,
+                                  options: options as Record<string, unknown>,
+                                },
+                                modelDraft.id,
+                              );
+                              await load();
+                              setModelEditorOpen(false);
+                              success("模型配置已保存。");
+                            });
+                          }}
+                        >
+                          <fieldset
+                            disabled={busy}
+                            className="min-w-0 space-y-4"
                           >
-                            <SelectTrigger
-                              id="page-3"
-                              aria-label="媒体接口"
-                              className="w-full"
+                            <div className="grid gap-4 sm:grid-cols-2">
+                              <label
+                                htmlFor="page-model-draft-value-name"
+                                className="space-y-1.5 text-sm"
+                              >
+                                <span>显示名称</span>
+                                <Input
+                                  ref={modelNameInput}
+                                  id="page-model-draft-value-name"
+                                  required
+                                  value={modelDraft.value.name}
+                                  onChange={(event) =>
+                                    setModelDraft({
+                                      ...modelDraft,
+                                      value: {
+                                        ...modelDraft.value,
+                                        name: event.target.value,
+                                      },
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label
+                                htmlFor="page-model-draft-value-api-model"
+                                className="space-y-1.5 text-sm"
+                              >
+                                <span>模型 ID</span>
+                                <Input
+                                  id="page-model-draft-value-api-model"
+                                  required
+                                  value={modelDraft.value.apiModel}
+                                  onChange={(event) =>
+                                    setModelDraft({
+                                      ...modelDraft,
+                                      value: {
+                                        ...modelDraft.value,
+                                        apiModel: event.target.value,
+                                      },
+                                    })
+                                  }
+                                  placeholder="接口实际接受的模型名称"
+                                  spellCheck={false}
+                                />
+                              </label>
+                            </div>
+                            <label
+                              htmlFor="page-model-draft-value-description"
+                              className="block space-y-1.5 text-sm"
                             >
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectGroup>
-                                <SelectItem value="auto">
-                                  跟随提供商接口类型
-                                </SelectItem>
-                                <SelectItem value="agnes">
-                                  Agnes 图片／视频接口
-                                </SelectItem>
-                                {kind === "video" && (
-                                  <SelectItem value="veo">
-                                    Gemini Veo 接口
-                                  </SelectItem>
-                                )}
-                              </SelectGroup>
-                            </SelectContent>
-                          </Select>
-                        </label>
-                      )}
-                      <label
-                        htmlFor="page-model-draft-options-text"
-                        className="block space-y-1.5 text-sm"
-                      >
-                        <span>高级参数（JSON）</span>
-                        <Textarea
-                          id="page-model-draft-options-text"
-                          className={"min-h-28 font-mono text-xs"}
-                          value={modelDraft.optionsText}
-                          onChange={(event) =>
-                            setModelDraft({
-                              ...modelDraft,
-                              optionsText: event.target.value,
-                            })
-                          }
-                          spellCheck={false}
-                        />
-                        <span className="block text-xs text-muted-foreground">
-                          文本支持 temperature、maxTokens；视频支持
-                          capabilities、limits。
-                        </span>
-                      </label>
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <label
-                          htmlFor="model-enabled"
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <Checkbox
-                            id="model-enabled"
-                            aria-label="启用到前台"
-                            checked={modelDraft.value.enabled}
-                            onCheckedChange={(checked) =>
-                              setModelDraft({
-                                ...modelDraft,
-                                value: {
-                                  ...modelDraft.value,
-                                  enabled: checked,
-                                },
-                              })
-                            }
-                          />
-                          启用到前台
-                        </label>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            type="button"
-                            disabled={busy}
-                            onClick={() => setModelDraft(null)}
-                          >
-                            取消
-                          </Button>
-                          <Button
-                            variant="default"
-                            type="submit"
-                            disabled={busy}
-                          >
-                            {adding ? "加入待保存模型" : "保存模型"}
-                          </Button>
-                        </div>
-                      </div>
-                    </form>
+                              <span>说明</span>
+                              <Input
+                                id="page-model-draft-value-description"
+                                value={modelDraft.value.description}
+                                onChange={(event) =>
+                                  setModelDraft({
+                                    ...modelDraft,
+                                    value: {
+                                      ...modelDraft.value,
+                                      description: event.target.value,
+                                    },
+                                  })
+                                }
+                              />
+                            </label>
+                            {(kind === "image" || kind === "video") && (
+                              <label
+                                htmlFor="page-3"
+                                className="block space-y-1.5 text-sm"
+                              >
+                                <span>媒体接口</span>
+                                <Select
+                                  items={[
+                                    {
+                                      value: "auto",
+                                      label: "跟随提供商接口类型",
+                                    },
+                                    {
+                                      value: "agnes",
+                                      label: "Agnes 图片／视频接口",
+                                    },
+                                    ...(kind === "video"
+                                      ? [
+                                          {
+                                            value: "veo",
+                                            label: "Gemini Veo 接口",
+                                          },
+                                        ]
+                                      : []),
+                                  ]}
+                                  value={modelDraft.value.adapter}
+                                  onValueChange={(value) =>
+                                    setModelDraft({
+                                      ...modelDraft,
+                                      value: {
+                                        ...modelDraft.value,
+                                        adapter:
+                                          value as ConfiguredModelWrite["adapter"],
+                                      },
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger
+                                    id="page-3"
+                                    aria-label="媒体接口"
+                                    className="w-full"
+                                  >
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectGroup>
+                                      <SelectItem value="auto">
+                                        跟随提供商接口类型
+                                      </SelectItem>
+                                      <SelectItem value="agnes">
+                                        Agnes 图片／视频接口
+                                      </SelectItem>
+                                      {kind === "video" && (
+                                        <SelectItem value="veo">
+                                          Gemini Veo 接口
+                                        </SelectItem>
+                                      )}
+                                    </SelectGroup>
+                                  </SelectContent>
+                                </Select>
+                              </label>
+                            )}
+                            <label
+                              htmlFor="page-model-draft-options-text"
+                              className="block space-y-1.5 text-sm"
+                            >
+                              <span>高级参数（JSON）</span>
+                              <Textarea
+                                id="page-model-draft-options-text"
+                                className={"min-h-28 font-mono text-xs"}
+                                value={modelDraft.optionsText}
+                                onChange={(event) =>
+                                  setModelDraft({
+                                    ...modelDraft,
+                                    optionsText: event.target.value,
+                                  })
+                                }
+                                spellCheck={false}
+                              />
+                              <span className="block text-xs text-muted-foreground">
+                                文本支持 temperature、maxTokens；视频支持
+                                capabilities、limits。
+                              </span>
+                            </label>
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <label
+                                htmlFor="model-enabled"
+                                className="flex items-center gap-2 text-sm"
+                              >
+                                <Checkbox
+                                  id="model-enabled"
+                                  aria-label="启用到前台"
+                                  checked={modelDraft.value.enabled}
+                                  onCheckedChange={(checked) =>
+                                    setModelDraft({
+                                      ...modelDraft,
+                                      value: {
+                                        ...modelDraft.value,
+                                        enabled: checked,
+                                      },
+                                    })
+                                  }
+                                />
+                                启用到前台
+                              </label>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={() => setModelEditorOpen(false)}
+                                >
+                                  取消
+                                </Button>
+                                <Button
+                                  variant="default"
+                                  type="submit"
+                                  disabled={busy}
+                                >
+                                  {adding ? "加入待保存模型" : "保存模型"}
+                                </Button>
+                              </div>
+                            </div>
+                          </fieldset>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </Tabs>
               </section>
@@ -1173,6 +1213,43 @@ export default function AdminPage() {
           </div>
         </div>
       </TabsContent>
+      <ModelDeleteDialog
+        model={deletionModel}
+        open={deleteOpen}
+        staged={adding}
+        deleting={busy}
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={async () => {
+          if (!deletionModel || !token || busy || deletionPending.current)
+            return;
+          deletionPending.current = true;
+          try {
+            await perform(async () => {
+              if (adding) {
+                setPendingModels((current) =>
+                  current.filter((model) => model.id !== deletionModel.id),
+                );
+              } else {
+                await deleteConfiguredModel(token, deletionModel.id);
+                setData((current) =>
+                  current
+                    ? {
+                        ...current,
+                        models: current.models.filter(
+                          (model) => model.id !== deletionModel.id,
+                        ),
+                      }
+                    : current,
+                );
+              }
+              setDeleteOpen(false);
+              success(adding ? "已移除待保存模型。" : "模型已删除。");
+            });
+          } finally {
+            deletionPending.current = false;
+          }
+        }}
+      />
       <TabsContent value="network">
         {token && <NetworkSettingsPanel token={token} />}
       </TabsContent>

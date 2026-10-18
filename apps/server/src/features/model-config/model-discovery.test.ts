@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { discoverProviderModels } from "./model-discovery.js";
-import { MODEL_PRESETS } from "./presets.js";
+import { PROVIDER_PRESETS } from "./provider-presets.js";
 
 const provider = {
   protocol: "openai" as const,
@@ -64,7 +64,7 @@ describe("provider model discovery", () => {
   ])(
     "discovers new %s text models through its preset endpoint",
     async (presetId, apiModel, name) => {
-      const preset = MODEL_PRESETS.find((item) => item.id === presetId);
+      const preset = PROVIDER_PRESETS.find((item) => item.id === presetId);
       if (!preset) throw new Error(`Missing preset: ${presetId}`);
       const fetcher = vi.fn(async (_url: URL, _init: RequestInit) =>
         json({ data: [{ id: apiModel, name }] }),
@@ -176,15 +176,19 @@ describe("provider model discovery", () => {
       });
     },
   );
-  it("uses saved Agnes presets for media categories", async () => {
+  it("classifies current Agnes model IDs without adding preset names or models", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async () =>
         json({
           data: [
-            { id: "agnes-3.0-flash" },
-            { id: "agnes-image-2.5-flash" },
-            { id: "agnes-video-2.5-flash" },
+            { id: "agnes-next-flash" },
+            {
+              id: "agnes-image-next",
+              name: "最新图片模型",
+              description: "接口说明",
+            },
+            { id: "agnes-video-next" },
           ],
         }),
       ),
@@ -198,7 +202,54 @@ describe("provider model discovery", () => {
       "image",
       "video",
     ]);
-    expect(result.models[1]?.name).toBe("Agnes Image 2.5 Flash");
+    expect(result.models).toEqual([
+      {
+        apiModel: "agnes-next-flash",
+        name: "agnes-next-flash",
+        description: "",
+        kind: "text",
+      },
+      {
+        apiModel: "agnes-image-next",
+        name: "最新图片模型",
+        description: "接口说明",
+        kind: "image",
+      },
+      {
+        apiModel: "agnes-video-next",
+        name: "agnes-video-next",
+        description: "",
+        kind: "video",
+      },
+    ]);
+  });
+  it("prefers live modality metadata over model ID heuristics", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        json({
+          data: [
+            {
+              id: "gpt-4.1",
+              output_modalities: ["audio"],
+              name: "当前语音模型",
+            },
+          ],
+        }),
+      ),
+    );
+    const result = await discoverProviderModels({
+      ...provider,
+      preset: "openai",
+    });
+    expect(result.models).toEqual([
+      {
+        apiModel: "gpt-4.1",
+        name: "当前语音模型",
+        description: "",
+        kind: "audio",
+      },
+    ]);
   });
   it.each([
     [401, "鉴权失败"],

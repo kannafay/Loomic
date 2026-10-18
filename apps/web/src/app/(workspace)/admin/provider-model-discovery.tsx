@@ -182,7 +182,7 @@ export function ProviderModelDiscovery({
         <section className="px-6 py-5" aria-label="获取的模型列表">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <DialogTitle>添加模型</DialogTitle>
+              <DialogTitle>获取模型列表</DialogTitle>
               <DialogDescription className="mt-2 pr-4 text-xs">
                 {providerId
                   ? "获取已保存提供商的模型列表，勾选添加后可在对应标签中启用。"
