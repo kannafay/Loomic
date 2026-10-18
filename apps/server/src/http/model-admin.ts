@@ -141,6 +141,16 @@ export async function registerModelAdminRoutes(
         ),
       ),
   );
+  app.delete<{ Params: { id: string } }>(
+    "/api/admin/providers/:id/models",
+    (request, reply) =>
+      run(request, reply, true, (userId) =>
+        service.deleteProviderModels(
+          userId,
+          z.string().uuid().parse(request.params.id),
+        ),
+      ),
+  );
   app.get<{ Params: { id: string } }>(
     "/api/admin/providers/:id/discover-models",
     (request, reply) =>

@@ -116,6 +116,12 @@ export const setDefaultConfiguredModel = (token: string, id: string) =>
   request(token, `/models/${id}/default`, "POST");
 export const deleteConfiguredModel = (token: string, id: string) =>
   request<{ ok: true }>(token, `/models/${id}`, "DELETE");
+export const deleteProviderModels = (token: string, providerId: string) =>
+  request<{ deleted: number }>(
+    token,
+    `/providers/${providerId}/models`,
+    "DELETE",
+  );
 export type { AdminUser } from "@loomic/shared";
 export const createAdminUser = (token: string, value: AdminUserCreate) =>
   request<{ user: AdminUser }>(token, "/users", "POST", value);

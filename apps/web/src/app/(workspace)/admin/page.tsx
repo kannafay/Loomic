@@ -29,6 +29,7 @@ import { useAuth } from "@/lib/auth-context";
 import {
   createProviderWithModels,
   deleteConfiguredModel,
+  deleteProviderModels,
   fetchModelAdmin,
   saveConfiguredModel,
   saveProviderConfig,
@@ -95,6 +96,15 @@ type ModelDraft = {
   value: ConfiguredModelWrite;
   optionsText: string;
 };
+type ModelDeletion = { staged: boolean } & (
+  | { kind: "single"; model: ConfiguredModel }
+  | {
+      kind: "all";
+      providerId: string;
+      providerName: string;
+      modelIds: string[];
+    }
+);
 const DRAFT_PROVIDER_ID = "00000000-0000-4000-8000-000000000000";
 function stagedModel(
   value: Omit<ConfiguredModelWrite, "providerId">,
@@ -124,9 +134,7 @@ export default function AdminPage() {
   const [modelDraft, setModelDraft] = useState<ModelDraft | null>(null);
   const [modelEditorOpen, setModelEditorOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deletionModel, setDeletionModel] = useState<ConfiguredModel | null>(
-    null,
-  );
+  const [deletion, setDeletion] = useState<ModelDeletion | null>(null);
   const deletionPending = useRef(false);
   const providerTogglePending = useRef(false);
   const [showDiscovery, setShowDiscovery] = useState(false);
@@ -741,6 +749,28 @@ export default function AdminPage() {
                       variant="outline"
                       size="sm"
                       type="button"
+                      disabled={busy || !providerModels.length}
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => {
+                        setDeletion({
+                          kind: "all",
+                          staged: adding,
+                          providerId: selectedId ?? DRAFT_PROVIDER_ID,
+                          providerName:
+                            selected?.name ??
+                            (providerDraft.name || "新提供商"),
+                          modelIds: providerModels.map((model) => model.id),
+                        });
+                        setDeleteOpen(true);
+                      }}
+                    >
+                      <Trash2Icon aria-hidden="true" className="size-3.5" />
+                      删除全部
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
                       disabled={busy}
                       onClick={() => {
                         setError("");
@@ -969,7 +999,11 @@ export default function AdminPage() {
                           disabled={busy}
                           className="shrink-0 text-muted-foreground hover:text-destructive"
                           onClick={() => {
-                            setDeletionModel(model);
+                            setDeletion({
+                              kind: "single",
+                              model,
+                              staged: adding,
+                            });
                             setDeleteOpen(true);
                           }}
                         >
@@ -1288,36 +1322,77 @@ export default function AdminPage() {
         </div>
       </TabsContent>
       <ModelDeleteDialog
-        model={deletionModel}
+        model={deletion?.kind === "single" ? deletion.model : null}
+        all={
+          deletion?.kind === "all"
+            ? {
+                providerName: deletion.providerName,
+                count: deletion.modelIds.length,
+              }
+            : undefined
+        }
         open={deleteOpen}
-        staged={adding}
+        staged={deletion?.staged ?? adding}
         deleting={busy}
         onClose={() => setDeleteOpen(false)}
         onConfirm={async () => {
-          if (!deletionModel || !token || busy || deletionPending.current)
-            return;
+          if (!deletion || !token || busy || deletionPending.current) return;
           deletionPending.current = true;
           try {
             await perform(async () => {
-              if (adding) {
+              let deleted =
+                deletion.kind === "all" ? deletion.modelIds.length : 1;
+              if (deletion.kind === "all") {
+                if (deletion.staged) {
+                  setPendingModels((current) =>
+                    current.filter(
+                      (model) => !deletion.modelIds.includes(model.id),
+                    ),
+                  );
+                } else {
+                  const result = await deleteProviderModels(
+                    token,
+                    deletion.providerId,
+                  );
+                  deleted = result.deleted;
+                  setData((current) =>
+                    current
+                      ? {
+                          ...current,
+                          models: current.models.filter(
+                            (model) => model.providerId !== deletion.providerId,
+                          ),
+                        }
+                      : current,
+                  );
+                }
+              } else if (deletion.staged) {
                 setPendingModels((current) =>
-                  current.filter((model) => model.id !== deletionModel.id),
+                  current.filter((model) => model.id !== deletion.model.id),
                 );
               } else {
-                await deleteConfiguredModel(token, deletionModel.id);
+                await deleteConfiguredModel(token, deletion.model.id);
                 setData((current) =>
                   current
                     ? {
                         ...current,
                         models: current.models.filter(
-                          (model) => model.id !== deletionModel.id,
+                          (model) => model.id !== deletion.model.id,
                         ),
                       }
                     : current,
                 );
               }
               setDeleteOpen(false);
-              success(adding ? "已移除待保存模型。" : "模型已删除。");
+              success(
+                deletion.kind === "all"
+                  ? deletion.staged
+                    ? `已移除 ${deleted} 个待保存模型。`
+                    : `已删除 ${deleted} 个模型。`
+                  : deletion.staged
+                    ? "已移除待保存模型。"
+                    : "模型已删除。",
+              );
             });
           } finally {
             deletionPending.current = false;

@@ -23,6 +23,7 @@ async function setup() {
     revealProviderApiKey: vi.fn(async () => ({ apiKey: "saved-test-key" })),
     saveModel: vi.fn(),
     deleteModel: vi.fn(),
+    deleteProviderModels: vi.fn(async () => ({ deleted: 3 })),
     setRole: vi.fn(),
     users: vi.fn(),
     createUser: vi.fn(),
@@ -57,6 +58,50 @@ async function setup() {
   return { app, service };
 }
 describe("model administration authorization", () => {
+  it("validates provider-wide model deletion and restricts it to authenticated administrators", async () => {
+    const { app, service } = await setup();
+    const id = "11111111-1111-4111-8111-111111111111";
+    for (const [authorization, expected] of [
+      [undefined, 401],
+      ["Bearer ordinary", 403],
+    ] as const) {
+      const response = await app.inject({
+        method: "DELETE",
+        url: `/api/admin/providers/${id}/models`,
+        headers: authorization ? { authorization } : {},
+      });
+      expect(response.statusCode).toBe(expected);
+    }
+    const invalid = await app.inject({
+      method: "DELETE",
+      url: "/api/admin/providers/invalid/models",
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(invalid.statusCode).toBe(400);
+    expect(service.deleteProviderModels).not.toHaveBeenCalled();
+    const response = await app.inject({
+      method: "DELETE",
+      url: `/api/admin/providers/${id}/models`,
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ deleted: 3 });
+    expect(service.deleteProviderModels).toHaveBeenCalledExactlyOnceWith(
+      "admin",
+      id,
+    );
+    expect(service.deleteModel).not.toHaveBeenCalled();
+    service.deleteProviderModels.mockRejectedValueOnce(
+      new ModelConfigError("模型删除失败，请重试。", 503),
+    );
+    const failed = await app.inject({
+      method: "DELETE",
+      url: `/api/admin/providers/${id}/models`,
+      headers: { authorization: "Bearer admin" },
+    });
+    expect(failed.statusCode).toBe(503);
+    expect(failed.json().error.message).toBe("模型删除失败，请重试。");
+  });
   it("validates model deletion and allows only authenticated administrators", async () => {
     const { app, service } = await setup();
     const id = "11111111-1111-4111-8111-111111111111";

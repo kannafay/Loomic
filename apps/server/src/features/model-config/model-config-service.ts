@@ -428,6 +428,25 @@ export function createModelConfigService(options: {
       if (!result.data) throw new ModelConfigError("模型配置保存失败。", 500);
       return publicModel(result.data);
     },
+    async deleteProviderModels(userId: string, providerId: string) {
+      await service.requireAdmin(userId);
+      const client = options.getAdminClient();
+      const provider = await client
+        .from("model_providers")
+        .select("id")
+        .eq("id", providerId)
+        .maybeSingle();
+      if (provider.error)
+        throw new ModelConfigError("模型删除失败，请重试。", 503);
+      if (!provider.data) throw new ModelConfigError("提供商不存在。", 404);
+      const { error, count } = await client
+        .from("configured_models")
+        .delete({ count: "exact" })
+        .eq("provider_id", providerId);
+      if (error) throw new ModelConfigError("模型删除失败，请重试。", 503);
+      invalidate();
+      return { deleted: count ?? 0 };
+    },
     async deleteModel(userId: string, id: string) {
       await service.requireAdmin(userId);
       const { data, error } = await options

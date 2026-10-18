@@ -20,6 +20,7 @@ const state = vi.hoisted(() => ({
   fetch: vi.fn(),
   saveModel: vi.fn(),
   deleteModel: vi.fn(),
+  deleteProviderModels: vi.fn(),
   saveProvider: vi.fn(),
   saveOrder: vi.fn(),
   revealKey: vi.fn(),
@@ -44,6 +45,7 @@ vi.mock("../src/lib/model-admin-api", () => ({
   fetchModelAdmin: state.fetch,
   saveConfiguredModel: state.saveModel,
   deleteConfiguredModel: state.deleteModel,
+  deleteProviderModels: state.deleteProviderModels,
   saveProviderConfig: state.saveProvider,
   saveProviderOrder: state.saveOrder,
   fetchProviderApiKey: state.revealKey,
@@ -92,6 +94,7 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue({ providers: [provider], models: [model], presets: [] });
   state.deleteModel.mockReset().mockResolvedValue({ ok: true });
+  state.deleteProviderModels.mockReset().mockResolvedValue({ deleted: 2 });
   state.saveModel.mockReset().mockResolvedValue({ ...model, enabled: true });
   state.saveProvider.mockReset().mockResolvedValue(provider);
   state.saveOrder.mockReset().mockResolvedValue({ ok: true });
@@ -607,6 +610,114 @@ it("confirms deletion, retains the model on failure and blocks duplicate request
   expect(state.deleteModel).toHaveBeenCalledTimes(2);
   expect(state.deleteModel).toHaveBeenLastCalledWith("token", model.id);
 });
+it("confirms deleting every type for only the current provider and supports retry without overlapping requests", async () => {
+  const other = { ...provider, id: "provider-2", name: "其他提供商" };
+  const image = { ...model, id: "image-1", kind: "image", name: "图片模型" };
+  const otherModel = {
+    ...model,
+    id: "other-model",
+    providerId: other.id,
+    name: "其他提供商模型",
+  };
+  state.fetch.mockResolvedValue({
+    providers: [provider, other],
+    models: [model, image, otherModel],
+    presets: [],
+  });
+  state.deleteProviderModels.mockRejectedValueOnce(
+    new Error("全部删除失败，请重试。"),
+  );
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  await user.click(await screen.findByRole("tab", { name: /^图片/ }));
+  await user.click(screen.getByRole("button", { name: "删除全部" }));
+  let dialog = within(
+    await screen.findByRole("dialog", { name: "删除全部模型" }),
+  );
+  expect(dialog.getByText("Agnes AI")).toBeInTheDocument();
+  expect(dialog.getByText("共 2 个模型")).toBeInTheDocument();
+  expect(dialog.getByText(/包含所有类型/)).toBeInTheDocument();
+  await waitFor(() =>
+    expect(dialog.getByRole("button", { name: "取消" })).toHaveFocus(),
+  );
+  await user.click(dialog.getByRole("button", { name: "取消" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(state.deleteProviderModels).not.toHaveBeenCalled();
+  await user.click(screen.getByRole("button", { name: "删除全部" }));
+  dialog = within(await screen.findByRole("dialog", { name: "删除全部模型" }));
+  await user.click(dialog.getByRole("button", { name: "确认删除全部" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("全部删除失败");
+  expect(screen.getByText("图片模型")).toBeInTheDocument();
+  let finish!: (value: { deleted: number }) => void;
+  state.deleteProviderModels.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await user.click(dialog.getByRole("button", { name: "确认删除全部" }));
+  expect(dialog.getByRole("button", { name: "正在删除…" })).toBeDisabled();
+  await user.click(dialog.getByRole("button", { name: "正在删除…" }));
+  await user.keyboard("{Escape}");
+  expect(
+    screen.getByRole("dialog", { name: "删除全部模型" }),
+  ).toBeInTheDocument();
+  expect(state.deleteProviderModels).toHaveBeenCalledTimes(2);
+  await act(async () => finish({ deleted: 2 }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(state.deleteProviderModels).toHaveBeenLastCalledWith(
+    "token",
+    provider.id,
+  );
+  expect(state.deleteModel).not.toHaveBeenCalled();
+  expect(screen.getByRole("tab", { name: /^全部/ })).toHaveTextContent("0");
+  expect(screen.getByRole("button", { name: "删除全部" })).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: other.name }));
+  await user.click(screen.getByRole("tab", { name: /^全部/ }));
+  expect(
+    screen.getByRole("checkbox", { name: "启用 其他提供商模型" }),
+  ).toBeInTheDocument();
+});
+
+it("disables delete-all for an empty list and clears staged models without a database call", async () => {
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  await user.click(await screen.findByRole("button", { name: "添加提供商" }));
+  expect(screen.getByRole("button", { name: "删除全部" })).toBeDisabled();
+  await user.type(screen.getByLabelText("配置名称"), "新提供商");
+  await user.click(screen.getByRole("button", { name: "手动添加" }));
+  const editor = within(
+    await screen.findByRole("dialog", { name: "添加模型" }),
+  );
+  await user.type(editor.getByLabelText("显示名称"), "待保存模型");
+  await user.type(editor.getByLabelText("模型 ID"), "staged-test");
+  await user.click(editor.getByRole("button", { name: "加入待保存模型" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  await user.click(screen.getByRole("button", { name: "删除全部" }));
+  const dialog = within(
+    await screen.findByRole("dialog", { name: "删除全部模型" }),
+  );
+  expect(dialog.getByText("新提供商")).toBeInTheDocument();
+  expect(dialog.getByText("共 1 个模型")).toBeInTheDocument();
+  await user.click(dialog.getByRole("button", { name: "确认删除全部" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(
+    screen.queryByRole("checkbox", { name: "启用 待保存模型" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "删除全部" })).toBeDisabled();
+  expect(state.deleteProviderModels).not.toHaveBeenCalled();
+  expect(state.deleteModel).not.toHaveBeenCalled();
+  expect(state.saveModel).not.toHaveBeenCalled();
+});
+
 it("adds, edits and removes a new provider's staged model without a database mutation", async () => {
   const user = userEvent.setup();
   render(<AdminPage />);
