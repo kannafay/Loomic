@@ -440,27 +440,32 @@ export async function registerGenerateRoutes(
             model.replace("google-official/", ""),
           );
         if (videoModel.provider === "agnes")
-          buildAgnesVideoRequest({
-            prompt: payload.prompt,
-            model,
-            ...(payload.duration != null ? { duration: payload.duration } : {}),
-            ...(payload.resolution ? { resolution: payload.resolution } : {}),
-            ...(payload.aspectRatio
-              ? { aspectRatio: payload.aspectRatio }
-              : {}),
-            ...(payload.inputImages
-              ? { inputImages: payload.inputImages }
-              : {}),
-            ...(payload.firstFrame ? { firstFrame: payload.firstFrame } : {}),
-            ...(payload.lastFrame ? { lastFrame: payload.lastFrame } : {}),
-            ...(payload.referenceImages
-              ? { referenceImages: payload.referenceImages }
-              : {}),
-            ...(payload.referenceAudios
-              ? { referenceAudios: payload.referenceAudios }
-              : {}),
-            ...(payload.inputVideo ? { inputVideo: payload.inputVideo } : {}),
-          });
+          buildAgnesVideoRequest(
+            {
+              prompt: payload.prompt,
+              model,
+              ...(payload.duration != null
+                ? { duration: payload.duration }
+                : {}),
+              ...(payload.resolution ? { resolution: payload.resolution } : {}),
+              ...(payload.aspectRatio
+                ? { aspectRatio: payload.aspectRatio }
+                : {}),
+              ...(payload.inputImages
+                ? { inputImages: payload.inputImages }
+                : {}),
+              ...(payload.firstFrame ? { firstFrame: payload.firstFrame } : {}),
+              ...(payload.lastFrame ? { lastFrame: payload.lastFrame } : {}),
+              ...(payload.referenceImages
+                ? { referenceImages: payload.referenceImages }
+                : {}),
+              ...(payload.referenceAudios
+                ? { referenceAudios: payload.referenceAudios }
+                : {}),
+              ...(payload.inputVideo ? { inputVideo: payload.inputVideo } : {}),
+            },
+            [videoModel],
+          );
         let creditsCost = 0;
 
         if (options.creditService && options.tierGuard) {

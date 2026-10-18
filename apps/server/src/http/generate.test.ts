@@ -42,6 +42,21 @@ const source = () =>
 let app: ReturnType<typeof Fastify>;
 let jobService: JobService;
 
+function registerConfiguredAgnesFlash() {
+  const native = new AgnesVideoProvider("test").models.find(
+    (model) => model.id === "agnes/agnes-video-2.5-flash",
+  );
+  if (!native) throw new Error("Expected the Agnes Flash model");
+  const configuredId = `configured/${id}`;
+  registerVideoProvider({
+    name: "configured-agnes-flash",
+    catalogProvider: "agnes",
+    models: [{ ...native, id: configuredId }],
+    generate: vi.fn(),
+  });
+  return configuredId;
+}
+
 beforeEach(async () => {
   clearProviders();
   registerVideoProvider(new GoogleVideoProvider("test"));
@@ -68,6 +83,67 @@ afterEach(async () => {
 });
 
 describe("internal video generation API", () => {
+  it.each([8, 12])(
+    "accepts a configured Agnes model with a reference image at %is",
+    async (duration) => {
+      const configuredId = registerConfiguredAgnesFlash();
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/agent/generate-video",
+        payload: {
+          prompt: "Motion",
+          model: configuredId,
+          duration,
+          resolution: "720p",
+          aspectRatio: "9:16",
+          referenceImages: [png],
+        },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(jobService.createJob).toHaveBeenCalledWith(
+        user,
+        expect.objectContaining({
+          payload: expect.objectContaining({
+            model: configuredId,
+            duration,
+            resolution: "720p",
+            aspect_ratio: "9:16",
+            reference_images: [png],
+          }),
+        }),
+      );
+    },
+  );
+
+  it.each([
+    { input: { duration: 13 }, message: "4–12" },
+    { input: { resolution: "1080p" }, message: "不支持所选分辨率" },
+    {
+      input: { referenceImages: Array.from({ length: 6 }, () => png) },
+      message: "最多支持 5 张参考图",
+    },
+  ])(
+    "rejects unsupported configured Agnes parameters before enqueueing: $input",
+    async ({ input, message }) => {
+      const model = registerConfiguredAgnesFlash();
+      const response = await app.inject({
+        method: "POST",
+        url: "/api/agent/generate-video",
+        payload: {
+          prompt: "Motion",
+          model,
+          duration: 8,
+          resolution: "720p",
+          referenceImages: [png],
+          ...input,
+        },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toContain(message);
+      expect(jobService.createJob).not.toHaveBeenCalled();
+    },
+  );
+
   it("passes all Agnes reference types into the job at model-specific durations", async () => {
     registerVideoProvider(new AgnesVideoProvider("test"));
     const images = [
