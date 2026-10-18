@@ -128,6 +128,7 @@ export default function AdminPage() {
     null,
   );
   const deletionPending = useRef(false);
+  const providerTogglePending = useRef(false);
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [pendingModels, setPendingModels] = useState<ConfiguredModel[]>([]);
   const [busy, setBusy] = useState(false);
@@ -186,6 +187,46 @@ export default function AdminPage() {
       showError(err instanceof Error ? err.message : "操作失败，请重试。");
     } finally {
       setBusy(false);
+    }
+  }
+  async function toggleProvider(provider: ProviderConfig, enabled: boolean) {
+    if (!token || busy || providerTogglePending.current) return;
+    providerTogglePending.current = true;
+    try {
+      await perform(async () => {
+        const updated = await saveProviderConfig(
+          token,
+          {
+            name: provider.name,
+            category: provider.category,
+            preset: provider.preset,
+            protocol: provider.protocol,
+            baseUrl: provider.baseUrl,
+            proxy: provider.proxy,
+            enabled,
+          },
+          provider.id,
+        );
+        setData((previous) =>
+          previous
+            ? {
+                ...previous,
+                providers: previous.providers.map((candidate) =>
+                  candidate.id === updated.id ? updated : candidate,
+                ),
+              }
+            : previous,
+        );
+        if (!adding && selectedId === updated.id) {
+          setProviderDraft((previous) => ({
+            ...previous,
+            enabled: updated.enabled,
+          }));
+        }
+        success(`${updated.name}已${updated.enabled ? "启用" : "停用"}。`);
+      });
+    } finally {
+      providerTogglePending.current = false;
     }
   }
   const selected = data?.providers.find(
@@ -335,7 +376,7 @@ export default function AdminPage() {
                 提供商
               </h2>
               <Button
-                size="icon-sm"
+                size="sm"
                 variant="outline"
                 type="button"
                 aria-label="添加提供商"
@@ -352,6 +393,7 @@ export default function AdminPage() {
                 title="添加提供商"
               >
                 <PlusIcon aria-hidden="true" className="size-3.5" />
+                添加提供商
               </Button>
             </div>
             {data ? (
@@ -361,6 +403,7 @@ export default function AdminPage() {
                 selectedId={adding ? null : selectedId}
                 disabled={busy}
                 onSelect={chooseProvider}
+                onEnabledChange={toggleProvider}
                 onOrderChange={async (providers) => {
                   if (!token) throw new Error("请先登录。");
                   setBusy(true);

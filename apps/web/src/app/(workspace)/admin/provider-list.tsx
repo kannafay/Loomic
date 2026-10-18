@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import type { ConfiguredModel, ProviderConfig } from "@loomic/shared";
 import { Reorder, useDragControls, useReducedMotion } from "framer-motion";
 import { GripVerticalIcon } from "lucide-react";
@@ -20,6 +21,7 @@ type ProviderListProps = {
   selectedId: string | null;
   disabled: boolean;
   onSelect: (provider: ProviderConfig) => void;
+  onEnabledChange: (provider: ProviderConfig, enabled: boolean) => void;
   onOrderChange: (providers: ProviderConfig[]) => Promise<void>;
 };
 
@@ -29,6 +31,7 @@ export function ProviderList({
   selectedId,
   disabled,
   onSelect,
+  onEnabledChange,
   onOrderChange,
 }: ProviderListProps) {
   const [order, setOrder] = useState(providers);
@@ -94,6 +97,7 @@ export function ProviderList({
             sortable={order.length > 1}
             instructionsId={instructionsId}
             onSelect={() => onSelect(provider)}
+            onEnabledChange={(enabled) => onEnabledChange(provider, enabled)}
             onDragStart={() => setDragging(true)}
             onDragEnd={() => {
               setDragging(false);
@@ -128,6 +132,7 @@ function ProviderListItem({
   sortable,
   instructionsId,
   onSelect,
+  onEnabledChange,
   onDragStart,
   onDragEnd,
   onMove,
@@ -140,6 +145,7 @@ function ProviderListItem({
   sortable: boolean;
   instructionsId: string;
   onSelect: () => void;
+  onEnabledChange: (enabled: boolean) => void;
   onDragStart: () => void;
   onDragEnd: () => void;
   onMove: (direction: -1 | 1) => void;
@@ -194,44 +200,47 @@ function ProviderListItem({
         disabled={disabled}
         onClick={onSelect}
         aria-label={provider.name}
-        aria-describedby={`provider-meta-${provider.id} provider-status-${provider.id}`}
+        aria-describedby={`provider-meta-${provider.id} provider-count-${provider.id} provider-status-${provider.id}`}
         aria-pressed={active}
         className="h-auto min-w-0 flex-1 justify-start gap-2.5 rounded-lg border-0 bg-transparent p-2.5 text-left hover:bg-transparent active:translate-y-0"
       >
         <ProviderAvatar preset={provider.preset} name={provider.name} />
         <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <span className="flex items-center justify-between gap-2">
-            <span
-              className="truncate text-sm font-medium leading-5 text-foreground group-data-active/provider:text-accent-soft-foreground"
-              title={provider.name}
-            >
-              {provider.name}
-            </span>
-            <span
-              aria-hidden="true"
-              title={status}
-              className={`size-1.5 shrink-0 rounded-full ${provider.enabled ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
-            />
-            <span id={`provider-status-${provider.id}`} className="sr-only">
-              {status}
-            </span>
+          <span
+            className="truncate text-sm font-medium leading-5 text-foreground group-data-active/provider:text-accent-soft-foreground"
+            title={provider.name}
+          >
+            {provider.name}
           </span>
           <span
             id={`provider-meta-${provider.id}`}
-            className="flex items-center justify-between gap-2 text-xs font-normal leading-4 text-muted-foreground"
+            className="truncate text-xs font-normal leading-4 text-muted-foreground"
           >
-            <span className="truncate">
-              {CATEGORY_LABELS[provider.category]}
-            </span>
-            <span
-              className="shrink-0 tabular-nums"
-              title={`${enabledCount} 个启用模型`}
-            >
-              已启用 {enabledCount}
-            </span>
+            {CATEGORY_LABELS[provider.category]}
           </span>
         </span>
       </Button>
+      <div className="mr-2.5 flex shrink-0 flex-col items-end gap-1.5">
+        <Switch
+          size="sm"
+          checked={provider.enabled}
+          disabled={disabled || dragging}
+          onCheckedChange={onEnabledChange}
+          aria-label={`启用 ${provider.name}`}
+          aria-describedby={`provider-status-${provider.id}`}
+          title={provider.enabled ? "点击停用提供商" : "点击启用提供商"}
+        />
+        <span id={`provider-status-${provider.id}`} className="sr-only">
+          {status}
+        </span>
+        <span
+          id={`provider-count-${provider.id}`}
+          className="text-xs leading-4 text-muted-foreground tabular-nums"
+          title={`${enabledCount} 个启用模型`}
+        >
+          已启用 {enabledCount}
+        </span>
+      </div>
     </Reorder.Item>
   );
 }

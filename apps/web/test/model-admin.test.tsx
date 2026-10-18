@@ -172,10 +172,116 @@ it("keeps saved keys masked and exposes the four model types", async () => {
   for (const name of [/文本/, /语音/, /图片/, /视频生成/])
     expect(screen.getByRole("tab", { name })).toBeInTheDocument();
   expect(state.revealKey).not.toHaveBeenCalled();
+  expect(screen.getByRole("button", { name: "添加提供商" })).toHaveTextContent(
+    "添加提供商",
+  );
   expect(screen.getByPlaceholderText("••••••••••••••••")).toHaveAttribute(
     "type",
     "password",
   );
+});
+it("quickly toggles the selected provider without submitting or clearing unsaved fields", async () => {
+  const user = userEvent.setup();
+  let finish!: (value: typeof provider) => void;
+  state.saveProvider.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  render(<AdminPage />);
+  const toggle = await screen.findByRole("switch", { name: "启用 Agnes AI" });
+  await user.clear(screen.getByLabelText("配置名称"));
+  await user.type(screen.getByLabelText("配置名称"), "未保存的名称");
+  await user.type(screen.getByLabelText(/API Key/), "unsaved-test-key");
+  await user.click(toggle);
+  expect(toggle).toHaveAttribute("aria-disabled", "true");
+  await user.click(toggle);
+  expect(state.saveProvider).toHaveBeenCalledExactlyOnceWith(
+    "token",
+    {
+      name: provider.name,
+      category: provider.category,
+      preset: provider.preset,
+      protocol: provider.protocol,
+      baseUrl: provider.baseUrl,
+      proxy: undefined,
+      enabled: false,
+    },
+    provider.id,
+  );
+  await act(async () => {
+    finish({ ...provider, enabled: false });
+  });
+  await waitFor(() =>
+    expect(toggle).not.toHaveAttribute("aria-disabled", "true"),
+  );
+  expect(toggle).not.toBeChecked();
+  expect(
+    screen.getByRole("checkbox", { name: "启用此提供商" }),
+  ).not.toBeChecked();
+  expect(screen.getByLabelText("配置名称")).toHaveValue("未保存的名称");
+  expect(screen.getByLabelText(/API Key/)).toHaveValue("unsaved-test-key");
+  expect(state.fetch).toHaveBeenCalledOnce();
+  state.saveProvider.mockResolvedValueOnce(provider);
+  toggle.focus();
+  await user.keyboard(" ");
+  await waitFor(() => expect(toggle).toBeChecked());
+  expect(screen.getByRole("checkbox", { name: "启用此提供商" })).toBeChecked();
+  expect(state.saveProvider).toHaveBeenLastCalledWith(
+    "token",
+    expect.objectContaining({ enabled: true }),
+    provider.id,
+  );
+});
+
+it("toggles another provider without selecting it or changing the open draft", async () => {
+  const other = {
+    ...provider,
+    id: "provider-2",
+    name: "Google",
+    preset: "google",
+    enabled: false,
+  };
+  state.fetch.mockResolvedValue({
+    providers: [provider, other],
+    models: [model],
+    presets: [],
+  });
+  state.saveProvider.mockResolvedValue({ ...other, enabled: true });
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  const toggle = await screen.findByRole("switch", { name: "启用 Google" });
+  await user.clear(screen.getByLabelText("配置名称"));
+  await user.type(screen.getByLabelText("配置名称"), "未保存的名称");
+  await user.click(toggle);
+  await waitFor(() => expect(toggle).toBeChecked());
+  expect(screen.getByRole("button", { name: "Agnes AI" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(screen.getByRole("button", { name: "Google" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  expect(screen.getByLabelText("配置名称")).toHaveValue("未保存的名称");
+  expect(state.saveProvider).toHaveBeenCalledExactlyOnceWith(
+    "token",
+    expect.objectContaining({ name: "Google", enabled: true }),
+    other.id,
+  );
+});
+
+it("retains the provider status and reports a failed quick toggle", async () => {
+  state.saveProvider.mockRejectedValueOnce(new Error("启停保存失败"));
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  const toggle = await screen.findByRole("switch", { name: "启用 Agnes AI" });
+  await user.click(toggle);
+  expect(await screen.findByRole("alert")).toHaveTextContent("启停保存失败");
+  expect(toggle).not.toHaveAttribute("aria-disabled", "true");
+  expect(toggle).toBeChecked();
+  expect(screen.getByRole("checkbox", { name: "启用此提供商" })).toBeChecked();
 });
 it("reveals and copies a saved key without changing the key being submitted", async () => {
   const user = userEvent.setup();
