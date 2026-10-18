@@ -17,7 +17,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-it("offers all types, provider groups in server order, an empty type and a persisted automatic option", async () => {
+it("offers all types with ordered provider groups and saves concrete model choices", async () => {
   vi.stubGlobal("PointerEvent", MouseEvent);
   const onSave = vi.fn();
   const fetchModels = vi.fn(async (kind: ModelKind) => ({
@@ -30,18 +30,21 @@ it("offers all types, provider groups in server order, an empty type and a persi
               name: `${kind} Z`,
               provider: "Agnes AI",
               providerId: "agnes",
+              iconUrl: "/providers/agnes.ico",
             },
             {
               id: `${kind}-a`,
               name: `${kind} A`,
               provider: "Agnes AI",
               providerId: "agnes",
+              iconUrl: "/providers/agnes.ico",
             },
             {
               id: `${kind}-g`,
               name: `${kind} G`,
               provider: "Google",
               providerId: "google",
+              iconUrl: "/providers/google.svg",
             },
           ],
   }));
@@ -61,8 +64,9 @@ it("offers all types, provider groups in server order, an empty type and a persi
   expect(screen.getByRole("combobox", { name: "默认语音模型" })).toBeDisabled();
   expect(
     screen.getByRole("combobox", { name: "默认对话模型" }),
-  ).toHaveTextContent("自动（按列表顺序）");
-  expect(screen.getByText("当前自动选择：text Z")).toBeVisible();
+  ).toHaveTextContent("text Z");
+  expect(selector).toHaveTextContent("image G");
+  expect(screen.getByRole("button", { name: "保存偏好" })).toBeEnabled();
   await user.click(selector);
   expect(
     screen.getAllByRole("group").map((group) =>
@@ -70,14 +74,17 @@ it("offers all types, provider groups in server order, an empty type and a persi
         .getAllByRole("option")
         .map((option) => option.textContent),
     ),
-  ).toEqual([["自动（按列表顺序）"], ["image Z", "image A"], ["image G"]]);
-  await user.click(screen.getByRole("option", { name: "自动（按列表顺序）" }));
+  ).toEqual([["image Z", "image A"], ["image G"]]);
+  expect(
+    screen.queryByRole("option", { name: /自动/ }),
+  ).not.toBeInTheDocument();
+  await user.click(screen.getByRole("option", { name: "image A" }));
   await user.click(screen.getByRole("button", { name: "保存偏好" }));
   expect(onSave).toHaveBeenCalledExactlyOnceWith({
-    text: null,
+    text: "text-z",
     audio: null,
-    image: null,
-    video: null,
+    image: "image-a",
+    video: "video-z",
   });
 });
 
@@ -103,10 +110,49 @@ it("does not replace an unavailable saved model or persist a guessed choice afte
   await waitFor(() =>
     expect(
       screen.getByRole("combobox", { name: "默认视频模型" }),
-    ).toBeEnabled(),
+    ).toHaveTextContent("所选模型不可用"),
   );
   expect(
     screen.getByRole("combobox", { name: "默认视频模型" }),
   ).toHaveTextContent("所选模型不可用");
   expect(onSave).not.toHaveBeenCalled();
+});
+
+it("keeps an unavailable saved choice until the user explicitly replaces it", async () => {
+  vi.stubGlobal("PointerEvent", MouseEvent);
+  const onSave = vi.fn();
+  render(
+    <ToastProvider>
+      <ModelPreferencesSection
+        preferences={modelPreferencesSchema.parse({ image: "removed" })}
+        onSave={onSave}
+        fetchModels={async (kind) => ({
+          models:
+            kind === "image"
+              ? [
+                  {
+                    id: "available",
+                    name: "可用图片模型",
+                    provider: "Agnes AI",
+                  },
+                ]
+              : [],
+        })}
+      />
+    </ToastProvider>,
+  );
+  const selector = screen.getByRole("combobox", { name: "默认图片模型" });
+  await waitFor(() => expect(selector).toBeEnabled());
+  expect(selector).toHaveTextContent("所选模型不可用");
+  expect(screen.getByRole("button", { name: "保存偏好" })).toBeDisabled();
+  const user = userEvent.setup();
+  await user.click(selector);
+  await user.click(screen.getByRole("option", { name: "可用图片模型" }));
+  await user.click(screen.getByRole("button", { name: "保存偏好" }));
+  expect(onSave).toHaveBeenCalledExactlyOnceWith({
+    text: null,
+    audio: null,
+    image: "available",
+    video: null,
+  });
 });

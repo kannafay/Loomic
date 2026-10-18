@@ -100,12 +100,15 @@ it("keeps the agent model draft after a failed save and notifies again on retry"
             image: null,
             video: null,
           }}
-          fetchModels={vi.fn().mockResolvedValue({
-            models: [
-              { id: "model-a", name: "模型 A", provider: "测试提供商" },
-              { id: "model-b", name: "模型 B", provider: "测试提供商" },
-            ],
-          })}
+          fetchModels={vi.fn().mockImplementation(async (kind: string) => ({
+            models:
+              kind === "text"
+                ? [
+                    { id: "model-a", name: "模型 A", provider: "测试提供商" },
+                    { id: "model-b", name: "模型 B", provider: "测试提供商" },
+                  ]
+                : [],
+          }))}
           onSave={onSave}
         />
       </ToastProvider>,

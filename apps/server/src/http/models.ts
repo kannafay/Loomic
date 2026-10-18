@@ -13,6 +13,17 @@ import {
   getAvailableVideoModels,
 } from "../generation/providers/registry.js";
 
+const PROVIDER_ICONS: Record<string, string> = {
+  google: "/providers/google.svg",
+  openai: "/providers/openai.svg",
+  anthropic: "/providers/anthropic.svg",
+  agnes: "/providers/agnes.ico",
+  deepseek: "/providers/deepseek.svg",
+  minimax: "/providers/minimax.svg",
+  openrouter: "/providers/openrouter.svg",
+  azure: "/providers/azure.svg",
+};
+
 const OPENAI_MODELS: ModelInfo[] = [
   { id: "openai:gpt-6-astra", name: "GPT-6 Astra", provider: "openai" },
   { id: "openai:gpt-6.1-sol", name: "GPT-6.1 Sol", provider: "openai" },
@@ -95,14 +106,22 @@ export async function listPublicModels(
     const catalog = await service.catalog();
     return catalog.models
       .filter((model) => model.kind === kind)
-      .map((model) => ({
-        id: model.key,
-        name: model.name,
-        providerId: model.providerId,
-        provider:
-          catalog.providers.find((provider) => provider.id === model.providerId)
-            ?.name ?? "未知提供商",
-      }));
+      .map((model) => {
+        const provider = catalog.providers.find(
+          (provider) => provider.id === model.providerId,
+        );
+        const iconUrl =
+          PROVIDER_ICONS[
+            model.adapter === "agnes" ? "agnes" : (provider?.preset ?? "")
+          ];
+        return {
+          id: model.key,
+          name: model.name,
+          providerId: model.providerId,
+          provider: provider?.name ?? "未知提供商",
+          ...(iconUrl ? { iconUrl } : {}),
+        };
+      });
   }
   if (kind === "audio") return [];
   if (kind === "image" || kind === "video") {
@@ -112,6 +131,7 @@ export async function listPublicModels(
       id: model.id,
       name: model.displayName,
       provider: model.provider,
+      ...(model.iconUrl ? { iconUrl: model.iconUrl } : {}),
     }));
   }
   const models: ModelInfo[] = [];
@@ -119,5 +139,10 @@ export async function listPublicModels(
   if (env.googleApiKey || env.googleVertexProject)
     models.push(...GOOGLE_MODELS);
   if (env.agnesApiKey) models.push(...AGNES_MODELS);
-  return models;
+  return models.map((model) => ({
+    ...model,
+    ...(PROVIDER_ICONS[model.provider]
+      ? { iconUrl: PROVIDER_ICONS[model.provider] }
+      : {}),
+  }));
 }

@@ -131,6 +131,8 @@ it("publishes a reordered catalog consistently through chat, image and video end
         response.json().models.map((model: { id: string }) => model.id),
       ).toEqual([1, 2, 0, 3].map((index) => `configured/${kind}-${index}`));
       expect(response.json().models[0].providerId).toBe(uuid(1));
+      expect(response.json().models[0].iconUrl).toBe("/providers/agnes.ico");
+      expect(response.json().models[2].iconUrl).toBe("/providers/google.svg");
     }
     await service.reorderProviders("admin", {
       providerIds: [uuid(3), uuid(2), uuid(1)],
@@ -141,6 +143,7 @@ it("publishes a reordered catalog consistently through chat, image and video end
         response.json().models.map((model: { id: string }) => model.id),
       ).toEqual([3, 0, 1, 2].map((index) => `configured/${kind}-${index}`));
       expect(response.json().models[0].providerId).toBe(uuid(3));
+      expect(response.json().models[0].iconUrl).toBe("/providers/agnes.ico");
       expect(JSON.stringify(response.json())).not.toContain(
         "api_key_ciphertext",
       );

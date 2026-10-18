@@ -7,9 +7,10 @@ import {
   type ModelPreferences,
   modelPreferenceKinds,
 } from "@loomic/shared";
-import { AudioLines, Image, MessageSquare, Video } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { AudioLines, BoxIcon, Image, MessageSquare, Video } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useToast } from "./toast";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 import {
@@ -34,8 +35,24 @@ const icons = {
   image: Image,
   video: Video,
 };
-const automatic = "__automatic__";
 type Catalog = Record<ModelKind, ModelInfo[]>;
+
+function ModelIcon({ model }: { model: ModelInfo }) {
+  return (
+    <Avatar aria-hidden="true" className="size-4 after:border-0">
+      {model.iconUrl && (
+        <AvatarImage
+          src={model.iconUrl}
+          alt=""
+          className="object-contain dark:invert"
+        />
+      )}
+      <AvatarFallback className="bg-transparent">
+        <BoxIcon className="size-3.5" />
+      </AvatarFallback>
+    </Avatar>
+  );
+}
 
 type ModelPreferencesSectionProps = {
   preferences: ModelPreferences;
@@ -86,31 +103,32 @@ export function ModelPreferencesSection({
     };
   }, [fetchModels, revision]);
 
+  const selection = { ...draft };
+  for (const kind of modelPreferenceKinds) {
+    selection[kind] ??= catalog[kind][0]?.id ?? null;
+  }
   const hasChanges = modelPreferenceKinds.some(
-    (kind) => draft[kind] !== preferences[kind],
+    (kind) => selection[kind] !== preferences[kind],
   );
-  const handleSubmit = useCallback(
-    async (event: React.FormEvent) => {
-      event.preventDefault();
-      if (!hasChanges || saving || loading || loadError) return;
-      setSaving(true);
-      try {
-        await onSave(draft);
-        success("模型偏好已更新。");
-      } catch {
-        error("模型偏好保存失败，请重试。");
-      } finally {
-        setSaving(false);
-      }
-    },
-    [hasChanges, saving, loading, loadError, onSave, draft, success, error],
-  );
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!hasChanges || saving || loading || loadError) return;
+    setSaving(true);
+    try {
+      await onSave(selection);
+      success("模型偏好已更新。");
+    } catch {
+      error("模型偏好保存失败，请重试。");
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <section>
       <h2 className="mb-1 text-lg font-semibold">模型偏好</h2>
       <p className="mb-6 text-sm text-muted-foreground">
-        设置你的默认模型。未指定时，按列表顺序自动选择第一个可用模型。
+        选择各类任务的默认模型，保存后优先使用你指定的模型。
       </p>
       {loadError && (
         <div
@@ -131,15 +149,13 @@ export function ModelPreferencesSection({
       <form onSubmit={handleSubmit} className="space-y-6">
         {modelPreferenceKinds.map((kind) => {
           const models = catalog[kind];
-          const selected = draft[kind];
+          const selected = selection[kind];
           const current = models.find((model) => model.id === selected);
           const unavailable = !!selected && !current && !loading && !loadError;
           const Icon = icons[kind];
           const valueLabel = selected
             ? (current?.name ?? "所选模型不可用")
-            : models.length
-              ? "自动（按列表顺序）"
-              : "暂无可用模型";
+            : "暂无可用模型";
           return (
             <div key={kind} className="space-y-2">
               <Label
@@ -153,27 +169,19 @@ export function ModelPreferencesSection({
                 {labels[kind]}
               </Label>
               <Select
-                value={selected ?? automatic}
+                value={selected}
                 onValueChange={(value) => {
                   if (value)
                     setDraft((previous) => ({
                       ...previous,
-                      [kind]: value === automatic ? null : value,
+                      [kind]: value,
                     }));
                 }}
-                disabled={
-                  loading ||
-                  saving ||
-                  loadError ||
-                  (!models.length && !selected)
-                }
-                items={[
-                  { value: automatic, label: "自动（按列表顺序）" },
-                  ...models.map((model) => ({
-                    value: model.id,
-                    label: model.name,
-                  })),
-                ]}
+                disabled={loading || saving || loadError || !models.length}
+                items={models.map((model) => ({
+                  value: model.id,
+                  label: model.name,
+                }))}
               >
                 <SelectTrigger
                   id={`default-${kind}-model`}
@@ -181,11 +189,18 @@ export function ModelPreferencesSection({
                   aria-describedby={`default-${kind}-help`}
                 >
                   <SelectValue>
-                    {loading
-                      ? "正在加载模型…"
-                      : loadError
-                        ? "模型列表加载失败"
-                        : valueLabel}
+                    {loading ? (
+                      "正在加载模型…"
+                    ) : loadError ? (
+                      "模型列表加载失败"
+                    ) : current ? (
+                      <>
+                        <ModelIcon model={current} />
+                        <span className="truncate">{current.name}</span>
+                      </>
+                    ) : (
+                      valueLabel
+                    )}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent
@@ -193,17 +208,13 @@ export function ModelPreferencesSection({
                   alignItemWithTrigger={false}
                   className="max-h-80"
                 >
-                  <SelectGroup>
-                    <SelectItem value={automatic}>
-                      自动（按列表顺序）
-                    </SelectItem>
-                  </SelectGroup>
                   {groupModelsByProvider(models).map((group) => (
                     <SelectGroup key={group.key}>
                       <SelectLabel>{group.name}</SelectLabel>
                       {group.models.map((model) => (
                         <SelectItem key={model.id} value={model.id}>
-                          {model.name}
+                          <ModelIcon model={model} />
+                          <span className="truncate">{model.name}</span>
                         </SelectItem>
                       ))}
                     </SelectGroup>
@@ -220,11 +231,9 @@ export function ModelPreferencesSection({
                     ? "重新加载后即可选择模型。"
                     : unavailable
                       ? "所选模型已停用或不存在，使用前请重新选择。"
-                      : !selected && models[0]
-                        ? `当前自动选择：${models[0].name}`
-                        : !models.length
-                          ? "该类型暂无可用模型。"
-                          : "优先使用此模型，已有画布框保留自己的选择。"}
+                      : !models.length
+                        ? "该类型暂无可用模型。"
+                        : "优先使用此模型，已有画布框保留自己的选择。"}
               </p>
             </div>
           );
