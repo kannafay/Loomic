@@ -221,7 +221,7 @@ export function AppSidebar() {
                 tooltip="Loomic 首页"
                 className={cn(
                   MENU_BUTTON_CLASS,
-                  "text-sidebar-foreground [&_svg]:size-6",
+                  "text-sidebar-foreground hover:bg-transparent hover:text-sidebar-foreground [&_svg]:size-6",
                 )}
               >
                 <span
