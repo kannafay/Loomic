@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-context";
+import { usePageDataState } from "@/lib/page-data-context";
 import {
   ApiAuthError,
   createSkill,
@@ -92,8 +93,11 @@ export default function SkillsPage() {
   const [activeTab, setActiveTab] = useState<SkillsTab>("installed");
 
   // Data state
-  const [skills, setSkills] = useState<SkillListItem[]>([]);
-  const [pageLoading, setPageLoading] = useState(true);
+  const [skills, setSkills, hasSkills] = usePageDataState<SkillListItem[]>(
+    "skills",
+    [],
+  );
+  const [pageLoading, setPageLoading] = useState(!hasSkills);
 
   // Filter state (installed tab only)
   const [searchQuery, setSearchQuery] = useState("");
@@ -149,7 +153,7 @@ export default function SkillsPage() {
       if (err instanceof ApiAuthError) return;
       console.error("Failed to fetch skills:", err);
     }
-  }, [getToken]);
+  }, [getToken, setSkills]);
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -157,11 +161,11 @@ export default function SkillsPage() {
     hasInitialized.current = true;
 
     (async () => {
-      setPageLoading(true);
+      setPageLoading(!hasSkills);
       await loadSkills();
       setPageLoading(false);
     })();
-  }, [session?.access_token, loadSkills]);
+  }, [session?.access_token, loadSkills, hasSkills]);
 
   // ---------------------------------------------------------------------------
   // Filtered skills
@@ -232,7 +236,7 @@ export default function SkillsPage() {
         );
       }
     },
-    [getToken],
+    [getToken, setSkills],
   );
 
   const handleCardClick = useCallback(
@@ -443,7 +447,7 @@ export default function SkillsPage() {
 
           {/* Add Custom Skill Banner */}
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
             className="mb-4 flex items-center gap-3 rounded-xl border border-border bg-card p-3 sm:mb-6 sm:gap-5 sm:p-5"
@@ -488,7 +492,7 @@ export default function SkillsPage() {
           {filteredSkills.length === 0 ? (
             <motion.div
               variants={emptyVariants}
-              initial="hidden"
+              initial={false}
               animate="visible"
               className="flex flex-col items-center justify-center py-20 text-center"
             >
@@ -507,11 +511,11 @@ export default function SkillsPage() {
           ) : (
             <motion.div
               variants={containerVariants}
-              initial="hidden"
+              initial={false}
               animate="visible"
               className="grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2"
             >
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence initial={false} mode="popLayout">
                 {filteredSkills.map((skill) => (
                   <SkillCard
                     key={skill.id}

@@ -8,6 +8,7 @@ import { ProfileSection } from "@/components/profile-section";
 import { SettingsSkeleton } from "@/components/skeletons/settings-skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
+import { usePageDataState } from "@/lib/page-data-context";
 import {
   ApiAuthError,
   fetchModels,
@@ -32,12 +33,15 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>(
     tabs.some((t) => t.id === initialTab) ? initialTab : "profile",
   );
-  const [profile, setProfile] = useState<{
+  const [profile, setProfile, hasProfile] = usePageDataState<{
     displayName: string;
     email: string;
-  } | null>(null);
-  const [defaultModel, setDefaultModel] = useState<string>("gpt-5.4-mini");
-  const [pageLoading, setPageLoading] = useState(true);
+  } | null>("settings:profile", null);
+  const [defaultModel, setDefaultModel] = usePageDataState(
+    "settings:default-model",
+    "gpt-5.4-mini",
+  );
+  const [pageLoading, setPageLoading] = useState(!hasProfile);
 
   // Ref pattern: prevent token refresh from cascading through dependency arrays
   const accessTokenRef = useRef(session?.access_token);
@@ -49,7 +53,7 @@ export default function SettingsPage() {
   const loadData = useCallback(async () => {
     const token = getToken();
     if (!token) return;
-    setPageLoading(true);
+    setPageLoading(!hasProfile);
 
     try {
       const [viewer, settings] = await Promise.all([
@@ -70,7 +74,7 @@ export default function SettingsPage() {
     } finally {
       setPageLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, hasProfile, setProfile, setDefaultModel]);
 
   useEffect(() => {
     if (hasInitialized.current) return;
@@ -89,7 +93,7 @@ export default function SettingsPage() {
         email: result.profile.email,
       });
     },
-    [getToken],
+    [getToken, setProfile],
   );
 
   const handleAgentSave = useCallback(
@@ -101,7 +105,7 @@ export default function SettingsPage() {
       });
       setDefaultModel(result.settings.defaultModel);
     },
-    [getToken],
+    [getToken, setDefaultModel],
   );
 
   const stableFetchModels = useCallback(() => fetchModels(), []);

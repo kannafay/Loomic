@@ -10,6 +10,7 @@ import { ProjectsSkeleton } from "@/components/skeletons/projects-skeleton";
 import { Button } from "@/components/ui/button";
 import { useCreateProject } from "@/hooks/use-create-project";
 import { useAuth } from "@/lib/auth-context";
+import { usePageDataState } from "@/lib/page-data-context";
 import { ApiAuthError, fetchProjects, fetchViewer } from "@/lib/server-api";
 
 export default function ProjectsPage() {
@@ -18,9 +19,11 @@ export default function ProjectsPage() {
   const { create: createNewProject, creating } = useCreateProject();
 
   const [workspace, setWorkspace] = useState<WorkspaceSummary | null>(null);
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [projects, setProjects, hasProjects] = usePageDataState<
+    ProjectSummary[]
+  >("projects", []);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [pageLoading, setPageLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(!hasProjects);
   const [highlightId, setHighlightId] = useState<string | null>(null);
 
   // Ref pattern: prevent token refresh from cascading through dependency arrays
@@ -37,7 +40,7 @@ export default function ProjectsPage() {
   const loadData = useCallback(async () => {
     const token = getToken();
     if (!token) return;
-    setPageLoading(true);
+    setPageLoading(!hasProjects);
     setLoadError(null);
 
     try {
@@ -57,17 +60,21 @@ export default function ProjectsPage() {
     } finally {
       setPageLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, hasProjects, setProjects]);
 
   useEffect(() => {
     if (hasInitialized.current) return;
+    if (!session?.access_token) return;
     hasInitialized.current = true;
     loadData();
-  }, [loadData]);
+  }, [loadData, session?.access_token]);
 
-  const handleDeleted = useCallback((projectId: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== projectId));
-  }, []);
+  const handleDeleted = useCallback(
+    (projectId: string) => {
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    },
+    [setProjects],
+  );
 
   if (creating) {
     return <LoadingScreen />;

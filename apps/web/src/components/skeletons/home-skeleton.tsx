@@ -1,20 +1,26 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { DelayedSkeleton } from "./delayed-skeleton";
 
 /** Skeleton placeholder for the recent projects section on the home page. */
 export function HomeProjectsSkeleton() {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-      {/* New project card placeholder */}
-      <div className="aspect-[286/208] rounded-xl bg-card p-2 shadow-card sm:rounded-2xl sm:p-3">
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl bg-muted sm:gap-3">
-          <Skeleton className="h-5 w-5 rounded-full sm:h-6 sm:w-6" />
-          <Skeleton className="h-3 w-12 sm:w-14" />
+    <DelayedSkeleton>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        {/* New project card placeholder */}
+        <div className="aspect-[286/208] rounded-xl bg-card p-2 shadow-card sm:rounded-2xl sm:p-3">
+          <div className="flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl bg-muted sm:gap-3">
+            <Skeleton className="h-5 w-5 rounded-full sm:h-6 sm:w-6" />
+            <Skeleton className="h-3 w-12 sm:w-14" />
+          </div>
         </div>
-      </div>
 
-      {/* Project card skeletons */}
-      {["placeholder-1", "placeholder-2", "placeholder-3", "placeholder-4"].map(
-        (placeholderId) => (
+        {/* Project card skeletons */}
+        {[
+          "placeholder-1",
+          "placeholder-2",
+          "placeholder-3",
+          "placeholder-4",
+        ].map((placeholderId) => (
           <div
             key={placeholderId}
             className="aspect-[286/208] rounded-lg bg-card p-2 shadow-card sm:p-3"
@@ -25,8 +31,8 @@ export function HomeProjectsSkeleton() {
               <Skeleton className="h-2 w-1/2 sm:h-2.5" />
             </div>
           </div>
-        ),
-      )}
-    </div>
+        ))}
+      </div>
+    </DelayedSkeleton>
   );
 }

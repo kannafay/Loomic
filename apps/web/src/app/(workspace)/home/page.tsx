@@ -32,6 +32,7 @@ import {
   type HomeExampleSelection,
   homeExampleSeedCategories,
 } from "@/lib/home-example-seeds";
+import { usePageDataState } from "@/lib/page-data-context";
 import { ApiAuthError, fetchProjects } from "@/lib/server-api";
 import { formatDate } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
@@ -78,13 +79,18 @@ export default function HomePage() {
   const router = useRouter();
 
   const { create: createNewProject, creating } = useCreateProject();
-  const handleDeleted = useCallback((id: string) => {
-    setProjects((prev) => prev.filter((p) => p.id !== id));
-  }, []);
+  const [projects, setProjects, hasProjects] = usePageDataState<
+    ProjectSummary[]
+  >("projects", []);
+  const handleDeleted = useCallback(
+    (id: string) => {
+      setProjects((prev) => prev.filter((p) => p.id !== id));
+    },
+    [setProjects],
+  );
   const { pendingId, deleting, requestDelete, confirmDelete, cancelDelete } =
     useDeleteProject({ onDeleted: handleDeleted });
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsLoading, setProjectsLoading] = useState(!hasProjects);
   const [homeDiscoveryCategories, setHomeDiscoveryCategories] = useState(
     homeDiscoverySeedCategories,
   );
@@ -124,10 +130,10 @@ export default function HomePage() {
   const loadProjects = useCallback(async () => {
     const token = getToken();
     if (!token) return;
-    setProjectsLoading(true);
+    setProjectsLoading(!hasProjects);
     try {
       const data = await fetchProjects(token);
-      setProjects(data.projects.slice(0, RECENT_PROJECTS_LIMIT));
+      setProjects(data.projects);
     } catch (err) {
       if (err instanceof ApiAuthError) {
         await signOutRef.current();
@@ -139,13 +145,14 @@ export default function HomePage() {
     } finally {
       setProjectsLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, hasProjects, setProjects]);
 
   useEffect(() => {
     if (hasInitialized.current) return;
+    if (!session?.access_token) return;
     hasInitialized.current = true;
     loadProjects();
-  }, [loadProjects]);
+  }, [loadProjects, session?.access_token]);
 
   useEffect(() => {
     if (!session) {
@@ -226,7 +233,7 @@ export default function HomePage() {
     <div className="flex h-full flex-col items-center overflow-auto px-4 py-8 sm:px-6 md:py-12 lg:py-16">
       {/* Hero */}
       <motion.div
-        initial="hidden"
+        initial={false}
         animate="visible"
         className="flex w-full max-w-3xl flex-col items-center text-center"
       >
@@ -285,7 +292,7 @@ export default function HomePage() {
       {/* Recent projects */}
       <div className="mt-8 w-full sm:mt-10 md:mt-14">
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5, duration: 0.4, ease: "easeOut" }}
           className="mb-3 flex items-center justify-between md:mb-4"
@@ -320,7 +327,7 @@ export default function HomePage() {
         ) : (
           <motion.div
             variants={cardStagger}
-            initial="hidden"
+            initial={false}
             animate="visible"
             className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
           >
@@ -356,7 +363,7 @@ export default function HomePage() {
             </motion.button>
 
             {/* Project cards */}
-            {projects.map((project) => (
+            {projects.slice(0, RECENT_PROJECTS_LIMIT).map((project) => (
               <motion.div
                 key={project.id}
                 variants={cardItem}

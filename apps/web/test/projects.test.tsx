@@ -22,6 +22,7 @@ vi.mock("../src/lib/auth-context", () => ({
 
 import ProjectsPage from "../src/app/(workspace)/projects/page";
 import { ToastProvider } from "../src/components/toast";
+import { PageDataProvider } from "../src/lib/page-data-context";
 
 const mockFetch = vi.fn<typeof fetch>();
 const workspace = {
@@ -107,12 +108,18 @@ function mockRequests(
   });
 }
 
-function renderPage() {
-  return render(
-    <ToastProvider>
-      <ProjectsPage />
-    </ToastProvider>,
+function pageContent(showPage = true) {
+  return (
+    <PageDataProvider>
+      <ToastProvider>
+        {showPage ? <ProjectsPage /> : <p>其他页面</p>}
+      </ToastProvider>
+    </PageDataProvider>
   );
+}
+
+function renderPage() {
+  return render(pageContent());
 }
 
 function mockPreviewTab() {
@@ -160,6 +167,37 @@ describe("Projects page", () => {
       await screen.findByRole("button", { name: "新建项目" }),
     ).toBeInTheDocument();
     expect(screen.queryAllByRole("link")).toHaveLength(0);
+  });
+
+  it("shows cached projects immediately on return while refreshing in the background", async () => {
+    mockRequests();
+    const view = renderPage();
+    await screen.findByRole("link", { name: /Brand System/ });
+    view.rerender(pageContent(false));
+
+    const pending: { resolve?: (response: Response) => void } = {};
+    mockFetch.mockImplementation(async (input) => {
+      if (String(input).endsWith("/api/viewer"))
+        return jsonResponse(viewerResponse);
+      return new Promise<Response>((resolve) => {
+        pending.resolve = resolve;
+      });
+    });
+    view.rerender(pageContent());
+    expect(screen.getByRole("link", { name: /Brand System/ })).toBeVisible();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    pending.resolve?.(
+      jsonResponse({
+        projects: projectsResponse.projects.map((project) => ({
+          ...project,
+          name: `Updated ${project.name}`,
+        })),
+      }),
+    );
+    expect(
+      await screen.findByRole("link", { name: /Updated Brand System/ }),
+    ).toBeVisible();
   });
 
   it("creates an unnamed project and navigates the synchronously opened preview tab", async () => {
