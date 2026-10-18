@@ -17,15 +17,14 @@ export default function WorkspaceLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  useEffect(() => {
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof document === "undefined") return true;
     const savedState = document.cookie
       .split("; ")
       .find((cookie) => cookie.startsWith("sidebar_state="))
       ?.split("=")[1];
-    if (savedState === "false") setSidebarOpen(false);
-  }, []);
+    return savedState !== "false";
+  });
 
   useEffect(() => {
     if (!loading && !user) {

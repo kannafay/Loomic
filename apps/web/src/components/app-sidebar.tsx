@@ -4,6 +4,7 @@ import {
   FolderIcon,
   HouseIcon,
   LayoutDashboardIcon,
+  LoaderCircleIcon,
   LogOutIcon,
   type LucideIcon,
   PanelLeftCloseIcon,
@@ -12,9 +13,9 @@ import {
   Settings2Icon,
   SwatchBookIcon,
 } from "lucide-react";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import { LoomicLogo } from "@/components/icons/loomic-logo";
 import { useToast } from "@/components/toast";
@@ -70,7 +71,51 @@ const ADMIN_ITEM: NavItem = {
 };
 
 const MENU_BUTTON_CLASS =
-  "h-10 gap-3 rounded-lg px-3 text-muted-foreground group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-10! data-active:text-sidebar-foreground [&_svg]:size-5";
+  "h-10 gap-3 rounded-lg px-3 text-muted-foreground data-active:text-sidebar-foreground has-[[data-navigation-pending]]:bg-sidebar-accent [&_svg]:size-5";
+
+function SidebarLabel({ children }: { children: ReactNode }) {
+  return (
+    <span
+      data-slot="sidebar-label"
+      className="shrink-0 whitespace-nowrap transition-opacity duration-150 group-data-[collapsible=icon]:opacity-0 motion-reduce:transition-none"
+    >
+      {children}
+    </span>
+  );
+}
+
+function NavigationContent({
+  item,
+  mobile = false,
+}: { item: NavItem; mobile?: boolean }) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <>
+      <span
+        aria-hidden="true"
+        className="relative flex size-6 shrink-0 items-center justify-center"
+      >
+        <item.icon className={cn("size-5", pending && "invisible")} />
+        {pending && (
+          <LoaderCircleIcon className="absolute size-5 animate-spin motion-reduce:animate-none" />
+        )}
+      </span>
+      {mobile ? (
+        <span className="max-w-full truncate text-[10px] font-medium leading-none">
+          {item.label}
+        </span>
+      ) : (
+        <SidebarLabel>{item.label}</SidebarLabel>
+      )}
+      {pending && (
+        <output data-navigation-pending="" className="sr-only">
+          正在打开{item.label}
+        </output>
+      )}
+    </>
+  );
+}
 
 function NavigationItem({ item }: { item: NavItem }) {
   const pathname = usePathname();
@@ -79,15 +124,14 @@ function NavigationItem({ item }: { item: NavItem }) {
   return (
     <SidebarMenuItem>
       <SidebarMenuButton
-        render={<Link href={item.href} />}
+        render={<Link href={item.href} prefetch />}
         isActive={active}
         aria-label={item.label}
         aria-current={active ? "page" : undefined}
         tooltip={item.label}
         className={MENU_BUTTON_CLASS}
       >
-        <item.icon aria-hidden="true" />
-        <span>{item.label}</span>
+        <NavigationContent item={item} />
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
@@ -109,6 +153,7 @@ function MobileBottomBar({ items }: { items: NavItem[] }) {
           <Link
             key={item.href}
             href={item.href}
+            prefetch
             aria-label={item.label}
             aria-current={active ? "page" : undefined}
             className={cn(
@@ -118,10 +163,7 @@ function MobileBottomBar({ items }: { items: NavItem[] }) {
                 : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
             )}
           >
-            <item.icon aria-hidden="true" className="size-5 shrink-0" />
-            <span className="max-w-full truncate text-[10px] font-medium leading-none">
-              {item.label}
-            </span>
+            <NavigationContent item={item} mobile />
           </Link>
         );
       })}
@@ -183,10 +225,17 @@ export function AppSidebar() {
                   "text-sidebar-foreground [&_svg]:size-6",
                 )}
               >
-                <LoomicLogo />
-                <span className="text-lg font-semibold tracking-tight">
-                  Loomic
+                <span
+                  aria-hidden="true"
+                  className="flex size-6 shrink-0 items-center justify-center"
+                >
+                  <LoomicLogo />
                 </span>
+                <SidebarLabel>
+                  <span className="text-lg font-semibold tracking-tight">
+                    Loomic
+                  </span>
+                </SidebarLabel>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
@@ -221,8 +270,13 @@ export function AppSidebar() {
                     />
                   }
                 >
-                  <LogOutIcon aria-hidden="true" />
-                  <span>退出登录</span>
+                  <span
+                    aria-hidden="true"
+                    className="flex size-6 shrink-0 items-center justify-center"
+                  >
+                    <LogOutIcon />
+                  </span>
+                  <SidebarLabel>退出登录</SidebarLabel>
                 </DialogTrigger>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -239,8 +293,13 @@ export function AppSidebar() {
                 tooltip={toggleLabel}
                 className={MENU_BUTTON_CLASS}
               >
-                <ToggleIcon aria-hidden="true" />
-                <span>{toggleLabel}</span>
+                <span
+                  aria-hidden="true"
+                  className="flex size-6 shrink-0 items-center justify-center"
+                >
+                  <ToggleIcon />
+                </span>
+                <SidebarLabel>{toggleLabel}</SidebarLabel>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

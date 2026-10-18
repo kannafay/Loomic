@@ -16,7 +16,7 @@ const render = (ui: ReactNode) => renderUI(ui, { wrapper: ToastProvider });
 
 const { auth, navigation, signOut, replace } = vi.hoisted(() => ({
   auth: { role: "admin" as "admin" | "user" },
-  navigation: { pathname: "/home" },
+  navigation: { pathname: "/home", pending: false },
   signOut: vi.fn(),
   replace: vi.fn(),
 }));
@@ -25,6 +25,14 @@ vi.mock("next/navigation", () => ({
   usePathname: () => navigation.pathname,
   useRouter: () => ({ replace }),
 }));
+
+vi.mock("next/link", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next/link")>();
+  return {
+    ...actual,
+    useLinkStatus: () => ({ pending: navigation.pending }),
+  };
+});
 
 vi.mock("../src/lib/auth-context", () => ({
   useAuth: () => ({
@@ -47,6 +55,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   auth.role = "admin";
   navigation.pathname = "/home";
+  navigation.pending = false;
   signOut.mockResolvedValue(undefined);
   vi.stubGlobal("PointerEvent", MouseEvent);
   vi.stubGlobal(
@@ -75,6 +84,48 @@ afterEach(() => {
 });
 
 describe("workspace sidebar", () => {
+  it("shows pending navigation feedback while keeping the current page usable, then clears it on arrival", () => {
+    const workspace = renderWorkspace();
+    const menu = screen.getByRole("navigation", { name: "工作区导航" });
+    const projects = within(menu).getByRole("link", { name: "项目" });
+    expect(within(projects).queryByRole("status")).not.toBeInTheDocument();
+
+    navigation.pending = true;
+    workspace.rerender(
+      <WorkspaceLayout>
+        <h1>工作区内容</h1>
+      </WorkspaceLayout>,
+    );
+    expect(within(projects).getByRole("status")).toHaveTextContent(
+      "正在打开项目",
+    );
+    expect(projects).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("heading", { name: "工作区内容" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "折叠侧边栏" })).toBeEnabled();
+
+    navigation.pending = false;
+    navigation.pathname = "/projects";
+    workspace.rerender(
+      <WorkspaceLayout>
+        <h1>项目内容</h1>
+      </WorkspaceLayout>,
+    );
+    expect(within(projects).queryByRole("status")).not.toBeInTheDocument();
+    expect(projects).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("heading", { name: "项目内容" })).toBeVisible();
+  });
+
+  it("also provides pending feedback in the mobile navigation", () => {
+    navigation.pending = true;
+    renderWorkspace();
+    const mobile = screen.getByRole("navigation", { name: "移动导航" });
+    const projects = within(mobile).getByRole("link", { name: "项目" });
+    expect(within(projects).getByRole("status")).toHaveTextContent(
+      "正在打开项目",
+    );
+    expect(projects).toHaveAttribute("href", "/projects");
+  });
+
   it("switches page content immediately while keeping the sidebar and page frame mounted", async () => {
     const user = userEvent.setup();
     const workspace = renderWorkspace();
