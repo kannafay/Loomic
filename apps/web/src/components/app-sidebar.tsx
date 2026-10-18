@@ -9,8 +9,8 @@ import {
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   PuzzleIcon,
-  Settings2Icon,
   SwatchBookIcon,
+  UserRoundIcon,
 } from "lucide-react";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -59,8 +59,8 @@ const MAIN_ITEMS: NavItem[] = [
 
 const SETTINGS_ITEM: NavItem = {
   href: "/settings",
-  label: "设置",
-  icon: Settings2Icon,
+  label: "个人中心",
+  icon: UserRoundIcon,
 };
 
 const ADMIN_ITEM: NavItem = {

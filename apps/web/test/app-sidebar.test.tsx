@@ -238,7 +238,7 @@ describe("workspace sidebar", () => {
       within(accountNavigation).getByRole("link", { name: "管理后台" }),
     ).toHaveAttribute("aria-current", "page");
     expect(
-      within(accountNavigation).getByRole("link", { name: "设置" }),
+      within(accountNavigation).getByRole("link", { name: "个人中心" }),
     ).not.toHaveAttribute("aria-current");
     expect(
       within(screen.getByRole("navigation", { name: "工作区导航" })).getByRole(

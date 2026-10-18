@@ -1,12 +1,14 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { DelayedSkeleton } from "./delayed-skeleton";
 
-/** Skeleton placeholder matching the Settings page layout. */
+/** Skeleton placeholder matching the personal center layout. */
 export function SettingsSkeleton() {
   return (
     <div className="px-4 py-6 sm:px-6 md:p-8">
       {/* Title */}
-      <h1 className="mb-4 text-base font-semibold sm:mb-6 sm:text-lg">设置</h1>
+      <h1 className="mb-4 text-base font-semibold sm:mb-6 sm:text-lg">
+        个人中心
+      </h1>
 
       <DelayedSkeleton>
         {/* Tab bar */}

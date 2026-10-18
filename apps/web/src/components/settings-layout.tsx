@@ -43,11 +43,11 @@ export function SettingsLayout({ children }: SettingsLayoutProps) {
         </Button>
 
         <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
-          设置
+          个人中心
         </div>
 
         <TabsList
-          aria-label="设置栏目"
+          aria-label="个人中心栏目"
           variant="line"
           className="w-full items-stretch gap-0.5"
         >

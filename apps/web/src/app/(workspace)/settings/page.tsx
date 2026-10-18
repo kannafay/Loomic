@@ -118,14 +118,16 @@ export default function SettingsPage() {
 
   return (
     <div className="px-4 py-6 sm:px-6 md:p-8">
-      <h1 className="mb-4 text-base font-semibold sm:mb-6 sm:text-lg">设置</h1>
+      <h1 className="mb-4 text-base font-semibold sm:mb-6 sm:text-lg">
+        个人中心
+      </h1>
 
       <Tabs
         value={activeTab}
         onValueChange={(value) => setActiveTab(value as SettingsTab)}
       >
         <div className="mb-6 overflow-x-auto sm:mb-8">
-          <TabsList aria-label="设置栏目" className="h-11 sm:h-8">
+          <TabsList aria-label="个人中心栏目" className="h-11 sm:h-8">
             {tabs.map((tab) => (
               <TabsTrigger key={tab.id} value={tab.id} className="px-4 sm:px-3">
                 {tab.label}
