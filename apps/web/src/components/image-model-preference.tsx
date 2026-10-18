@@ -129,26 +129,16 @@ function ModelOption({
           <BoxIcon className="size-3.5" />
         </AvatarFallback>
       </Avatar>
-      <span className="flex min-w-0 flex-1 flex-col gap-1">
-        <span
-          className="truncate text-[13px] font-medium leading-4"
-          title={model.displayName}
-        >
-          {model.displayName}
-        </span>
-        <span
-          id={`${id}-description`}
-          className="truncate text-xs font-normal leading-4 text-muted-foreground"
-          title={model.description}
-        >
-          {model.description || "由管理员配置的生成模型"}
-        </span>
+      <span
+        className="min-w-0 flex-1 truncate text-[13px] font-medium leading-5"
+        title={model.displayName}
+      >
+        {model.displayName}
       </span>
       {manual && (
         <Checkbox
           id={id}
           aria-label={model.displayName}
-          aria-describedby={`${id}-description`}
           checked={selected}
           onCheckedChange={onToggle}
         />
@@ -158,12 +148,12 @@ function ModelOption({
   return manual ? (
     <Label
       htmlFor={id}
-      className={`flex cursor-pointer gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-muted has-[:focus-visible]:bg-muted ${selected ? "bg-muted" : ""}`}
+      className={`flex min-h-10 cursor-pointer items-center gap-3 rounded-md px-2 py-2 transition-colors hover:bg-muted has-[:focus-visible]:bg-muted ${selected ? "bg-muted" : ""}`}
     >
       {content}
     </Label>
   ) : (
-    <div className="flex items-center gap-3 px-2 py-2.5">{content}</div>
+    <div className="flex min-h-10 items-center gap-3 px-2 py-2">{content}</div>
   );
 }
 
