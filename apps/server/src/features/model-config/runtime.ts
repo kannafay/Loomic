@@ -1,15 +1,21 @@
 import { ChatAnthropic } from "@langchain/anthropic";
 import { ChatOpenAI } from "@langchain/openai";
-import type { ConfiguredModel } from "@loomic/shared";
+import type { ConfiguredModel, ModelProtocol } from "@loomic/shared";
 import { LoomicGoogleChatModel } from "../../agent/google-chat-model.js";
 import {
   providerFetch,
   withProviderProxy,
 } from "../../config/network-proxy.js";
 import { AgnesImageProvider } from "../../generation/providers/agnes-image.js";
-import { AgnesVideoProvider } from "../../generation/providers/agnes-video.js";
+import {
+  AGNES_VIDEO_MODELS,
+  AgnesVideoProvider,
+} from "../../generation/providers/agnes-video.js";
 import { GoogleImageProvider } from "../../generation/providers/google-image.js";
-import { GoogleVideoProvider } from "../../generation/providers/google-video.js";
+import {
+  GOOGLE_VIDEO_MODELS,
+  GoogleVideoProvider,
+} from "../../generation/providers/google-video.js";
 import { OpenAIImageProvider } from "../../generation/providers/openai-image.js";
 import {
   clearProviders,
@@ -77,7 +83,21 @@ export function configuredChatModel(
   });
 }
 
-export function videoMetadata(model: ConfiguredModel): VideoModelInfo {
+export function videoMetadata(
+  model: ConfiguredModel,
+  providerProtocol?: ModelProtocol,
+): VideoModelInfo {
+  const native =
+    model.adapter === "agnes"
+      ? AGNES_VIDEO_MODELS.find(
+          (entry) => entry.id === `agnes/${model.apiModel}`,
+        )
+      : (model.protocol ?? providerProtocol) === "gemini" ||
+          model.adapter === "veo"
+        ? GOOGLE_VIDEO_MODELS.find(
+            (entry) => entry.id === `google-official/${model.apiModel}`,
+          )
+        : undefined;
   const options = model.options;
   const caps = options.capabilities as
     | Partial<VideoModelInfo["capabilities"]>
@@ -95,12 +115,14 @@ export function videoMetadata(model: ConfiguredModel): VideoModelInfo {
       imageToVideo: false,
       videoToVideo: false,
       audio: false,
+      ...native?.capabilities,
       ...caps,
     },
     limits: {
       maxDuration: 8,
       maxResolution: "720p",
       maxInputImages: 0,
+      ...native?.limits,
       ...limits,
     },
   };
@@ -179,7 +201,7 @@ export async function refreshConfiguredProviders(
     }
     if (model.kind === "video") {
       const info = {
-        ...videoMetadata(model),
+        ...videoMetadata(model, protocol),
         providerId: provider.id,
         providerName: provider.name,
         ...(iconUrl ? { iconUrl } : {}),

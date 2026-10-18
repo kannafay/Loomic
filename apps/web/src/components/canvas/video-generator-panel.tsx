@@ -54,6 +54,7 @@ import {
   fetchVideoModels,
   fetchVideoSources,
 } from "../../lib/server-api";
+import { VideoDurationControl } from "./video-duration-control";
 import {
   type VideoFrame,
   VideoGenerationInputs,
@@ -74,6 +75,16 @@ type VideoGeneratorPanelProps = {
 const ASPECT_RATIOS = ["16:9", "9:16"] as const;
 const DURATIONS = [4, 5, 6, 8] as const;
 const VIDEO_RESOLUTIONS = ["720p", "1080p", "4k"] as const;
+
+function supportedDurations(model?: VideoModelInfo): readonly number[] {
+  const maximum = model?.limits?.maxDuration ?? 8;
+  return [...new Set(model?.limits?.allowedDurations ?? DURATIONS)]
+    .filter(
+      (duration) =>
+        Number.isInteger(duration) && duration > 0 && duration <= maximum,
+    )
+    .sort((a, b) => a - b);
+}
 
 function supportedResolutions(
   model?: VideoModelInfo,
@@ -247,12 +258,16 @@ export function VideoGeneratorPanel({
   const videoUrl =
     currentElement?.type === "embeddable" ? currentElement.link : null;
   const isAgnes = currentModel?.provider === "agnes";
-  const isVeo = currentModel?.id.includes("/veo-") ?? false;
+  const isVeo =
+    currentModel?.provider === "google" ||
+    (currentModel?.id.includes("/veo-") ?? false);
   const aspectRatioOptions = isAgnes
     ? ["16:9", "9:16", "1:1", "4:3", "3:4", "21:9"]
     : ASPECT_RATIOS;
-  const availableDurations: readonly number[] =
-    currentModel?.limits?.allowedDurations ?? DURATIONS;
+  const availableDurations = useMemo(
+    () => supportedDurations(currentModel),
+    [currentModel],
+  );
   const resolutionOptions = useMemo(
     () =>
       mode === "extend"
@@ -375,8 +390,7 @@ export function VideoGeneratorPanel({
   const handleModelChange = useCallback(
     (m: string) => {
       const selected = models.find((candidate) => candidate.id === m);
-      const nextDurations: readonly number[] =
-        selected?.limits?.allowedDurations ?? DURATIONS;
+      const nextDurations = supportedDurations(selected);
       const nextDuration = nextDurations.includes(duration)
         ? duration
         : (nextDurations[0] ?? duration);
@@ -631,35 +645,13 @@ export function VideoGeneratorPanel({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor={`${elementId}-duration`}>时长</Label>
-                <Select
-                  value={duration}
-                  items={durationOptions.map((value) => ({
-                    value,
-                    label: mode === "extend" ? "续写 7 秒" : `${value} 秒`,
-                  }))}
-                  onValueChange={(value) => {
-                    if (value) handleDurationChange(value);
-                  }}
-                >
-                  <SelectTrigger
-                    id={`${elementId}-duration`}
-                    className="w-full"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent alignItemWithTrigger={false}>
-                    <SelectGroup>
-                      {durationOptions.map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {mode === "extend" ? "续写 7 秒" : `${value} 秒`}
-                        </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              </div>
+              <VideoDurationControl
+                id={`${elementId}-duration`}
+                value={duration}
+                options={durationOptions}
+                extension={mode === "extend"}
+                onValueChange={handleDurationChange}
+              />
               <div className="space-y-1.5">
                 <Label htmlFor={`${elementId}-resolution`}>分辨率</Label>
                 <Select

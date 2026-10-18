@@ -136,7 +136,7 @@ function buildVideoModelInfo(
   };
 }
 
-const GOOGLE_VIDEO_MODELS: readonly VideoModelInfo[] = [
+export const GOOGLE_VIDEO_MODELS: readonly VideoModelInfo[] = [
   buildVideoModelInfo(
     "google-official/veo-3.1-generate-preview",
     "Veo 3.1",

@@ -13,31 +13,33 @@ import {
 } from "./agnes-client.js";
 
 const DURATIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12];
-const MODELS: readonly VideoModelInfo[] = [true, false].map((flash) => ({
-  id: `agnes/agnes-video-2.5${flash ? "-flash" : ""}`,
-  displayName: `Agnes Video 2.5${flash ? " Flash" : ""}`,
-  description: `支持文字生成、首尾帧和最多 ${flash ? 5 : 8} 张参考图，时长 4–12 秒，${flash ? "720p" : "最高 1080p"}。可直接上传本地参考图片。`,
-  iconUrl: "/providers/agnes.ico",
-  capabilities: {
-    textToVideo: true,
-    imageToVideo: true,
-    lastFrame: true,
-    referenceImages: true,
-    videoToVideo: !flash,
-    videoExtension: false,
-    audio: true,
-  },
-  limits: {
-    maxDuration: 12,
-    allowedDurations: DURATIONS,
-    maxResolution: flash ? "720p" : "1080p",
-    maxInputImages: flash ? 5 : 8,
-  },
-}));
+export const AGNES_VIDEO_MODELS: readonly VideoModelInfo[] = [true, false].map(
+  (flash) => ({
+    id: `agnes/agnes-video-2.5${flash ? "-flash" : ""}`,
+    displayName: `Agnes Video 2.5${flash ? " Flash" : ""}`,
+    description: `支持文字生成、首尾帧和最多 ${flash ? 5 : 8} 张参考图，时长 4–12 秒，${flash ? "720p" : "最高 1080p"}。可直接上传本地参考图片。`,
+    iconUrl: "/providers/agnes.ico",
+    capabilities: {
+      textToVideo: true,
+      imageToVideo: true,
+      lastFrame: true,
+      referenceImages: true,
+      videoToVideo: !flash,
+      videoExtension: false,
+      audio: true,
+    },
+    limits: {
+      maxDuration: 12,
+      allowedDurations: DURATIONS,
+      maxResolution: flash ? "720p" : "1080p",
+      maxInputImages: flash ? 5 : 8,
+    },
+  }),
+);
 
 export function buildAgnesVideoRequest(
   params: VideoGenerateParams,
-  models: readonly VideoModelInfo[] = MODELS,
+  models: readonly VideoModelInfo[] = AGNES_VIDEO_MODELS,
 ): Record<string, unknown> {
   const model = models.find((item) => item.id === params.model);
   if (!model)
@@ -149,7 +151,7 @@ export class AgnesVideoProvider implements VideoProvider {
     apiKey: string,
     baseUrl?: string,
     private readonly options: PollOptions = {},
-    models: readonly VideoModelInfo[] = MODELS,
+    models: readonly VideoModelInfo[] = AGNES_VIDEO_MODELS,
   ) {
     this.client = new AgnesClient(apiKey, baseUrl);
     this.models = models;

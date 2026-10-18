@@ -3,6 +3,7 @@ import "@testing-library/jest-dom/vitest";
 import {
   act,
   cleanup,
+  fireEvent,
   render,
   screen,
   waitFor,
@@ -243,6 +244,68 @@ it.each([null, "agnes/agnes-video-2.5", "removed"])(
 );
 
 describe("Agnes video modes", () => {
+  it("adjusts the complete 4–12s range by slider and numeric input, then submits 12s", async () => {
+    vi.mocked(fetchVideoModels).mockResolvedValue({ models: [agnes] });
+    panel(agnes.id);
+    const user = userEvent.setup();
+    await screen.findByRole("tab", { name: "素材参考" });
+    await user.click(screen.getByRole("button", { name: "16:9 · 4s · 720p" }));
+    const slider = screen.getByRole("slider", { name: "时长" });
+    const number = screen.getByRole("spinbutton", { name: "时长（秒）" });
+    expect(slider).toHaveAttribute("min", "4");
+    expect(slider).toHaveAttribute("max", "12");
+    expect(slider).toHaveAttribute("step", "1");
+    fireEvent.change(slider, { target: { value: "7" } });
+    expect(number).toHaveValue(7);
+    await user.clear(number);
+    await user.type(number, "11");
+    await user.tab();
+    expect(slider).toHaveValue("11");
+    await user.clear(number);
+    await user.type(number, "13{Enter}");
+    expect(slider).toHaveValue("12");
+    expect(number).toHaveValue(12);
+    await user.clear(number);
+    await user.type(number, "7.5{Enter}");
+    expect(slider).toHaveValue("8");
+    await user.clear(number);
+    await user.type(number, "12{Enter}");
+    await user.click(screen.getByRole("button", { name: "生成视频" }));
+    await waitFor(() =>
+      expect(generateVideoDirect).toHaveBeenCalledWith(
+        "token",
+        "镜头缓慢移动",
+        expect.objectContaining({ duration: 12 }),
+        expect.any(AbortSignal),
+      ),
+    );
+  });
+
+  it("returns to Veo's supported presets when switching from a 12s Agnes model", async () => {
+    vi.mocked(fetchVideoModels).mockResolvedValue({ models: [agnes, model] });
+    panel(agnes.id);
+    const user = userEvent.setup();
+    await screen.findByRole("tab", { name: "素材参考" });
+    await user.click(screen.getByRole("button", { name: "16:9 · 4s · 720p" }));
+    fireEvent.change(screen.getByRole("slider", { name: "时长" }), {
+      target: { value: "12" },
+    });
+    await user.keyboard("{Escape}");
+    await user.click(screen.getByRole("combobox", { name: "视频模型" }));
+    await user.click(screen.getByRole("option", { name: "Veo 3.1" }));
+    await user.click(screen.getByRole("button", { name: "16:9 · 4s · 720p" }));
+    expect(
+      screen.queryByRole("slider", { name: "时长" }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("combobox", { name: "时长" }));
+    expect(
+      (await screen.findAllByRole("option")).map(
+        (option) => option.textContent,
+      ),
+    ).toEqual(["4 秒", "6 秒", "8 秒"]);
+    expect(generateVideoDirect).not.toHaveBeenCalled();
+  });
+
   it("sends eight image URLs plus audio/video references at 6s and 1080p without Veo restrictions", async () => {
     vi.mocked(fetchVideoModels).mockResolvedValue({ models: [agnes] });
     panel(agnes.id);
@@ -264,8 +327,9 @@ describe("Agnes video modes", () => {
       "https://media.example.com/v.mp4",
     );
     await user.click(screen.getByRole("button", { name: "16:9 · 4s · 720p" }));
-    await user.click(screen.getByRole("combobox", { name: "时长" }));
-    await user.click(await screen.findByRole("option", { name: "6 秒" }));
+    fireEvent.change(screen.getByRole("slider", { name: "时长" }), {
+      target: { value: "6" },
+    });
     await user.click(screen.getByRole("combobox", { name: "分辨率" }));
     await user.click(await screen.findByRole("option", { name: "1080p" }));
     await user.click(screen.getByRole("button", { name: "生成视频" }));

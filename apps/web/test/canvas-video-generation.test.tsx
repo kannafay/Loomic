@@ -59,7 +59,7 @@ const agnes: VideoModelInfo = {
     maxDuration: 12,
     maxResolution: "1080p",
     maxInputImages: 8,
-    allowedDurations: [4, 6, 8, 12],
+    allowedDurations: [4, 5, 6, 7, 8, 9, 10, 11, 12],
   },
 };
 vi.mock("../src/lib/server-api", () => ({
@@ -258,6 +258,19 @@ it("keeps every parameter and uploaded frame on the result, including after reop
     "href",
     output.url,
   );
+});
+
+it("preserves a 12s Agnes duration when generating and reopening the result", async () => {
+  const fixture = canvas({ model: agnes.id, duration: 12 });
+  await fixture.start();
+  expect(requests.generate.mock.calls[0]?.[2]).toMatchObject({ duration: 12 });
+  await waitFor(() => expect(fixture.element()?.type).toBe("embeddable"));
+  expect(fixture.element()?.customData?.duration).toBe(12);
+  fixture.select(false);
+  fixture.select(true);
+  expect(
+    await screen.findByRole("button", { name: "16:9 · 12s · 720p" }),
+  ).toBeInTheDocument();
 });
 
 it("restores Agnes image, audio and video references and sends them again when regenerating", async () => {

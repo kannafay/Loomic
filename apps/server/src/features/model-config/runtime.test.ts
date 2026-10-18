@@ -11,11 +11,95 @@ import type {
   ModelConfigService,
   PrivateProvider,
 } from "./model-config-service.js";
-import { refreshConfiguredProviders } from "./runtime.js";
+import { refreshConfiguredProviders, videoMetadata } from "./runtime.js";
 
 afterEach(() => {
   vi.unstubAllGlobals();
   clearProviders();
+});
+
+it("publishes native duration and input limits for configured Agnes and Gemini video models", async () => {
+  const providers: PrivateProvider[] = ["agnes", "google"].map((preset) => ({
+    id: preset,
+    createdBy: "admin-1",
+    name: preset,
+    category: "manufacturer",
+    preset,
+    protocol: preset === "google" ? "gemini" : "openai",
+    baseUrl: "https://api.example.test/v1",
+    apiKey: "test-key",
+    hasApiKey: true,
+    enabled: true,
+  }));
+  const cases = [
+    ["agnes", "agnes-video-2.5-flash"],
+    ["agnes", "agnes-video-2.5"],
+    ["google", "veo-3.1-generate-preview"],
+  ] as const;
+  const models: ConfiguredModel[] = cases.map(
+    ([providerId, apiModel], index) => ({
+      id: `video-${index}`,
+      providerId,
+      key: `configured/video-${index}`,
+      apiModel,
+      name: `视频 ${index}`,
+      kind: "video",
+      description: "",
+      adapter: providerId === "agnes" ? "agnes" : "auto",
+      enabled: true,
+      isDefault: false,
+      options: {},
+    }),
+  );
+  await refreshConfiguredProviders({
+    syncNetworkSettings: async () => {},
+    catalog: async () => ({ providers, models }),
+  } as unknown as ModelConfigService);
+  const catalog = getAvailableVideoModels();
+  expect(catalog[0]).toMatchObject({
+    id: "configured/video-0",
+    capabilities: {
+      imageToVideo: true,
+      referenceImages: true,
+      videoToVideo: false,
+    },
+    limits: {
+      maxDuration: 12,
+      allowedDurations: [4, 5, 6, 7, 8, 9, 10, 11, 12],
+      maxResolution: "720p",
+      maxInputImages: 5,
+    },
+  });
+  expect(catalog[1]).toMatchObject({
+    capabilities: { videoToVideo: true },
+    limits: { maxDuration: 12, maxResolution: "1080p", maxInputImages: 8 },
+  });
+  expect(catalog[2]).toMatchObject({
+    capabilities: { referenceImages: true, videoExtension: true },
+    limits: {
+      maxDuration: 8,
+      allowedDurations: [4, 6, 8],
+      maxResolution: "2160p",
+    },
+  });
+  const firstModel = models[0];
+  if (!firstModel) throw new Error("Expected an Agnes model fixture");
+  expect(
+    videoMetadata({
+      ...firstModel,
+      options: {
+        capabilities: { referenceImages: false },
+        limits: { maxDuration: 10, allowedDurations: [4, 7, 10] },
+      },
+    }),
+  ).toMatchObject({
+    capabilities: { imageToVideo: true, referenceImages: false },
+    limits: {
+      maxDuration: 10,
+      allowedDurations: [4, 7, 10],
+      maxInputImages: 5,
+    },
+  });
 });
 it("routes a configured Agnes image model by its saved API ID and advertises its configured name", async () => {
   const provider: PrivateProvider = {

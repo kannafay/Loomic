@@ -273,23 +273,7 @@ export default function AdminPage() {
     if (!adding && !selectedId) return;
     const modelKind = model?.kind ?? (kind === "all" ? "text" : kind);
     setModelEditorOpen(true);
-    const options =
-      model?.options ??
-      (modelKind === "video"
-        ? {
-            capabilities: {
-              textToVideo: true,
-              imageToVideo: false,
-              videoToVideo: false,
-              audio: false,
-            },
-            limits: {
-              maxDuration: 8,
-              maxResolution: "720p",
-              maxInputImages: 0,
-            },
-          }
-        : {});
+    const options = model?.options ?? {};
     setModelDraft({
       ...(model ? { id: model.id } : {}),
       value: model
