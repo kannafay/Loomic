@@ -93,6 +93,7 @@ export function useVideoModelPreference() {
       const isSelected = preference.models.includes(model);
 
       if (isSelected && preference.models.length === 1) {
+        setPreference({ ...preference, mode: "auto" });
         return;
       }
 
@@ -105,7 +106,7 @@ export function useVideoModelPreference() {
         models,
       });
     },
-    [preference.models, setPreference],
+    [preference, setPreference],
   );
 
   const activeVideoGenerationPreference =

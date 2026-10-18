@@ -9,11 +9,16 @@ import {
   Popover,
   PopoverContent,
   PopoverDescription,
-  PopoverHeader,
   PopoverTitle,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BoxIcon, LoaderCircleIcon, SearchIcon } from "lucide-react";
 import {
@@ -177,6 +182,7 @@ export function ImageModelPreferencePopover({
   const [activeTab, setActiveTab] = useState<ModelKind>("image");
   const [queries, setQueries] = useState({ image: "", video: "" });
   const controlId = useId();
+  const modeTriggerRef = useRef<HTMLButtonElement>(null);
   const { preference, setMode, setPreference } =
     activeTab === "image" ? imagePreference : videoPreference;
   const catalog = activeTab === "image" ? images : videos;
@@ -190,10 +196,18 @@ export function ImageModelPreferencePopover({
   ).length;
   const groups = groupModels(catalog.models, queries[activeTab]);
 
+  const restoreAuto = () => {
+    setMode("auto");
+    modeTriggerRef.current?.focus();
+  };
+
   const toggleModel = (id: string) => {
     // An explicit choice replaces hidden selections from disabled models.
     const liveSelection = selectedModels.map((model) => model.id);
-    if (liveSelection.includes(id) && liveSelection.length === 1) return;
+    if (liveSelection.includes(id) && liveSelection.length === 1) {
+      restoreAuto();
+      return;
+    }
     setPreference({
       mode: "manual",
       models: liveSelection.includes(id)
@@ -209,14 +223,13 @@ export function ImageModelPreferencePopover({
         side="top"
         align="end"
         sideOffset={8}
+        positionMethod="fixed"
         className="w-[380px] max-w-[calc(100vw-1rem)] max-h-[min(36rem,var(--available-height))] gap-0 overflow-hidden p-0"
       >
-        <PopoverHeader className="shrink-0 px-4 pt-4 pb-3">
-          <PopoverTitle>生成模型</PopoverTitle>
-          <PopoverDescription className="text-xs leading-relaxed">
-            用于图片和视频生成，对话模型在输入框左侧选择。
-          </PopoverDescription>
-        </PopoverHeader>
+        <PopoverTitle className="sr-only">生成模型</PopoverTitle>
+        <PopoverDescription className="sr-only">
+          用于图片和视频生成，对话模型在输入框左侧选择。
+        </PopoverDescription>
         <Tabs
           value={activeTab}
           onValueChange={(value) => {
@@ -224,7 +237,7 @@ export function ImageModelPreferencePopover({
           }}
           className="min-h-0 gap-0"
         >
-          <div className="shrink-0 px-3">
+          <div className="shrink-0 px-3 pt-3">
             <TabsList aria-label="生成模型类型" className="w-full">
               <TabsTrigger value="image">图片</TabsTrigger>
               <TabsTrigger value="video">视频</TabsTrigger>
@@ -235,61 +248,65 @@ export function ImageModelPreferencePopover({
             value={activeTab}
             className="flex min-h-0 flex-col"
           >
-            <div className="shrink-0 space-y-3 p-3">
-              <RadioGroup
-                aria-label={`${kindLabel}模型选择方式`}
-                aria-orientation="horizontal"
-                aria-describedby={`${controlId}-mode-description`}
-                value={preference.mode}
-                onValueChange={(value) => {
-                  if (value === "auto" || value === "manual") setMode(value);
-                }}
-                className="flex items-center gap-6 px-1"
-              >
-                <Label
-                  htmlFor={`${controlId}-auto`}
-                  className="cursor-pointer text-xs"
-                >
-                  <RadioGroupItem id={`${controlId}-auto`} value="auto" />
-                  自动选择
-                </Label>
-                <Label
-                  htmlFor={`${controlId}-manual`}
-                  className="cursor-pointer text-xs"
-                >
-                  <RadioGroupItem id={`${controlId}-manual`} value="manual" />
-                  限定模型
-                  <span className="font-normal text-muted-foreground">
-                    可多选
-                  </span>
-                </Label>
-              </RadioGroup>
-              <p
-                id={`${controlId}-mode-description`}
-                className="px-1 text-xs leading-relaxed text-muted-foreground"
-              >
+            <div className="shrink-0 space-y-2 px-3 py-2">
+              <p id={`${controlId}-mode-description`} className="sr-only">
                 {manual
-                  ? `助手仅从勾选的模型中选择，执行${kindLabel}任务。`
+                  ? `助手仅从勾选的模型中选择，执行${kindLabel}任务；多选不会同时生成。`
                   : `助手从全部已启用的${kindLabel}模型中自动选择。`}
               </p>
-              <div className="relative">
-                <SearchIcon
-                  aria-hidden="true"
-                  className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-                />
-                <Input
-                  type="search"
-                  aria-label={`搜索${kindLabel}模型或提供商`}
-                  placeholder="搜索模型或提供商"
-                  value={queries[activeTab]}
-                  onChange={(event) =>
-                    setQueries((previous) => ({
-                      ...previous,
-                      [activeTab]: event.target.value,
-                    }))
-                  }
-                  className="pl-8 text-xs md:text-xs"
-                />
+              <div className="flex items-center gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <SearchIcon
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    type="search"
+                    aria-label={`搜索${kindLabel}模型或提供商`}
+                    placeholder="搜索模型或提供商"
+                    value={queries[activeTab]}
+                    onChange={(event) =>
+                      setQueries((previous) => ({
+                        ...previous,
+                        [activeTab]: event.target.value,
+                      }))
+                    }
+                    className="pl-8 text-xs md:text-xs"
+                  />
+                </div>
+                <Select
+                  value={preference.mode}
+                  onValueChange={(value) => {
+                    if (value === "auto" || value === "manual") setMode(value);
+                  }}
+                  items={[
+                    { value: "auto", label: "自动选择" },
+                    { value: "manual", label: "限定模型" },
+                  ]}
+                >
+                  <SelectTrigger
+                    ref={modeTriggerRef}
+                    aria-label={`${kindLabel}模型选择方式`}
+                    aria-describedby={`${controlId}-mode-description`}
+                    title={
+                      manual
+                        ? "仅从勾选的模型中挑选，可多选，不会批量生成。"
+                        : "从全部已启用模型中自动选择。"
+                    }
+                    className="h-8 shrink-0 px-2 text-xs"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent
+                    align="end"
+                    alignItemWithTrigger={false}
+                    positionMethod="fixed"
+                    className="min-w-44"
+                  >
+                    <SelectItem value="auto">自动选择</SelectItem>
+                    <SelectItem value="manual">限定模型（可多选）</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               {manual && catalog.status === "ready" && unavailableCount > 0 && (
                 <p
@@ -363,13 +380,24 @@ export function ImageModelPreferencePopover({
                     : `已限定 ${preference.models.length} 个${kindLabel}模型`
                   : `自动选择${kindLabel}模型`}
               </output>
-              <span className="text-muted-foreground">
-                {manual
-                  ? "至少保留 1 个"
-                  : catalog.status === "ready"
+              {manual ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  onClick={restoreAuto}
+                  title="取消模型限制，恢复自动选择"
+                  className="-my-1 -mr-2 text-muted-foreground"
+                >
+                  恢复自动
+                </Button>
+              ) : (
+                <span className="text-muted-foreground">
+                  {catalog.status === "ready"
                     ? `共 ${catalog.models.length} 个可用`
                     : ""}
-              </span>
+                </span>
+              )}
             </div>
           </TabsContent>
         </Tabs>

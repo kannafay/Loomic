@@ -67,6 +67,18 @@ function saveImagePreference(mode: "auto" | "manual", models: string[]) {
   );
 }
 
+async function chooseMode(
+  user: ReturnType<typeof userEvent.setup>,
+  mode: "auto" | "manual",
+) {
+  await user.click(screen.getByRole("combobox", { name: /模型选择方式$/ }));
+  await user.click(
+    await screen.findByRole("option", {
+      name: mode === "manual" ? "限定模型（可多选）" : "自动选择",
+    }),
+  );
+}
+
 beforeEach(() => {
   vi.stubGlobal("PointerEvent", MouseEvent);
   fetchImageModels.mockReset().mockResolvedValue({ models: imageModels });
@@ -116,20 +128,22 @@ it("separates automatic selection from multi-select and remembers the manual sel
   saveImagePreference("auto", ["configured/agnes-image-2.5"]);
   renderSelector();
   await screen.findByText("Agnes Image 2.5 Flash");
-  expect(screen.getByRole("radio", { name: "自动选择" })).toBeChecked();
+  expect(
+    screen.getByRole("combobox", { name: "图片模型选择方式" }),
+  ).toHaveTextContent("自动选择");
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   expect(screen.getByText("共 3 个可用")).toBeInTheDocument();
 
-  screen.getByRole("radio", { name: "自动选择" }).focus();
-  await user.keyboard("{ArrowRight}");
+  await user.click(screen.getByRole("combobox", { name: "图片模型选择方式" }));
+  await user.keyboard("{ArrowDown}{Enter}");
   expect(
     screen.getByRole("checkbox", { name: "Agnes Image 2.5 Flash" }),
   ).toBeChecked();
   await user.click(screen.getByRole("checkbox", { name: "Nano Banana" }));
   expect(screen.getByText("已选 2 个图片模型")).toBeInTheDocument();
-  await user.click(screen.getByRole("radio", { name: "自动选择" }));
+  await chooseMode(user, "auto");
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-  await user.click(screen.getByRole("radio", { name: /限定模型/ }));
+  await chooseMode(user, "manual");
   expect(screen.getByText("已选 2 个图片模型")).toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: "Nano Banana" })).toBeChecked();
   expect(
@@ -199,15 +213,54 @@ it("searches providers and model capabilities without changing hidden selections
   ).toEqual(["configured/google-image", "configured/agnes-image-2.5"]);
 });
 
-it("keeps at least one model selected", async () => {
-  saveImagePreference("manual", ["configured/agnes-image-2.5"]);
-  renderSelector();
-  const selected = await screen.findByRole("checkbox", {
+it.each([
+  {
+    kind: "图片",
+    storageKey: "loomic:image-model-preference",
+    id: "configured/agnes-image-2.5",
     name: "Agnes Image 2.5 Flash",
-  });
-  await userEvent.click(selected);
-  expect(selected).toBeChecked();
-  expect(screen.getByText("已选 1 个图片模型")).toBeInTheDocument();
+  },
+  {
+    kind: "视频",
+    storageKey: "loomic:video-model-preference",
+    id: "configured/veo",
+    name: "Veo 3.1",
+  },
+])(
+  "returns $kind selection to automatic when the last model is deselected and keeps focus",
+  async ({ kind, storageKey, id, name }) => {
+    localStorage.setItem(
+      storageKey,
+      JSON.stringify({ mode: "manual", models: [id] }),
+    );
+    renderSelector();
+    await userEvent.click(screen.getByRole("tab", { name: kind }));
+    const selected = await screen.findByRole("checkbox", { name });
+    await userEvent.click(selected);
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(screen.getByText(`自动选择${kind}模型`)).toBeInTheDocument();
+    const mode = screen.getByRole("combobox", { name: `${kind}模型选择方式` });
+    expect(mode).toHaveTextContent("自动选择");
+    expect(mode).toHaveFocus();
+    expect(
+      JSON.parse(localStorage.getItem(storageKey) ?? "null"),
+    ).toMatchObject({ mode: "auto" });
+  },
+);
+
+it("can clear a multi-model restriction with the explicit automatic selection action", async () => {
+  saveImagePreference("manual", [
+    "configured/google-image",
+    "configured/agnes-image-2.5",
+  ]);
+  renderSelector();
+  await screen.findByText("已选 2 个图片模型");
+  await userEvent.click(screen.getByRole("button", { name: "恢复自动" }));
+  expect(screen.getByText("自动选择图片模型")).toBeInTheDocument();
+  expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("combobox", { name: "图片模型选择方式" }),
+  ).toHaveFocus();
 });
 
 it("keeps image and video selections and searches independent", async () => {
@@ -220,9 +273,11 @@ it("keeps image and video selections and searches independent", async () => {
   expect(
     screen.getByRole("searchbox", { name: "搜索视频模型或提供商" }),
   ).toHaveValue("");
-  expect(screen.getByRole("radio", { name: "自动选择" })).toBeChecked();
+  expect(
+    screen.getByRole("combobox", { name: "视频模型选择方式" }),
+  ).toHaveTextContent("自动选择");
   await screen.findByText("Veo 3.1");
-  await user.click(screen.getByRole("radio", { name: /限定模型/ }));
+  await chooseMode(user, "manual");
   await user.click(screen.getByRole("checkbox", { name: "Veo 3.1" }));
   expect(screen.getByText("已选 1 个视频模型")).toBeInTheDocument();
   await user.click(screen.getByRole("tab", { name: "图片" }));
