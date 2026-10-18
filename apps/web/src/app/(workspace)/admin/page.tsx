@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,7 @@ import type {
   ProviderConnectionTest,
   ProviderWrite,
 } from "@loomic/shared";
+import { PlusIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NetworkSettingsPanel } from "./network-settings-panel";
 import { ProviderModelDiscovery } from "./provider-model-discovery";
@@ -300,13 +302,15 @@ export default function AdminPage() {
         </output>
       )}
       <TabsContent value="models">
-        <div className="grid items-start gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-          <aside className="rounded-xl border border-border bg-card p-3">
-            <div className="mb-3 flex items-center justify-between px-1">
-              <h2 className="text-sm font-semibold">提供商</h2>
+        <div className="grid items-start gap-5 lg:grid-cols-[240px_minmax(0,1fr)]">
+          <aside className="min-w-0 rounded-xl border border-border bg-card p-2">
+            <div className="mb-2 flex items-center justify-between gap-2 px-2 py-1">
+              <h2 className="text-xs font-medium text-muted-foreground">
+                提供商
+              </h2>
               <Button
-                size="icon"
-                variant="ghost"
+                size="icon-sm"
+                variant="outline"
                 type="button"
                 aria-label="添加提供商"
                 disabled={busy || !data}
@@ -326,48 +330,101 @@ export default function AdminPage() {
                   setShowDiscovery(false);
                   setNotice("");
                 }}
-                className="h-8 w-8 rounded-md text-lg hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+                title="添加提供商"
               >
-                +
+                <PlusIcon aria-hidden="true" className="size-3.5" />
               </Button>
             </div>
-            <div className="flex gap-1 overflow-x-auto lg:flex-col">
-              {data?.providers.map((provider) => (
-                <Button
-                  variant="ghost"
-                  key={provider.id}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => chooseProvider(provider)}
-                  aria-pressed={selectedId === provider.id && !adding}
-                  className={`h-auto min-w-[150px] flex-col items-stretch whitespace-normal px-3 py-2.5 text-left ${selectedId === provider.id && !adding ? "bg-accent/15" : ""}`}
-                >
-                  <span className="flex items-center justify-between gap-2 text-sm font-medium">
-                    {provider.name}
-                    <span
-                      aria-label={
-                        provider.enabled ? "提供商已启用" : "提供商已停用"
-                      }
-                      className={`h-1.5 w-1.5 rounded-full ${provider.enabled ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
-                    />
-                  </span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {CATEGORIES.find((c) => c.id === provider.category)?.name} ·{" "}
-                    {
-                      data.models.filter(
-                        (m) => m.providerId === provider.id && m.enabled,
-                      ).length
-                    }{" "}
-                    个启用模型
-                  </span>
-                </Button>
-              ))}
+            <nav aria-label="模型提供商" className="flex flex-col gap-1">
+              {data?.providers.map((provider) => {
+                const active = selectedId === provider.id && !adding;
+                const enabledCount = data.models.filter(
+                  (model) => model.providerId === provider.id && model.enabled,
+                ).length;
+                const icon =
+                  provider.preset === "google"
+                    ? "/providers/google.svg"
+                    : provider.preset === "agnes"
+                      ? "/providers/agnes.ico"
+                      : undefined;
+                const status = provider.enabled
+                  ? "提供商已启用"
+                  : "提供商已停用";
+
+                return (
+                  <Button
+                    variant="ghost"
+                    key={provider.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => chooseProvider(provider)}
+                    aria-label={provider.name}
+                    aria-describedby={`provider-meta-${provider.id} provider-status-${provider.id}`}
+                    aria-pressed={active}
+                    className={`h-auto w-full justify-start gap-2.5 rounded-lg border p-2.5 text-left transition-colors active:translate-y-0 ${active ? "border-border/70 bg-muted text-foreground hover:bg-muted" : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+                  >
+                    <Avatar
+                      aria-hidden="true"
+                      className="rounded-lg bg-background after:rounded-lg"
+                    >
+                      {icon && (
+                        <AvatarImage
+                          src={icon}
+                          alt=""
+                          className="rounded-lg object-contain p-1.5 dark:invert"
+                        />
+                      )}
+                      <AvatarFallback className="rounded-lg bg-background font-medium text-foreground">
+                        {Array.from(provider.name)[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="flex min-w-0 flex-1 flex-col gap-1">
+                      <span className="flex items-center justify-between gap-2">
+                        <span
+                          className="truncate text-sm font-medium leading-5 text-foreground"
+                          title={provider.name}
+                        >
+                          {provider.name}
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          title={status}
+                          className={`size-1.5 shrink-0 rounded-full ${provider.enabled ? "bg-emerald-500" : "bg-muted-foreground/40"}`}
+                        />
+                        <span
+                          id={`provider-status-${provider.id}`}
+                          className="sr-only"
+                        >
+                          {status}
+                        </span>
+                      </span>
+                      <span
+                        id={`provider-meta-${provider.id}`}
+                        className="flex items-center justify-between gap-2 text-xs font-normal leading-4 text-muted-foreground"
+                      >
+                        <span className="truncate">
+                          {
+                            CATEGORIES.find((c) => c.id === provider.category)
+                              ?.name
+                          }
+                        </span>
+                        <span
+                          className="shrink-0 tabular-nums"
+                          title={`${enabledCount} 个启用模型`}
+                        >
+                          已启用 {enabledCount}
+                        </span>
+                      </span>
+                    </span>
+                  </Button>
+                );
+              })}
               {!data && (
                 <p className="px-2 py-3 text-xs text-muted-foreground">
                   正在加载配置…
                 </p>
               )}
-            </div>
+            </nav>
           </aside>
 
           <div className="min-w-0 space-y-5">
