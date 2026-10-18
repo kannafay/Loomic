@@ -103,7 +103,7 @@ it.each(["image", "video"] as const)(
             id: "provider",
             createdBy: "admin",
             name: "Agnes 测试",
-            category: "third_party",
+            category: "manufacturer",
             preset: "agnes",
             protocol: "openai",
             baseUrl: "http://agnes-proxy-check.invalid/v1",

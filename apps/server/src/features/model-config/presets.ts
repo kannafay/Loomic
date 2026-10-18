@@ -114,7 +114,7 @@ export const MODEL_PRESETS: ModelPreset[] = [
   {
     id: "agnes",
     name: "Agnes AI",
-    category: "third_party",
+    category: "manufacturer",
     protocol: "openai",
     baseUrl: "https://api.agnes-ai.cn/v1",
     models: [
@@ -124,6 +124,14 @@ export const MODEL_PRESETS: ModelPreset[] = [
       ...media("image", new AgnesImageProvider("preset").models, "agnes"),
       ...media("video", new AgnesVideoProvider("preset").models, "agnes"),
     ],
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    category: "third_party",
+    protocol: "openai",
+    baseUrl: "https://openrouter.ai/api/v1",
+    models: [],
   },
   {
     id: "azure",

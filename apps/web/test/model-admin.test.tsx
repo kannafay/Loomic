@@ -64,7 +64,7 @@ const provider = {
   id: "provider-1",
   createdBy: "admin",
   name: "Agnes AI",
-  category: "third_party",
+  category: "manufacturer",
   preset: "agnes",
   protocol: "openai",
   baseUrl: "https://api.agnes-ai.cn/v1",
