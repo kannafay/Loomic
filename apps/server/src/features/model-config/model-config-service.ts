@@ -588,7 +588,7 @@ export function createModelConfigService(options: {
               ? "agnes"
               : "auto",
           options: {},
-          enabled: false,
+          enabled: true,
         };
       });
       const { data, error } = await client

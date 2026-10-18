@@ -317,7 +317,7 @@ export default function AdminPage() {
               (modelKind === "image" || modelKind === "video")
                 ? "agnes"
                 : "auto",
-            enabled: false,
+            enabled: true,
             options,
           },
       optionsText: JSON.stringify(options, null, 2),
@@ -828,7 +828,7 @@ export default function AdminPage() {
                               .map((model) =>
                                 stagedModel({
                                   ...model,
-                                  enabled: false,
+                                  enabled: true,
                                   adapter:
                                     providerDraft.preset === "agnes" &&
                                     (model.kind === "image" ||
@@ -864,7 +864,7 @@ export default function AdminPage() {
                       success(
                         adding
                           ? `已加入 ${result.imported} 个待保存模型。保存提供商时一起生效。`
-                          : `已添加 ${result.imported} 个模型${result.skipped ? `，跳过 ${result.skipped} 个已有模型` : ""}。请在对应标签中勾选启用。`,
+                          : `已添加并启用 ${result.imported} 个模型${result.skipped ? `，跳过 ${result.skipped} 个已有模型` : ""}。`,
                       );
                       setShowDiscovery(false);
                     }}

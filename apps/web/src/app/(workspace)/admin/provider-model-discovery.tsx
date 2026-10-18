@@ -221,7 +221,7 @@ export function ProviderModelDiscovery({
             <DialogDescription className="mt-1 text-xs leading-5">
               {providerName}：
               {providerId
-                ? "勾选需要的模型，添加后可在模型列表中启用。"
+                ? "勾选需要的模型，添加后自动启用。"
                 : "使用当前连接获取，保存提供商时一起生效。"}
             </DialogDescription>
           </header>
@@ -476,7 +476,7 @@ export function ProviderModelDiscovery({
                 )}
               </div>
               <p className="hidden text-[11px] leading-4 text-muted-foreground sm:block">
-                新模型默认不启用
+                新模型默认启用
               </p>
             </div>
             <Button

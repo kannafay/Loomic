@@ -141,7 +141,7 @@ it.each([
     });
   },
 );
-it("imports only the chosen live models without preset names, settings or additional models", async () => {
+it("imports and enables only the chosen new models without overwriting existing models", async () => {
   const providerQuery = {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
@@ -184,7 +184,7 @@ it("imports only the chosen live models without preset names, settings or additi
         kind: "video",
         adapter: "agnes",
         options: {},
-        enabled: false,
+        enabled: true,
       }),
     ],
     { onConflict: "provider_id,kind,api_model", ignoreDuplicates: true },

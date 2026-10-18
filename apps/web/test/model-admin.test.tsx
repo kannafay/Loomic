@@ -499,6 +499,7 @@ it("opens manual addition directly in a focused dialog without fetching models",
   );
   const name = editor.getByLabelText("显示名称");
   await waitFor(() => expect(editor.getByLabelText("模型 ID")).toHaveFocus());
+  expect(editor.getByRole("checkbox", { name: "启用到前台" })).toBeChecked();
   await user.type(name, "内部文本模型");
   await user.type(editor.getByLabelText("模型 ID"), "private-latest");
   await user.click(editor.getByRole("button", { name: "保存模型" }));
@@ -512,7 +513,7 @@ it("opens manual addition directly in a focused dialog without fetching models",
       kind: "text",
       apiModel: "private-latest",
       name: "内部文本模型",
-      enabled: false,
+      enabled: true,
     }),
     undefined,
   );
@@ -552,6 +553,7 @@ it("fills the name from the first ID field without overwriting a custom name or 
   for (const protocol of ["OpenAI", "Anthropic", "Gemini"])
     expect(screen.getByRole("option", { name: protocol })).toBeInTheDocument();
   await user.click(screen.getByRole("option", { name: "Gemini" }));
+  await user.click(editor.getByRole("checkbox", { name: "启用到前台" }));
   await user.click(editor.getByRole("button", { name: "保存模型" }));
   await waitFor(() =>
     expect(state.saveModel).toHaveBeenCalledWith(
@@ -562,6 +564,7 @@ it("fills the name from the first ID field without overwriting a custom name or 
         kind: "image",
         protocol: "gemini",
         adapter: "auto",
+        enabled: false,
       }),
       undefined,
     ),
@@ -596,6 +599,9 @@ it("edits a model in a dialog, discards cancelled changes and preserves its opti
   editor = within(await screen.findByRole("dialog", { name: "编辑模型" }));
   expect(editor.getByLabelText("显示名称")).toHaveValue(model.name);
   expect(editor.getByLabelText("模型 ID")).toHaveValue(model.apiModel);
+  expect(
+    editor.getByRole("checkbox", { name: "启用到前台" }),
+  ).not.toBeChecked();
   expect(editor.getByRole("combobox", { name: "模型用途" })).toHaveTextContent(
     "文本",
   );
@@ -621,6 +627,7 @@ it("edits a model in a dialog, discards cancelled changes and preserves its opti
       protocol: "openai",
       description: "已有说明",
       options: { temperature: 0.3 },
+      enabled: false,
     }),
     model.id,
   );
@@ -948,7 +955,7 @@ it("fetches the saved provider list without enabling or overwriting existing mod
     }),
   );
   expect(await screen.findByRole("status")).toHaveTextContent(
-    "已添加 1 个模型",
+    "已添加并启用 1 个模型",
   );
   expect(state.saveModel).not.toHaveBeenCalled();
 });
@@ -1129,7 +1136,7 @@ it("falls back to manual addition when the saved provider model list fails", asy
         apiModel: "private-chat-model",
         name: "私有模型",
         kind: "text",
-        enabled: false,
+        enabled: true,
       }),
       undefined,
     ),
@@ -1218,9 +1225,9 @@ it("fetches and stages models before a new provider exists, then saves them toge
   );
   expect(state.createProvider).not.toHaveBeenCalled();
   expect(state.saveProvider).not.toHaveBeenCalled();
-  await userEvent.click(
+  expect(
     screen.getByRole("checkbox", { name: "启用 Draft Chat" }),
-  );
+  ).toBeChecked();
   await userEvent.click(screen.getByRole("button", { name: "保存提供商" }));
   await waitFor(() =>
     expect(state.createProvider).toHaveBeenCalledWith(
@@ -1268,7 +1275,7 @@ it("falls back to manual staging when a new provider returns an empty list", asy
   await userEvent.click(screen.getByRole("button", { name: "加入待保存模型" }));
   expect(
     await screen.findByRole("checkbox", { name: "启用 手动模型" }),
-  ).not.toBeChecked();
+  ).toBeChecked();
   expect(state.saveModel).not.toHaveBeenCalled();
   expect(state.createProvider).not.toHaveBeenCalled();
 });
@@ -1341,7 +1348,7 @@ it("uses manufacturer presets for connection defaults and saves only models sele
       expect.objectContaining({
         provider: expect.objectContaining({ preset: "deepseek" }),
         models: [
-          expect.objectContaining({ apiModel: "draft-chat", enabled: false }),
+          expect.objectContaining({ apiModel: "draft-chat", enabled: true }),
         ],
       }),
     ),
