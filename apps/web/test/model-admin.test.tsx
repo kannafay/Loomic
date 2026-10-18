@@ -519,6 +519,9 @@ it("fetches the saved provider list without enabling or overwriting existing mod
   const image = await screen.findByRole("checkbox", {
     name: "导入 remote-image",
   });
+  await waitFor(() =>
+    expect(screen.getByRole("textbox", { name: "搜索模型" })).toHaveFocus(),
+  );
   expect(state.discover).toHaveBeenCalledWith("token", provider.id);
   expect(image).not.toBeChecked();
   expect(
@@ -547,6 +550,105 @@ it("fetches the saved provider list without enabling or overwriting existing mod
     "已添加 1 个模型",
   );
   expect(state.saveModel).not.toHaveBeenCalled();
+});
+it("filters model types and keeps selections across filtering and search", async () => {
+  state.discover.mockResolvedValueOnce({
+    models: [
+      {
+        apiModel: model.apiModel,
+        name: model.name,
+        kind: "text",
+        description: "",
+      },
+      {
+        apiModel: "future-image",
+        name: "最新图片模型",
+        kind: "image",
+        description: "",
+      },
+      {
+        apiModel: "future-video",
+        name: "future-video",
+        kind: "video",
+        description: "",
+      },
+    ],
+    truncated: false,
+  });
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  await user.click(await screen.findByRole("button", { name: "获取模型列表" }));
+  const dialog = within(
+    await screen.findByRole("dialog", { name: "获取模型列表" }),
+  );
+  await user.click(dialog.getByRole("tab", { name: /^图片/ }));
+  expect(
+    dialog.queryByRole("checkbox", { name: "导入 future-video" }),
+  ).not.toBeInTheDocument();
+  await user.click(dialog.getByRole("checkbox", { name: "导入 future-image" }));
+  await user.click(dialog.getByRole("tab", { name: /^视频/ }));
+  expect(dialog.getAllByText("future-video")).toHaveLength(1);
+  await user.click(dialog.getByRole("button", { name: "全选当前结果" }));
+  await user.type(
+    dialog.getByRole("textbox", { name: "搜索模型" }),
+    "不存在的模型",
+  );
+  expect(dialog.getByText("没有匹配的模型。")).toBeInTheDocument();
+  expect(
+    dialog.getByRole("button", { name: "添加所选模型（2）" }),
+  ).toBeEnabled();
+  await user.click(dialog.getByRole("button", { name: "添加所选模型（2）" }));
+  await waitFor(() =>
+    expect(state.importModels).toHaveBeenCalledWith("token", provider.id, {
+      models: [
+        expect.objectContaining({ apiModel: "future-image", kind: "image" }),
+        expect.objectContaining({ apiModel: "future-video", kind: "video" }),
+      ],
+    }),
+  );
+});
+it("updates classification filters, clears empty searches and can clear all selections", async () => {
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  await user.click(await screen.findByRole("button", { name: "获取模型列表" }));
+  const dialog = within(
+    await screen.findByRole("dialog", { name: "获取模型列表" }),
+  );
+  await screen.findByRole("checkbox", { name: "导入 remote-image" });
+  await user.click(dialog.getByRole("tab", { name: /^待分类/ }));
+  await user.click(
+    dialog.getByRole("combobox", { name: "private-id 模型类型" }),
+  );
+  await user.click(await screen.findByRole("option", { name: "图片" }));
+  expect(dialog.getByText("没有匹配的模型。")).toBeInTheDocument();
+  expect(dialog.getByRole("tab", { name: /^待分类/ })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await user.click(dialog.getByRole("tab", { name: /^图片/ }));
+  await user.click(dialog.getByRole("button", { name: "全选当前结果" }));
+  expect(
+    dialog.getByRole("button", { name: "添加所选模型（2）" }),
+  ).toBeEnabled();
+  await user.type(dialog.getByRole("textbox", { name: "搜索模型" }), "未匹配");
+  await user.click(dialog.getByRole("button", { name: "清除筛选" }));
+  expect(dialog.getByRole("textbox", { name: "搜索模型" })).toHaveValue("");
+  expect(
+    dialog.getByRole("checkbox", { name: "导入 remote-image" }),
+  ).toBeChecked();
+  expect(
+    dialog.getByRole("checkbox", { name: "导入 private-id" }),
+  ).toBeChecked();
+  await user.click(dialog.getByRole("button", { name: "清空选择" }));
+  expect(
+    dialog.getByRole("checkbox", { name: "导入 remote-image" }),
+  ).not.toBeChecked();
+  expect(
+    dialog.getByRole("checkbox", { name: "导入 private-id" }),
+  ).not.toBeChecked();
+  expect(
+    dialog.getByRole("button", { name: "添加所选模型（0）" }),
+  ).toBeDisabled();
 });
 it("lets administrators classify unknown models and select only matching search results", async () => {
   render(<AdminPage />);

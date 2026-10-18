@@ -707,6 +707,7 @@ export default function AdminPage() {
                   <ProviderModelDiscovery
                     key={selected?.id ?? "new-provider"}
                     token={token}
+                    providerName={providerDraft.name || "新提供商"}
                     {...(adding
                       ? {
                           connection: providerDraft,

@@ -3,6 +3,7 @@
 import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -32,7 +33,15 @@ import type {
   ModelKind,
   ProviderConnection,
 } from "@loomic/shared";
-import { DownloadIcon, PencilIcon, RefreshCwIcon } from "lucide-react";
+import {
+  AlertCircleIcon,
+  CheckIcon,
+  DownloadIcon,
+  LoaderCircleIcon,
+  PencilIcon,
+  RefreshCwIcon,
+  SearchIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 const KINDS: Array<{ id: ModelKind; name: string }> = [
@@ -42,10 +51,12 @@ const KINDS: Array<{ id: ModelKind; name: string }> = [
   { id: "video", name: "视频生成" },
 ];
 type ModelChoice = DiscoveredModel & { selected: boolean };
+type ModelFilter = ModelKind | "all" | "unknown";
 
 export function ProviderModelDiscovery({
   token,
   providerId,
+  providerName,
   connection,
   onStage,
   existingModels,
@@ -57,6 +68,7 @@ export function ProviderModelDiscovery({
 }: {
   token: string;
   providerId?: string;
+  providerName: string;
   connection?: ProviderConnection;
   onStage?: (
     models: DiscoveredModelImport["models"],
@@ -75,9 +87,11 @@ export function ProviderModelDiscovery({
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<ModelFilter>("all");
   const [revision, setRevision] = useState(0);
   const [truncated, setTruncated] = useState(false);
   const manualRequested = useRef(false);
+  const searchInput = useRef<HTMLInputElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: revision triggers an explicit retry of the same saved connection.
   useEffect(() => {
@@ -85,6 +99,7 @@ export function ProviderModelDiscovery({
     setLoading(true);
     setError("");
     setModels([]);
+    setFilter("all");
     const request = providerId
       ? fetchProviderModels(token, providerId)
       : connection
@@ -118,6 +133,8 @@ export function ProviderModelDiscovery({
         existing.apiModel === model.apiModel && existing.kind === model.kind,
     );
   const matches = (model: ModelChoice) =>
+    (filter === "all" ||
+      (filter === "unknown" ? !model.kind : model.kind === filter)) &&
     `${model.name} ${model.apiModel}`
       .toLowerCase()
       .includes(query.trim().toLowerCase());
@@ -129,6 +146,19 @@ export function ProviderModelDiscovery({
   const selectable = visible.filter(
     (model) => model.kind && !isExisting(model),
   );
+  const filters: Array<{ id: ModelFilter; name: string; count: number }> = [
+    { id: "all", name: "全部", count: models.length },
+    ...KINDS.map((kind) => ({
+      ...kind,
+      name: kind.id === "video" ? "视频" : kind.name,
+      count: models.filter((model) => model.kind === kind.id).length,
+    })),
+    {
+      id: "unknown",
+      name: "待分类",
+      count: models.filter((model) => !model.kind).length,
+    },
+  ];
   function update(id: string, patch: Partial<ModelChoice>) {
     setModels((current) =>
       current.map((model) =>
@@ -137,7 +167,7 @@ export function ProviderModelDiscovery({
     );
   }
   async function importSelection() {
-    if (!selected.length) return;
+    if (busy || importing || !selected.length) return;
     setImporting(true);
     setError("");
     onBusyChange(true);
@@ -175,222 +205,319 @@ export function ProviderModelDiscovery({
       }}
     >
       <DialogContent
-        className="max-h-[85vh] overflow-y-auto p-0 sm:max-w-3xl"
+        className="flex h-[min(42rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
         showCloseButton={!importing}
+        initialFocus={searchInput}
         finalFocus={() => !manualRequested.current}
       >
-        <section className="px-6 py-5" aria-label="获取的模型列表">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <DialogTitle>获取模型列表</DialogTitle>
-              <DialogDescription className="mt-2 pr-4 text-xs">
-                {providerId
-                  ? "获取已保存提供商的模型列表，勾选添加后可在对应标签中启用。"
-                  : "使用当前填写的接口和 Key 获取列表。勾选的模型将在保存提供商时一起添加。"}
-              </DialogDescription>
+        <section
+          className="flex min-h-0 flex-1 flex-col"
+          aria-label="获取的模型列表"
+        >
+          <header className="shrink-0 border-b border-border px-5 py-4 pr-12">
+            <DialogTitle className="text-base">获取模型列表</DialogTitle>
+            <DialogDescription className="mt-1 text-xs leading-5">
+              {providerName}：
+              {providerId
+                ? "勾选需要的模型，添加后可在模型列表中启用。"
+                : "使用当前连接获取，保存提供商时一起生效。"}
+            </DialogDescription>
+          </header>
+          <Tabs
+            value={filter}
+            onValueChange={(value) => setFilter(value as ModelFilter)}
+            className="min-h-0 flex-1 gap-0"
+          >
+            <div className="shrink-0 space-y-3 border-b border-border px-4 py-3 sm:px-5">
+              <div className="flex items-center gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <SearchIcon
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <Input
+                    ref={searchInput}
+                    aria-label="搜索模型"
+                    placeholder="搜索模型名称或 ID"
+                    value={query}
+                    disabled={busy}
+                    onChange={(event) => setQuery(event.target.value)}
+                    className="h-9 pl-9"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={busy || loading}
+                  onClick={() => setRevision((value) => value + 1)}
+                  className="h-9 shrink-0"
+                >
+                  <RefreshCwIcon aria-hidden="true" className="size-3.5" />
+                  <span className="sr-only sm:not-sr-only">重新获取</span>
+                </Button>
+              </div>
+              <TabsList aria-label="筛选模型类型" className="h-8 w-full">
+                {filters.map((item) => (
+                  <TabsTrigger
+                    key={item.id}
+                    value={item.id}
+                    disabled={busy || loading}
+                    className="min-w-0 gap-1 px-1.5 text-xs sm:px-3"
+                  >
+                    {item.name}
+                    {!loading && (
+                      <span className="hidden text-[10px] tabular-nums text-muted-foreground sm:inline">
+                        {item.count}
+                      </span>
+                    )}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
             </div>
-            <div className="flex gap-2 pr-6">
+            <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-4 text-xs sm:px-5">
+              <p className="text-muted-foreground" aria-live="polite">
+                {loading
+                  ? "正在获取…"
+                  : `显示 ${visible.length} / ${models.length} 个模型`}
+              </p>
               <Button
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 type="button"
-                disabled={busy || loading}
-                onClick={() => setRevision((value) => value + 1)}
+                className="h-7 px-2 text-xs"
+                disabled={busy || loading || !selectable.length}
+                onClick={() =>
+                  setModels((current) =>
+                    current.map((model) =>
+                      matches(model) && model.kind && !isExisting(model)
+                        ? { ...model, selected: true }
+                        : model,
+                    ),
+                  )
+                }
               >
-                <RefreshCwIcon aria-hidden="true" className="size-3.5" />
-                重新获取
+                全选当前结果
               </Button>
+            </div>
+            <TabsContent
+              value={filter}
+              className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [scrollbar-gutter:stable]"
+            >
+              {loading ? (
+                <output className="flex min-h-full flex-col items-center justify-center gap-3 px-5 py-10 text-sm text-muted-foreground">
+                  <LoaderCircleIcon
+                    aria-hidden="true"
+                    className="size-5 motion-safe:animate-spin"
+                  />
+                  正在获取模型列表…
+                </output>
+              ) : error ? (
+                <div className="flex min-h-full flex-col items-center justify-center gap-2 px-6 py-10 text-center">
+                  <AlertCircleIcon
+                    aria-hidden="true"
+                    className="mb-1 size-5 text-muted-foreground"
+                  />
+                  <p role="alert" className="max-w-md text-sm text-destructive">
+                    {error}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    检查连接后重新获取，或直接手动添加。
+                  </p>
+                </div>
+              ) : models.length ? (
+                visible.length ? (
+                  visible.map((model) => {
+                    const exists = isExisting(model);
+                    return (
+                      <div
+                        key={model.apiModel}
+                        className={`flex min-h-16 items-center gap-3 border-b border-border/70 px-4 py-2.5 last:border-0 sm:px-5 ${
+                          model.selected && !exists
+                            ? "bg-muted/60"
+                            : "hover:bg-muted/30"
+                        }`}
+                      >
+                        <Checkbox
+                          aria-label={`导入 ${model.apiModel}`}
+                          title={!model.kind ? "请先选择模型类型" : undefined}
+                          checked={!exists && !!model.kind && model.selected}
+                          disabled={busy || exists || !model.kind}
+                          onCheckedChange={(checked) =>
+                            update(model.apiModel, { selected: checked })
+                          }
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className="truncate text-[13px] font-medium leading-5"
+                            title={model.name}
+                          >
+                            {model.name}
+                          </p>
+                          {model.apiModel !== model.name && (
+                            <p
+                              className="mt-0.5 truncate text-[11px] leading-4 text-muted-foreground"
+                              title={model.apiModel}
+                            >
+                              {model.apiModel}
+                            </p>
+                          )}
+                          {!exists && !model.kind && (
+                            <p className="mt-0.5 text-[11px] leading-4 text-muted-foreground">
+                              请选择模型类型后添加
+                            </p>
+                          )}
+                        </div>
+                        {exists ? (
+                          <div className="w-24 shrink-0 text-right text-xs text-muted-foreground">
+                            <p>
+                              {
+                                KINDS.find((kind) => kind.id === model.kind)
+                                  ?.name
+                              }
+                            </p>
+                            <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] leading-4">
+                              <CheckIcon
+                                aria-hidden="true"
+                                className="size-3"
+                              />
+                              已添加
+                            </span>
+                          </div>
+                        ) : (
+                          <Select
+                            items={KINDS.map((kind) => ({
+                              value: kind.id,
+                              label: kind.name,
+                            }))}
+                            value={model.kind}
+                            disabled={busy}
+                            onValueChange={(value) =>
+                              update(model.apiModel, {
+                                kind: value,
+                                selected: false,
+                              })
+                            }
+                          >
+                            <SelectTrigger
+                              size="sm"
+                              className="w-24 shrink-0 text-xs"
+                              aria-label={`${model.apiModel} 模型类型`}
+                            >
+                              <SelectValue placeholder="选择类型" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectGroup>
+                                {KINDS.map((kind) => (
+                                  <SelectItem key={kind.id} value={kind.id}>
+                                    {kind.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectGroup>
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="flex min-h-full flex-col items-center justify-center gap-2 px-5 py-10 text-sm text-muted-foreground">
+                    <SearchIcon aria-hidden="true" className="size-5" />
+                    <p>没有匹配的模型。</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      onClick={() => {
+                        setQuery("");
+                        setFilter("all");
+                      }}
+                    >
+                      清除筛选
+                    </Button>
+                  </div>
+                )
+              ) : (
+                <div className="flex min-h-full items-center justify-center px-6 py-10 text-center text-sm text-muted-foreground">
+                  提供商没有返回可获取的模型，可继续手动添加。
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+          {truncated && !loading && (
+            <output className="shrink-0 border-t border-border px-5 py-2 text-xs text-muted-foreground">
+              本次仅获取了部分模型，其他模型可手动添加。
+            </output>
+          )}
+          <footer className="grid shrink-0 grid-cols-[1fr_auto] items-center gap-3 border-t border-border bg-muted/20 px-4 py-3 sm:flex sm:px-5">
+            <div className="min-w-0 sm:flex-1">
+              <div className="flex h-6 items-center gap-2">
+                <p className="text-xs font-medium" aria-live="polite">
+                  已选 {selected.length} 个模型
+                </p>
+                {!!selected.length && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    type="button"
+                    className="h-6 px-1 text-xs text-muted-foreground"
+                    disabled={busy}
+                    onClick={() =>
+                      setModels((current) =>
+                        current.map((model) => ({ ...model, selected: false })),
+                      )
+                    }
+                  >
+                    清空选择
+                  </Button>
+                )}
+              </div>
+              <p className="hidden text-[11px] leading-4 text-muted-foreground sm:block">
+                新模型默认不启用
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              disabled={busy || importing}
+              onClick={() => {
+                manualRequested.current = true;
+                setOpen(false);
+              }}
+            >
+              <PencilIcon aria-hidden="true" className="size-3.5" />
+              手动添加
+            </Button>
+            <div className="col-span-2 flex justify-end gap-2">
               <Button
                 variant="outline"
+                size="sm"
                 type="button"
                 disabled={busy}
                 onClick={() => setOpen(false)}
               >
                 取消
               </Button>
-            </div>
-          </div>
-          {error && (
-            <p role="alert" className="mt-3 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          {loading ? (
-            <output className="block py-6 text-sm text-muted-foreground">
-              正在获取模型列表…
-            </output>
-          ) : models.length ? (
-            <>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Input
-                  aria-label="搜索模型"
-                  placeholder="搜索模型名称或 ID"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  className="min-w-0 flex-1"
-                />
-                <Button
-                  variant="outline"
-                  type="button"
-                  disabled={busy || !selectable.length}
-                  onClick={() =>
-                    setModels((current) =>
-                      current.map((model) =>
-                        matches(model) && model.kind && !isExisting(model)
-                          ? { ...model, selected: true }
-                          : model,
-                      ),
-                    )
-                  }
-                >
-                  全选当前结果
-                </Button>
-                <Button
-                  variant="outline"
-                  type="button"
-                  disabled={busy || !selected.length}
-                  onClick={() =>
-                    setModels((current) =>
-                      current.map((model) => ({ ...model, selected: false })),
-                    )
-                  }
-                >
-                  清空选择
-                </Button>
-              </div>
-              <p className="my-2 text-xs text-muted-foreground">
-                共获取 {models.length} 个模型
-                {query.trim() ? `，匹配 ${visible.length} 个` : ""}
-                。类型为建议值，可自行修改。
-              </p>
-              {truncated && (
-                <p className="mb-2 text-xs text-amber-700">
-                  本次仅获取了部分模型，其他模型可手动添加。
-                </p>
-              )}
-              <div className="max-h-72 overflow-y-auto rounded-lg border border-border bg-background">
-                {visible.map((model) => {
-                  const exists = isExisting(model);
-                  return (
-                    <div
-                      key={model.apiModel}
-                      className="flex items-center gap-3 border-b border-border px-3 py-3 last:border-0"
-                    >
-                      <Checkbox
-                        aria-label={`导入 ${model.apiModel}`}
-                        title={!model.kind ? "请先选择模型类型" : undefined}
-                        checked={!exists && !!model.kind && model.selected}
-                        disabled={busy || exists || !model.kind}
-                        onCheckedChange={(checked) =>
-                          update(model.apiModel, {
-                            selected: checked,
-                          })
-                        }
-                      />
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className="truncate text-sm font-medium"
-                          title={model.name}
-                        >
-                          {model.name}
-                        </p>
-                        <p
-                          className="mt-0.5 truncate text-xs text-muted-foreground"
-                          title={model.apiModel}
-                        >
-                          {model.apiModel}
-                        </p>
-                      </div>
-                      {exists && (
-                        <span className="shrink-0 text-xs text-muted-foreground">
-                          已添加
-                        </span>
-                      )}
-                      <Select
-                        items={KINDS.map((kind) => ({
-                          value: kind.id,
-                          label: kind.name,
-                        }))}
-                        value={model.kind}
-                        disabled={busy || exists}
-                        onValueChange={(value) =>
-                          update(model.apiModel, {
-                            kind: value,
-                            selected: false,
-                          })
-                        }
-                      >
-                        <SelectTrigger
-                          size="sm"
-                          className="w-28 shrink-0"
-                          aria-label={`${model.apiModel} 模型类型`}
-                        >
-                          <SelectValue placeholder="请选择类型" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectGroup>
-                            {KINDS.map((kind) => (
-                              <SelectItem key={kind.id} value={kind.id}>
-                                {kind.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  );
-                })}
-                {!visible.length && (
-                  <p className="px-3 py-6 text-sm text-muted-foreground">
-                    没有匹配的模型。
-                  </p>
-                )}
-              </div>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-muted-foreground">
-                  已选 {selected.length}{" "}
-                  个。已添加的模型会跳过，新模型默认不启用。
-                </p>
-                <Button
-                  variant="default"
-                  type="button"
-                  disabled={busy || !selected.length}
-                  onClick={() => void importSelection()}
-                >
-                  <DownloadIcon aria-hidden="true" className="size-3.5" />
-                  {importing
-                    ? "正在添加…"
-                    : `添加所选模型（${selected.length}）`}
-                </Button>
-              </div>
-            </>
-          ) : (
-            !error && (
-              <p className="py-6 text-sm text-muted-foreground">
-                提供商没有返回可获取的模型，可继续手动添加。
-              </p>
-            )
-          )}
-          {!loading && (
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-              <p className="text-xs text-muted-foreground">
-                {error
-                  ? "可以重新获取，也可以直接填写模型信息。"
-                  : "列表中没有需要的模型？也可以手动添加。"}
-              </p>
               <Button
-                variant={error || !models.length ? "default" : "outline"}
+                variant="default"
+                size="sm"
                 type="button"
-                disabled={busy || importing}
-                onClick={() => {
-                  manualRequested.current = true;
-                  setOpen(false);
-                }}
+                disabled={busy || loading || !selected.length}
+                onClick={() => void importSelection()}
               >
-                <PencilIcon aria-hidden="true" className="size-3.5" />
-                手动添加
+                {importing ? (
+                  <LoaderCircleIcon
+                    aria-hidden="true"
+                    className="size-3.5 motion-safe:animate-spin"
+                  />
+                ) : (
+                  <DownloadIcon aria-hidden="true" className="size-3.5" />
+                )}
+                {importing ? "正在添加…" : `添加所选模型（${selected.length}）`}
               </Button>
             </div>
-          )}
+          </footer>
         </section>
       </DialogContent>
     </Dialog>
