@@ -5,7 +5,6 @@ import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { LoadingScreen } from "@/components/loading-screen";
-import { PageTransition } from "@/components/page-transition";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth-context";
@@ -66,7 +65,7 @@ export default function WorkspaceLayout({
           id="main"
           className="relative h-full min-w-0 flex-1 overflow-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
         >
-          <PageTransition>{children}</PageTransition>
+          <div className="h-full">{children}</div>
         </main>
       </SidebarProvider>
     </TooltipProvider>

@@ -7,7 +7,6 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspaceLayout from "../src/app/(workspace)/layout";
 
@@ -30,10 +29,6 @@ vi.mock("../src/lib/auth-context", () => ({
     role: auth.role,
     signOut,
   }),
-}));
-
-vi.mock("../src/components/page-transition", () => ({
-  PageTransition: ({ children }: { children: ReactNode }) => children,
 }));
 
 function renderWorkspace() {
@@ -76,6 +71,39 @@ afterEach(() => {
 });
 
 describe("workspace sidebar", () => {
+  it("switches page content immediately while keeping the sidebar and page frame mounted", async () => {
+    const user = userEvent.setup();
+    const workspace = renderWorkspace();
+    await waitFor(() =>
+      expect(screen.getByRole("heading", { name: "工作区内容" })).toBeVisible(),
+    );
+    await user.click(screen.getByRole("button", { name: "折叠侧边栏" }));
+    const navigationElement = screen.getByRole("navigation", {
+      name: "工作区导航",
+    });
+    const pageFrame = screen.getByRole("main").firstElementChild;
+
+    navigation.pathname = "/projects";
+    workspace.rerender(
+      <WorkspaceLayout>
+        <h1>项目内容</h1>
+      </WorkspaceLayout>,
+    );
+
+    expect(screen.getByRole("heading", { name: "项目内容" })).toBeVisible();
+    expect(
+      screen.queryByRole("heading", { name: "工作区内容" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("main").firstElementChild).toBe(pageFrame);
+    expect(screen.getByRole("navigation", { name: "工作区导航" })).toBe(
+      navigationElement,
+    );
+    expect(screen.getByRole("button", { name: "展开侧边栏" })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+  });
+
   it("collapses and expands, restoring the saved preference on reload", async () => {
     const user = userEvent.setup();
     const workspace = renderWorkspace();
