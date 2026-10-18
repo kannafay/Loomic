@@ -782,6 +782,7 @@ export type Database = {
           name: string;
           preset: string;
           protocol: string;
+          sort_order: number;
           updated_at: string;
         };
         ComputedFields: never;
@@ -796,6 +797,7 @@ export type Database = {
           name: string;
           preset?: string;
           protocol: string;
+          sort_order?: number;
           updated_at?: string;
         };
         Update: {
@@ -809,6 +811,7 @@ export type Database = {
           name?: string;
           preset?: string;
           protocol?: string;
+          sort_order?: number;
           updated_at?: string;
         };
         Relationships: [
@@ -1328,6 +1331,10 @@ export type Database = {
       create_model_provider_with_models: {
         Args: { p_models: Json; p_provider: Json };
         Returns: string;
+      };
+      reorder_model_providers: {
+        Args: { p_provider_ids: string[] };
+        Returns: undefined;
       };
       create_project_with_canvas: {
         Args: {

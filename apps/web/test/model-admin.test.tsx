@@ -5,6 +5,7 @@ import {
   render as renderUI,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -19,6 +20,7 @@ const state = vi.hoisted(() => ({
   fetch: vi.fn(),
   saveModel: vi.fn(),
   saveProvider: vi.fn(),
+  saveOrder: vi.fn(),
   revealKey: vi.fn(),
   discover: vi.fn(),
   importModels: vi.fn(),
@@ -41,6 +43,7 @@ vi.mock("../src/lib/model-admin-api", () => ({
   fetchModelAdmin: state.fetch,
   saveConfiguredModel: state.saveModel,
   saveProviderConfig: state.saveProvider,
+  saveProviderOrder: state.saveOrder,
   fetchProviderApiKey: state.revealKey,
   fetchProviderModels: state.discover,
   importDiscoveredModels: state.importModels,
@@ -89,6 +92,7 @@ beforeEach(() => {
     .mockResolvedValue({ providers: [provider], models: [model], presets: [] });
   state.saveModel.mockReset().mockResolvedValue({ ...model, enabled: true });
   state.saveProvider.mockReset().mockResolvedValue(provider);
+  state.saveOrder.mockReset().mockResolvedValue({ ok: true });
   state.revealKey.mockReset().mockResolvedValue({ apiKey: "saved-test-key" });
   state.discover.mockReset().mockResolvedValue({
     models: [
@@ -446,7 +450,7 @@ it("can switch providers during discovery without showing stale results or locki
   await waitFor(() =>
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
   );
-  await userEvent.click(screen.getByRole("button", { name: /另一个提供商/ }));
+  await userEvent.click(screen.getByRole("button", { name: "另一个提供商" }));
   await act(async () => {
     resolveListing({
       models: [
@@ -585,4 +589,88 @@ it("loads and saves one global proxy configuration", async () => {
     }),
   );
   expect(await screen.findByRole("status")).toHaveTextContent("全局代理已保存");
+});
+
+const otherProvider = { ...provider, id: "provider-2", name: "Google" };
+function providerNames() {
+  return within(screen.getByRole("navigation", { name: "模型提供商" }))
+    .getAllByRole("listitem")
+    .map((item) => item.getAttribute("aria-label"));
+}
+it("persists provider order without changing the selection or unsaved configuration", async () => {
+  state.fetch.mockResolvedValue({
+    providers: [provider, otherProvider],
+    models: [model],
+    presets: [],
+  });
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  const handle = await screen.findByRole("button", { name: "排序 Agnes AI" });
+  await user.clear(screen.getByLabelText("配置名称"));
+  await user.type(screen.getByLabelText("配置名称"), "尚未保存的配置");
+  handle.focus();
+  await user.keyboard("{ArrowUp}");
+  expect(state.saveOrder).not.toHaveBeenCalled();
+  await user.keyboard("{ArrowDown}");
+  await waitFor(() =>
+    expect(state.saveOrder).toHaveBeenCalledExactlyOnceWith("token", {
+      providerIds: [otherProvider.id, provider.id],
+    }),
+  );
+  expect(providerNames()).toEqual(["Google", "Agnes AI"]);
+  expect(screen.getByRole("button", { name: "Agnes AI" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+  expect(screen.getByLabelText("配置名称")).toHaveValue("尚未保存的配置");
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "提供商排序已保存",
+  );
+  expect(state.saveProvider).not.toHaveBeenCalled();
+});
+it("restores the previous order after a rejected save and allows retry", async () => {
+  state.fetch.mockResolvedValue({
+    providers: [provider, otherProvider],
+    models: [model],
+    presets: [],
+  });
+  state.saveOrder.mockRejectedValueOnce(new Error("排序保存失败，请重试。"));
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  const handle = await screen.findByRole("button", { name: "排序 Agnes AI" });
+  handle.focus();
+  await user.keyboard("{ArrowDown}");
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "排序保存失败，请重试。",
+  );
+  expect(providerNames()).toEqual(["Agnes AI", "Google"]);
+  await user.keyboard("{ArrowDown}");
+  await waitFor(() => expect(state.saveOrder).toHaveBeenCalledTimes(2));
+  expect(providerNames()).toEqual(["Google", "Agnes AI"]);
+});
+it("blocks overlapping saves and keeps ordinary provider selection independent of sorting", async () => {
+  state.fetch.mockResolvedValue({
+    providers: [provider, otherProvider],
+    models: [model],
+    presets: [],
+  });
+  let finish!: (value: { ok: true }) => void;
+  state.saveOrder.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const user = userEvent.setup();
+  render(<AdminPage />);
+  await user.click(await screen.findByRole("button", { name: "Google" }));
+  expect(state.saveOrder).not.toHaveBeenCalled();
+  screen.getByRole("button", { name: "排序 Google" }).focus();
+  await user.keyboard("{ArrowUp}{ArrowDown}");
+  expect(state.saveOrder).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("button", { name: "排序 Google" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "添加提供商" })).toBeDisabled();
+  await act(async () => finish({ ok: true }));
+  expect(screen.getByRole("button", { name: "排序 Google" })).toBeEnabled();
+  expect(providerNames()).toEqual(["Google", "Agnes AI"]);
 });

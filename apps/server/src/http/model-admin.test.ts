@@ -19,6 +19,7 @@ async function setup() {
     role: vi.fn(async (id: string) => (id === "admin" ? "admin" : "user")),
     list: vi.fn(async () => ({ providers: [], models: [], presets: [] })),
     saveProvider: vi.fn(),
+    reorderProviders: vi.fn(),
     revealProviderApiKey: vi.fn(async () => ({ apiKey: "saved-test-key" })),
     saveModel: vi.fn(),
     setRole: vi.fn(),
@@ -56,6 +57,59 @@ async function setup() {
   return { app, service };
 }
 describe("model administration authorization", () => {
+  it("validates and persists an administrator's provider ordering", async () => {
+    const { app, service } = await setup();
+    const providerIds = [
+      "22222222-2222-4222-8222-222222222222",
+      "11111111-1111-4111-8111-111111111111",
+    ];
+    const response = await app.inject({
+      method: "PUT",
+      url: "/api/admin/providers/order",
+      headers: { authorization: "Bearer admin" },
+      payload: { providerIds },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ ok: true });
+    expect(service.reorderProviders).toHaveBeenCalledExactlyOnceWith("admin", {
+      providerIds,
+    });
+    service.reorderProviders.mockClear();
+    for (const invalid of [
+      [],
+      [providerIds[0], providerIds[0]],
+      ["invalid-id"],
+    ]) {
+      expect(
+        (
+          await app.inject({
+            method: "PUT",
+            url: "/api/admin/providers/order",
+            headers: { authorization: "Bearer admin" },
+            payload: { providerIds: invalid },
+          })
+        ).statusCode,
+      ).toBe(400);
+    }
+    expect(service.reorderProviders).not.toHaveBeenCalled();
+    expect(service.saveProvider).not.toHaveBeenCalled();
+  });
+  it("reports a changed provider list as a conflict", async () => {
+    const { app, service } = await setup();
+    service.reorderProviders.mockRejectedValueOnce(
+      new ModelConfigError("提供商列表已变化，请刷新页面后重新排序。", 409),
+    );
+    expect(
+      (
+        await app.inject({
+          method: "PUT",
+          url: "/api/admin/providers/order",
+          headers: { authorization: "Bearer admin" },
+          payload: { providerIds: ["11111111-1111-4111-8111-111111111111"] },
+        })
+      ).statusCode,
+    ).toBe(409);
+  });
   it("validates and authorizes deletion and returns no sensitive account data", async () => {
     const { app, service } = await setup();
     const id = "11111111-1111-4111-8111-111111111111";
@@ -212,6 +266,7 @@ describe("model administration authorization", () => {
       ["PUT", `/api/admin/users/${id}`],
       ["DELETE", `/api/admin/users/${id}`],
       ["POST", "/api/admin/providers"],
+      ["PUT", "/api/admin/providers/order"],
       ["POST", "/api/admin/providers/create-with-models"],
       ["POST", "/api/admin/providers/discover-models"],
       ["POST", "/api/admin/providers/test-connection"],
@@ -242,6 +297,7 @@ describe("model administration authorization", () => {
     expect(service.updateUser).not.toHaveBeenCalled();
     expect(service.deleteUser).not.toHaveBeenCalled();
     expect(service.saveProvider).not.toHaveBeenCalled();
+    expect(service.reorderProviders).not.toHaveBeenCalled();
     expect(service.revealProviderApiKey).not.toHaveBeenCalled();
     expect(service.saveModel).not.toHaveBeenCalled();
     expect(service.setRole).not.toHaveBeenCalled();

@@ -33,6 +33,13 @@ export const providerConfigSchema = providerWriteSchema
     createdBy: z.string().uuid(),
     hasApiKey: z.boolean(),
   });
+export const providerOrderSchema = z.object({
+  providerIds: z
+    .array(z.string().uuid())
+    .min(1)
+    .max(1000)
+    .refine((ids) => new Set(ids).size === ids.length, "提供商不能重复"),
+});
 export const providerConnectionSchema = providerWriteSchema
   .pick({ protocol: true, baseUrl: true, apiKey: true, preset: true })
   .extend({ providerId: z.string().uuid().optional() });
@@ -122,6 +129,7 @@ export type ModelKind = z.infer<typeof modelKindSchema>;
 export type ModelProtocol = z.infer<typeof modelProtocolSchema>;
 export type ProviderWrite = z.infer<typeof providerWriteSchema>;
 export type ProviderConfig = z.infer<typeof providerConfigSchema>;
+export type ProviderOrder = z.infer<typeof providerOrderSchema>;
 export type ConfiguredModelWrite = z.infer<typeof configuredModelWriteSchema>;
 export type ConfiguredModel = z.infer<typeof configuredModelSchema>;
 export type ModelPreset = z.infer<typeof modelPresetSchema>;

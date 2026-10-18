@@ -6,6 +6,7 @@ import {
   networkSettingsSchema,
   providerConnectionSchema,
   providerCreationSchema,
+  providerOrderSchema,
   providerWriteSchema,
   systemRoleSchema,
 } from "@loomic/shared";
@@ -72,6 +73,11 @@ export async function registerModelAdminRoutes(
   app.post("/api/admin/providers", (request, reply) =>
     run(request, reply, true, (userId) =>
       service.saveProvider(userId, providerWriteSchema.parse(request.body)),
+    ),
+  );
+  app.put("/api/admin/providers/order", (request, reply) =>
+    run(request, reply, true, (userId) =>
+      service.reorderProviders(userId, providerOrderSchema.parse(request.body)),
     ),
   );
   app.post<{ Params: { id: string } }>(

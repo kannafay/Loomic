@@ -12,6 +12,7 @@ import {
   type ProviderConnection,
   type ProviderConnectionTest,
   type ProviderCreation,
+  type ProviderOrder,
   type ProviderWrite,
   type SystemRole,
   configuredModelSchema,
@@ -20,6 +21,7 @@ import {
   providerConfigSchema,
   providerConnectionSchema,
   providerCreationSchema,
+  providerOrderSchema,
   providerWriteSchema,
 } from "@loomic/shared";
 import { z } from "zod";
@@ -87,7 +89,7 @@ function validateModelOptions(value: Record<string, unknown>) {
   if (JSON.stringify(value).length > 32000)
     throw new ModelConfigError("高级参数过长。");
 }
-function publicProvider(row: ProviderRow): ProviderConfig {
+function publicProvider(row: Omit<ProviderRow, "sort_order">): ProviderConfig {
   return providerConfigSchema.parse({
     id: row.id,
     createdBy: row.created_by,
@@ -153,7 +155,12 @@ export function createModelConfigService(options: {
     async list() {
       const client = options.getAdminClient();
       const [providers, models] = await Promise.all([
-        client.from("model_providers").select("*").order("created_at"),
+        client
+          .from("model_providers")
+          .select("*")
+          .order("sort_order")
+          .order("created_at")
+          .order("id"),
         client.from("configured_models").select("*").order("created_at"),
       ]);
       if (providers.error || models.error)
@@ -163,6 +170,21 @@ export function createModelConfigService(options: {
         models: models.data.map(publicModel),
         presets: MODEL_PRESETS,
       };
+    },
+    async reorderProviders(userId: string, input: ProviderOrder) {
+      await service.requireAdmin(userId);
+      const { providerIds } = providerOrderSchema.parse(input);
+      const { error } = await options
+        .getAdminClient()
+        .rpc("reorder_model_providers", { p_provider_ids: providerIds });
+      if (error)
+        throw new ModelConfigError(
+          error.code === "P0001"
+            ? "提供商列表已变化，请刷新页面后重新排序。"
+            : "提供商排序保存失败，请重试。",
+          error.code === "P0001" ? 409 : 503,
+        );
+      invalidate();
     },
     async revealProviderApiKey(userId: string, providerId: string) {
       await service.requireAdmin(userId);
@@ -189,7 +211,13 @@ export function createModelConfigService(options: {
         return cachedCatalog;
       const client = options.getAdminClient();
       const [providers, models] = await Promise.all([
-        client.from("model_providers").select("*").eq("enabled", true),
+        client
+          .from("model_providers")
+          .select("*")
+          .eq("enabled", true)
+          .order("sort_order")
+          .order("created_at")
+          .order("id"),
         client
           .from("configured_models")
           .select("*")
@@ -250,21 +278,24 @@ export function createModelConfigService(options: {
         throw new ModelConfigError("请填写 API Key。");
       const providerId = id ?? randomUUID();
       const { apiKey: _key, ..._public } = value;
-      const result = await client
-        .from("model_providers")
-        .upsert({
-          id: providerId,
-          created_by: existing?.created_by ?? userId,
-          name: value.name,
-          category: value.category,
-          preset: value.preset,
-          protocol: value.protocol,
-          base_url: value.baseUrl.replace(/\/+$/, ""),
-          enabled: value.enabled,
-          api_key_ciphertext: value.apiKey
-            ? encryptApiKey(value.apiKey, options.secret)
-            : (existing?.api_key_ciphertext ?? ""),
-        })
+      const row = {
+        id: providerId,
+        created_by: existing?.created_by ?? userId,
+        name: value.name,
+        category: value.category,
+        preset: value.preset,
+        protocol: value.protocol,
+        base_url: value.baseUrl.replace(/\/+$/, ""),
+        enabled: value.enabled,
+        api_key_ciphertext: value.apiKey
+          ? encryptApiKey(value.apiKey, options.secret)
+          : (existing?.api_key_ciphertext ?? ""),
+      };
+      const table = client.from("model_providers");
+      const result = await (existing
+        ? table.update(row).eq("id", providerId)
+        : table.insert(row)
+      )
         .select("*")
         .single();
       dbError(result.error);

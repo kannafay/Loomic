@@ -12,6 +12,7 @@ import type {
   ProviderConnection,
   ProviderConnectionTest,
   ProviderCreation,
+  ProviderOrder,
   ProviderWrite,
   SystemRole,
 } from "@loomic/shared";
@@ -38,6 +39,8 @@ async function request<T>(
 }
 export const fetchModelAdmin = (token: string) =>
   request<ModelAdminResponse>(token, "/models");
+export const saveProviderOrder = (token: string, value: ProviderOrder) =>
+  request<{ ok: true }>(token, "/providers/order", "PUT", value);
 export const fetchProviderApiKey = (token: string, id: string) =>
   request<{ apiKey: string }>(token, `/providers/${id}/api-key`, "POST");
 export const createProviderWithModels = (
