@@ -373,7 +373,7 @@ export default function HomePage() {
                 <Link
                   href={`/canvas?id=${project.primaryCanvas.id}`}
                   aria-label={project.name}
-                  className="absolute inset-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  className="absolute inset-0 z-1 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                 />
                 {/* Trash icon -- hover reveal */}
                 <button
