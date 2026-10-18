@@ -217,10 +217,7 @@ export function ImageGeneratorPanel({
       if (controller.signal.aborted) return;
 
       console.error("[image-gen] Generation error:", err);
-      const handled = handleGenerationError(err);
-      if (!handled) {
-        setError("图片生成失败，请重试或更换模型。");
-      }
+      handleGenerationError(err, "图片生成失败，请重试或更换模型。");
       setLoading(false);
       updateImageGeneratorElement(excalidrawApi, elementId, {
         status: "error",

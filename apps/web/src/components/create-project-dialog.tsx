@@ -54,11 +54,9 @@ export function CreateProjectDialog({
         if (apiErr.code === "project_slug_taken") {
           setError("同名项目已存在，请使用其他名称。");
         } else {
-          setError("项目创建失败，请重试。");
           toastError("项目创建失败");
         }
       } else {
-        setError("项目创建失败，请重试。");
         toastError("项目创建失败");
       }
     } finally {

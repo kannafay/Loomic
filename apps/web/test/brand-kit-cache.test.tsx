@@ -1,9 +1,19 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render as renderUI,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { BrandKitPage } from "../src/components/brand-kit/brand-kit-page";
+import { ToastProvider } from "../src/components/toast";
 import { PageDataProvider } from "../src/lib/page-data-context";
+
+const render = (ui: ReactNode) => renderUI(ui, { wrapper: ToastProvider });
 
 const { fetchKits, fetchDetail } = vi.hoisted(() => ({
   fetchKits: vi.fn(),

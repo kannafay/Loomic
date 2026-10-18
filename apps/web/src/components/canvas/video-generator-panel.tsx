@@ -446,10 +446,7 @@ export function VideoGeneratorPanel({
       if (controller.signal.aborted) return;
 
       console.error("[video-gen] Generation error:", err);
-      const handled = handleGenerationError(err);
-      if (!handled) {
-        setError("视频生成失败，请重试或更换模型。");
-      }
+      handleGenerationError(err, "视频生成失败，请重试或更换模型。");
       setLoading(false);
       updateVideoGeneratorElement(excalidrawApi, elementId, {
         status: "error",
@@ -518,7 +515,9 @@ export function VideoGeneratorPanel({
         }}
         sourcesLoading={sourcesLoading}
         disabled={loading}
-        onError={setError}
+        onError={(message) =>
+          handleGenerationError(new Error(message), message)
+        }
       />
 
       {/* Prompt textarea */}

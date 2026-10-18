@@ -1,14 +1,18 @@
 import "@testing-library/jest-dom/vitest";
 import {
   cleanup,
-  render,
+  render as renderUI,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspaceLayout from "../src/app/(workspace)/layout";
+import { ToastProvider } from "../src/components/toast";
+
+const render = (ui: ReactNode) => renderUI(ui, { wrapper: ToastProvider });
 
 const { auth, navigation, signOut, replace } = vi.hoisted(() => ({
   auth: { role: "admin" as "admin" | "user" },
@@ -263,9 +267,10 @@ describe("workspace sidebar", () => {
     const dialog = await screen.findByRole("dialog", { name: "确认退出登录" });
     await user.click(within(dialog).getByRole("button", { name: "退出登录" }));
 
-    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+    expect(await screen.findByRole("alert")).toHaveTextContent(
       "退出登录失败，请重试。",
     );
+    expect(screen.getByRole("alert")).toHaveAttribute("data-slot", "toast");
     expect(replace).not.toHaveBeenCalled();
     expect(within(dialog).getByRole("button", { name: "取消" })).toBeEnabled();
     await user.click(within(dialog).getByRole("button", { name: "退出登录" }));

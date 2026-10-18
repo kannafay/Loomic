@@ -3,13 +3,7 @@
 import { Input } from "@/components/ui/input";
 
 import { motion } from "framer-motion";
-import {
-  ArrowRight,
-  CheckCircle2,
-  ExternalLink,
-  Link2,
-  Loader2,
-} from "lucide-react";
+import { ArrowRight, ExternalLink, Link2, Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 
 import { useToast } from "@/components/toast";
@@ -35,7 +29,6 @@ interface ImportPanelProps {
 type ImportState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; skillName: string }
   | { status: "error"; message: string };
 
 // ---------------------------------------------------------------------------
@@ -77,24 +70,25 @@ export function ImportPanel({
 
     try {
       const result = await importSkillFromUrl(token, trimmed);
-      setImportState({ status: "success", skillName: result.skill.name });
+      setUrl("");
+      setImportState({ status: "idle" });
+      try {
+        await onImported();
+      } catch {
+        showError("技能已导入，但列表刷新失败，请刷新页面。");
+        return;
+      }
       success(`技能 "${result.skill.name}" 导入成功`);
-      await onImported();
     } catch (err) {
       const msg =
         err instanceof ApiApplicationError
           ? err.message
           : "导入失败，请检查 URL 后重试";
-      setImportState({ status: "error", message: msg });
+      setImportState({ status: "idle" });
       showError(msg);
       console.error("[import] skill import failed:", err);
     }
   }, [accessToken, url, onImported, success, showError]);
-
-  const handleReset = useCallback(() => {
-    setUrl("");
-    setImportState({ status: "idle" });
-  }, []);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -106,7 +100,6 @@ export function ImportPanel({
   );
 
   const isLoading = importState.status === "loading";
-  const isSuccess = importState.status === "success";
   const isError = importState.status === "error";
 
   // ---------------------------------------------------------------------------
@@ -127,7 +120,7 @@ export function ImportPanel({
           <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
             <Link2 className="size-4 text-muted-foreground" />
           </div>
-          <div>
+          <div className="min-w-0 flex-1">
             <h3 className="text-sm font-medium text-foreground">
               从 URL 导入技能
             </h3>
@@ -135,6 +128,11 @@ export function ImportPanel({
               支持 GitHub 仓库 URL 和 npm tarball URL
             </p>
           </div>
+          {onSwitchToInstalled && (
+            <Button variant="ghost" size="xs" onClick={onSwitchToInstalled}>
+              查看已安装
+            </Button>
+          )}
         </div>
 
         {/* Input row */}
@@ -185,44 +183,13 @@ export function ImportPanel({
         {/* Error message */}
         {isError && (
           <motion.p
+            role="alert"
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             className="mt-2 text-xs text-destructive"
           >
             {importState.message}
           </motion.p>
-        )}
-
-        {/* Success state */}
-        {isSuccess && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2 }}
-            className="mt-4 flex items-center justify-between rounded-lg border border-border bg-muted/50 px-4 py-3"
-          >
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="size-4 text-emerald-500" />
-              <span className="text-sm font-medium text-foreground">
-                {importState.skillName}
-              </span>
-              <span className="text-xs text-muted-foreground">已导入</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {onSwitchToInstalled && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={onSwitchToInstalled}
-                >
-                  查看已安装
-                </Button>
-              )}
-              <Button variant="ghost" size="xs" onClick={handleReset}>
-                继续导入
-              </Button>
-            </div>
-          </motion.div>
         )}
 
         {/* Hint examples */}

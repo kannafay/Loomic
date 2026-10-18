@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useToast } from "../components/toast";
 
 import type { ChatSessionSummary, ContentBlock } from "@loomic/shared";
 import type { ChatMessage as ChatMessageData } from "@loomic/shared";
@@ -115,6 +116,7 @@ export function useChatSessions({
   initialSessionId,
   onSessionChange,
 }: UseChatSessionsOptions) {
+  const { success, error: showError } = useToast();
   const [sessions, setSessions] = useState<ChatSessionSummary[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -245,9 +247,9 @@ export function useChatSessions({
       onSessionChangeRef.current?.(res.session.id);
       setMessages([]);
     } catch {
-      // Silently fail
+      showError("新建对话失败，请重试。");
     }
-  }, [canvasId, streaming]);
+  }, [canvasId, streaming, showError]);
 
   // ── Delete session ──
   const handleDeleteSession = useCallback(
@@ -264,6 +266,7 @@ export function useChatSessions({
           onSessionChangeRef.current?.(res.session.id);
           setMessages([]);
         } catch {
+          showError("删除对话失败，请重试。");
           return;
         }
       } else {
@@ -286,16 +289,19 @@ export function useChatSessions({
       }
 
       // Delete in background
-      deleteSessionApi(token, sessionId).catch(() => {
-        fetchSessions(token, canvasId)
-          .then((res) => setSessions(res.sessions))
-          .catch(() => {});
-      });
+      deleteSessionApi(token, sessionId)
+        .then(() => success("对话已删除。"))
+        .catch(() => {
+          showError("删除对话失败，请重试。");
+          fetchSessions(token, canvasId)
+            .then((res) => setSessions(res.sessions))
+            .catch(() => {});
+        });
 
       // Clean up cached messages for deleted session
       msgCacheRef.current.delete(sessionId);
     },
-    [canvasId, streaming],
+    [canvasId, streaming, success, showError],
   );
 
   // ── Auto-title first message ──

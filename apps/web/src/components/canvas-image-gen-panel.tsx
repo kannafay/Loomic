@@ -2,8 +2,6 @@
 
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 
-import { getUserFacingError } from "@/lib/locale";
-
 import { useCallback, useRef, useState } from "react";
 
 import type { ImageArtifact } from "@loomic/shared";
@@ -25,7 +23,6 @@ export function CanvasImageGenPanel({
 }: CanvasImageGenPanelProps) {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const accessTokenRef = useRef(accessToken);
   accessTokenRef.current = accessToken;
@@ -34,7 +31,6 @@ export function CanvasImageGenPanel({
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim() || loading) return;
     setLoading(true);
-    setError(null);
 
     try {
       const result = await generateImageDirect(
@@ -55,10 +51,7 @@ export function CanvasImageGenPanel({
 
       setPrompt("");
     } catch (err) {
-      const handled = handleGenerationError(err);
-      if (!handled) {
-        setError(getUserFacingError(err, "生成失败，请重试。"));
-      }
+      handleGenerationError(err);
     } finally {
       setLoading(false);
     }
@@ -98,8 +91,6 @@ export function CanvasImageGenPanel({
         className="w-full h-20 resize-none rounded-lg border border-border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
         disabled={loading}
       />
-
-      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
 
       <button
         type="button"

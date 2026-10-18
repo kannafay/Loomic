@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -64,6 +65,7 @@ export function ProviderModelDiscovery({
   onClose: () => void;
   onImported: (result: { imported: number; skipped: number }) => Promise<void>;
 }) {
+  const { error: showError } = useToast();
   const [models, setModels] = useState<ModelChoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
@@ -148,7 +150,7 @@ export function ProviderModelDiscovery({
           : { imported: 0, skipped: 0 };
       await onImported(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "模型导入失败，请重试。");
+      showError(err instanceof Error ? err.message : "模型导入失败，请重试。");
     } finally {
       setImporting(false);
       onBusyChange(false);

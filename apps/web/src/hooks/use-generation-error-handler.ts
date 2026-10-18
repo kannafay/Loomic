@@ -7,14 +7,11 @@ import { useCallback } from "react";
 export function useGenerationErrorHandler() {
   const { error: showErrorToast } = useToast();
   const handleGenerationError = useCallback(
-    (error: unknown): boolean => {
+    (error: unknown, fallbackMessage = "生成失败，请重试。") => {
       console.error("[generation-error]", error);
       showErrorToast(
-        error instanceof ApiApplicationError
-          ? error.message
-          : "生成失败，请重试。",
+        error instanceof ApiApplicationError ? error.message : fallbackMessage,
       );
-      return false;
     },
     [showErrorToast],
   );

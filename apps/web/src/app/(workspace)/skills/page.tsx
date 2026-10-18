@@ -12,6 +12,7 @@ import { ImportPanel } from "@/components/skills/import-panel";
 import { MarketplacePanel } from "@/components/skills/marketplace-panel";
 import { SkillCard } from "@/components/skills/skill-card";
 import { SkillDetailDialog } from "@/components/skills/skill-detail-dialog";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -81,6 +82,7 @@ const emptyVariants = {
 
 export default function SkillsPage() {
   const { session } = useAuth();
+  const { success, error: showError } = useToast();
 
   // Token ref pattern (same as settings page)
   const accessTokenRef = useRef(session?.access_token);
@@ -229,14 +231,16 @@ export default function SkillsPage() {
 
       try {
         await toggleSkill(token, skillId, enabled);
+        success(enabled ? "技能已启用。" : "技能已停用。");
       } catch {
         // Revert on failure
         setSkills((prev) =>
           prev.map((s) => (s.id === skillId ? { ...s, enabled: !enabled } : s)),
         );
+        showError("技能状态更新失败，请重试。");
       }
     },
-    [getToken, setSkills],
+    [getToken, setSkills, success, showError],
   );
 
   const handleCardClick = useCallback(
@@ -272,12 +276,14 @@ export default function SkillsPage() {
       if (!token) return;
       try {
         await installSkill(token, skillId);
+        success("技能已安装。");
         await loadSkills();
       } catch (err) {
         console.error("Failed to install skill:", err);
+        showError("技能安装失败，请重试。");
       }
     },
-    [getToken, loadSkills],
+    [getToken, loadSkills, success, showError],
   );
 
   const handleUninstall = useCallback(
@@ -286,13 +292,15 @@ export default function SkillsPage() {
       if (!token) return;
       try {
         await uninstallSkill(token, skillId);
+        success("技能已卸载。");
         setDetailOpen(false);
         await loadSkills();
       } catch (err) {
         console.error("Failed to uninstall skill:", err);
+        showError("技能卸载失败，请重试。");
       }
     },
-    [getToken, loadSkills],
+    [getToken, loadSkills, success, showError],
   );
 
   const handleCreate = useCallback(
@@ -307,23 +315,31 @@ export default function SkillsPage() {
       if (!token) return;
       try {
         await createSkill(token, data);
+        success("技能已创建。");
         await loadSkills();
       } catch (err) {
         console.error("Failed to create skill:", err);
+        showError("技能创建失败，请重试。");
+        throw err;
       }
     },
-    [getToken, loadSkills],
+    [getToken, loadSkills, success, showError],
   );
 
   const handleDelete = useCallback(
     async (skillId: string) => {
       const token = getToken();
       if (!token) return;
-      await deleteSkill(token, skillId);
-      setDetailOpen(false);
-      await loadSkills();
+      try {
+        await deleteSkill(token, skillId);
+        success("技能已删除。");
+        setDetailOpen(false);
+        await loadSkills();
+      } catch {
+        showError("技能删除失败，请重试。");
+      }
     },
-    [getToken, loadSkills],
+    [getToken, loadSkills, success, showError],
   );
 
   // ---------------------------------------------------------------------------

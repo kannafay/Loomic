@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { useToast } from "@/components/toast";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,7 @@ export function BrandKitSelector({
   currentBrandKitId,
   onBrandKitChange,
 }: BrandKitSelectorProps) {
+  const { success, error: showError } = useToast();
   const [kits, setKits] = useState<BrandKitSummary[]>([]);
   const [updating, setUpdating] = useState(false);
 
@@ -63,13 +65,14 @@ export function BrandKitSelector({
           brand_kit_id: kitId,
         });
         onBrandKitChange(kitId);
+        success(kitId ? "品牌套件已应用。" : "已取消品牌套件。");
       } catch {
-        /* keep current state on failure */
+        showError("品牌套件更新失败，请重试。");
       } finally {
         setUpdating(false);
       }
     },
-    [projectId, currentBrandKitId, onBrandKitChange],
+    [projectId, currentBrandKitId, onBrandKitChange, success, showError],
   );
 
   return (

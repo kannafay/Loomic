@@ -17,6 +17,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
 import { LoomicLogo } from "@/components/icons/loomic-logo";
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -129,12 +130,12 @@ function MobileBottomBar({ items }: { items: NavItem[] }) {
 }
 
 export function AppSidebar() {
+  const { error: showError } = useToast();
   const router = useRouter();
   const { signOut, role } = useAuth();
   const { open, toggleSidebar } = useSidebar();
   const [logoutOpen, setLogoutOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
-  const [logoutError, setLogoutError] = useState("");
   const cancelLogoutRef = useRef<HTMLButtonElement>(null);
   const accountItems = [
     SETTINGS_ITEM,
@@ -146,13 +147,12 @@ export function AppSidebar() {
   async function handleSignOut() {
     if (signingOut) return;
     setSigningOut(true);
-    setLogoutError("");
     try {
       await signOut();
       setLogoutOpen(false);
       router.replace("/login");
     } catch {
-      setLogoutError("退出登录失败，请重试。");
+      showError("退出登录失败，请重试。");
     } finally {
       setSigningOut(false);
     }
@@ -167,7 +167,6 @@ export function AppSidebar() {
           return;
         }
         setLogoutOpen(nextOpen);
-        setLogoutError("");
       }}
       disablePointerDismissal={signingOut}
     >
@@ -256,11 +255,6 @@ export function AppSidebar() {
             确定要退出当前账号吗？退出后需要重新登录。
           </DialogDescription>
         </DialogHeader>
-        {logoutError && (
-          <p role="alert" className="text-sm text-destructive">
-            {logoutError}
-          </p>
-        )}
         <DialogFooter>
           <DialogClose
             render={

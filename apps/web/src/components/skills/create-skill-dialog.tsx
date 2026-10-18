@@ -165,6 +165,8 @@ export function CreateSkillDialog({
           ...(validFiles.length > 0 ? { files: validFiles } : {}),
         });
         handleOpenChange(false);
+      } catch {
+        // The owner reports the failure; keep the draft open for retry.
       } finally {
         setSubmitting(false);
       }

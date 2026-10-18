@@ -1,8 +1,18 @@
 import "@testing-library/jest-dom/vitest";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render as renderUI,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { BrandKitSelector } from "../src/components/brand-kit-selector";
+import { ToastProvider } from "../src/components/toast";
+
+const render = (ui: ReactNode) => renderUI(ui, { wrapper: ToastProvider });
 
 const { fetchKits, updateProject } = vi.hoisted(() => ({
   fetchKits: vi.fn(),

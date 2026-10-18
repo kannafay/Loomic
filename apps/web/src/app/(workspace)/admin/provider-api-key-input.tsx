@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { fetchProviderApiKey } from "@/lib/model-admin-api";
@@ -31,12 +32,12 @@ export function ProviderApiKeyInput({
   required: boolean;
   disabled: boolean;
 }) {
+  const { success, error: showError } = useToast();
   const [savedKey, setSavedKey] = useState<string | null>(null);
   const [edited, setEdited] = useState(false);
   const [visible, setVisible] = useState(false);
   const [pending, setPending] = useState<"reveal" | "copy" | null>(null);
   const [copied, setCopied] = useState(false);
-  const [error, setError] = useState("");
   const active = useRef(true);
   const revision = useRef(0);
 
@@ -58,7 +59,6 @@ export function ProviderApiKeyInput({
     const startedRevision = revision.current;
     setPending(action);
     setCopied(false);
-    setError("");
     try {
       const apiKey =
         value ||
@@ -71,15 +71,17 @@ export function ProviderApiKeyInput({
       if (!value) setSavedKey(apiKey);
       if (action === "copy") {
         await navigator.clipboard.writeText(apiKey);
-        if (active.current && startedRevision === revision.current)
+        if (active.current && startedRevision === revision.current) {
           setCopied(true);
+          success("密钥已复制。");
+        }
       } else {
         setEdited(false);
         setVisible(true);
       }
     } catch {
       if (active.current && startedRevision === revision.current)
-        setError(
+        showError(
           action === "copy"
             ? "复制失败，请重试或展开后手动复制。"
             : "密钥读取失败，请重试。",
@@ -104,7 +106,6 @@ export function ProviderApiKeyInput({
             setEdited(true);
             setSavedKey(null);
             setCopied(false);
-            setError("");
             onChange(event.target.value);
           }}
           placeholder={
@@ -112,8 +113,6 @@ export function ProviderApiKeyInput({
           }
           autoComplete="new-password"
           spellCheck={false}
-          aria-invalid={!!error}
-          aria-describedby={error ? `${id}-error` : undefined}
         />
         <div className="absolute inset-y-0 right-1 flex items-center gap-0.5">
           <Button
@@ -161,12 +160,6 @@ export function ProviderApiKeyInput({
           </Button>
         </div>
       </div>
-      {copied && <output className="sr-only">密钥已复制。</output>}
-      {error && (
-        <p id={`${id}-error`} role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
     </div>
   );
 }

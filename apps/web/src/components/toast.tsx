@@ -89,7 +89,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={ctx}>
       {children}
 
-      <div className="pointer-events-none fixed inset-x-4 bottom-6 z-[9999] flex flex-col items-center gap-2">
+      <div
+        aria-live="polite"
+        aria-relevant="additions text"
+        className="pointer-events-none fixed inset-x-4 bottom-6 z-[9999] flex flex-col items-center gap-2"
+      >
         <AnimatePresence>
           {toasts.map((t) => (
             <ToastItem key={t.id} toast={t} onDismiss={() => remove(t.id)} />

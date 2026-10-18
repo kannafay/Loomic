@@ -48,7 +48,7 @@ vi.mock("../src/hooks/use-breakpoint", () => ({
   useBreakpoint: () => "desktop",
 }));
 vi.mock("../src/components/toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => ({ toast: vi.fn(), success: vi.fn(), error: vi.fn() }),
 }));
 vi.mock("../src/components/agent-model-selector", () => ({
   AgentModelSelector: () => null,

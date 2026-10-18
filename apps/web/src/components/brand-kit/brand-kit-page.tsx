@@ -23,12 +23,14 @@ import {
 import { usePageDataState } from "../../lib/page-data-context";
 import { ApiAuthError } from "../../lib/server-api";
 import { BrandKitSkeleton } from "../skeletons/brand-kit-skeleton";
+import { useToast } from "../toast";
 import { BrandKitEditor } from "./brand-kit-editor";
 import { BrandKitSidebar } from "./brand-kit-sidebar";
 import { EmptyState } from "./empty-state";
 
 export function BrandKitPage() {
   const { session, signOut } = useAuth();
+  const { success, error: showError } = useToast();
 
   const [kits, setKits, hasKits] = usePageDataState<BrandKitSummary[]>(
     "brand-kits:list",
@@ -133,26 +135,44 @@ export function BrandKitPage() {
   const handleCreateKit = useCallback(async () => {
     try {
       const newKit = await createBrandKit(getToken());
+      success("品牌套件已创建。");
       await refreshList();
       setSelectedKit(newKit);
     } catch (err) {
       if (await handleAuthError(err)) return;
       console.error("Failed to create brand kit:", err);
+      showError("品牌套件创建失败，请重试。");
     }
-  }, [getToken, handleAuthError, refreshList, setSelectedKit]);
+  }, [
+    getToken,
+    handleAuthError,
+    refreshList,
+    setSelectedKit,
+    success,
+    showError,
+  ]);
 
   const handleDuplicateKit = useCallback(async () => {
     const kit = selectedKitRef.current;
     if (!kit) return;
     try {
       const duplicated = await duplicateBrandKit(getToken(), kit.id);
+      success("品牌套件已复制。");
       await refreshList();
       setSelectedKit(duplicated);
     } catch (err) {
       if (await handleAuthError(err)) return;
       console.error("Failed to duplicate brand kit:", err);
+      showError("品牌套件复制失败，请重试。");
     }
-  }, [getToken, handleAuthError, refreshList, setSelectedKit]);
+  }, [
+    getToken,
+    handleAuthError,
+    refreshList,
+    setSelectedKit,
+    success,
+    showError,
+  ]);
 
   const handleUpdateKit = useCallback(
     async (data: {
@@ -164,14 +184,26 @@ export function BrandKitPage() {
       if (!kit) return;
       try {
         const updated = await updateBrandKit(getToken(), kit.id, data);
+        if (data.is_default !== undefined)
+          success(
+            data.is_default ? "已设为默认品牌套件。" : "已取消默认品牌套件。",
+          );
         setSelectedKit(updated);
         await refreshList();
       } catch (err) {
         if (await handleAuthError(err)) return;
         console.error("Failed to update brand kit:", err);
+        showError("品牌套件保存失败，请重试。");
       }
     },
-    [getToken, handleAuthError, refreshList, setSelectedKit],
+    [
+      getToken,
+      handleAuthError,
+      refreshList,
+      setSelectedKit,
+      success,
+      showError,
+    ],
   );
 
   const handleDeleteKit = useCallback(async () => {
@@ -179,6 +211,7 @@ export function BrandKitPage() {
     if (!kit) return;
     try {
       await deleteBrandKit(getToken(), kit.id);
+      success("品牌套件已删除。");
       const remaining = await refreshList();
       const nextKit = remaining[0];
       if (nextKit) {
@@ -189,13 +222,23 @@ export function BrandKitPage() {
     } catch (err) {
       if (await handleAuthError(err)) return;
       console.error("Failed to delete brand kit:", err);
+      showError("品牌套件删除失败，请重试。");
     }
-  }, [getToken, handleAuthError, refreshList, loadKitDetail, setSelectedKit]);
+  }, [
+    getToken,
+    handleAuthError,
+    refreshList,
+    loadKitDetail,
+    setSelectedKit,
+    success,
+    showError,
+  ]);
 
   const handleDeleteKitFromSidebar = useCallback(
     async (kitId: string) => {
       try {
         await deleteBrandKit(getToken(), kitId);
+        success("品牌套件已删除。");
         const remaining = await refreshList();
         if (selectedKitRef.current?.id === kitId) {
           const nextKit = remaining[0];
@@ -208,9 +251,18 @@ export function BrandKitPage() {
       } catch (err) {
         if (await handleAuthError(err)) return;
         console.error("Failed to delete brand kit:", err);
+        showError("品牌套件删除失败，请重试。");
       }
     },
-    [getToken, handleAuthError, refreshList, loadKitDetail, setSelectedKit],
+    [
+      getToken,
+      handleAuthError,
+      refreshList,
+      loadKitDetail,
+      setSelectedKit,
+      success,
+      showError,
+    ],
   );
 
   // --- Asset handlers ---
@@ -231,13 +283,15 @@ export function BrandKitPage() {
           text_content: textContent ?? null,
           metadata,
         });
+        success("素材已添加。");
         await loadKitDetail(kit.id);
       } catch (err) {
         if (await handleAuthError(err)) return;
         console.error("Failed to create asset:", err);
+        showError("素材添加失败，请重试。");
       }
     },
-    [getToken, handleAuthError, loadKitDetail],
+    [getToken, handleAuthError, loadKitDetail, success, showError],
   );
 
   const handleUpdateAsset = useCallback(
@@ -253,9 +307,10 @@ export function BrandKitPage() {
       } catch (err) {
         if (await handleAuthError(err)) return;
         console.error("Failed to update asset:", err);
+        showError("素材保存失败，请重试。");
       }
     },
-    [getToken, handleAuthError, loadKitDetail],
+    [getToken, handleAuthError, loadKitDetail, showError],
   );
 
   const handleDeleteAsset = useCallback(
@@ -264,14 +319,16 @@ export function BrandKitPage() {
       if (!kit) return;
       try {
         await deleteBrandKitAsset(getToken(), kit.id, assetId);
+        success("素材已删除。");
         await loadKitDetail(kit.id);
         await refreshList();
       } catch (err) {
         if (await handleAuthError(err)) return;
         console.error("Failed to delete asset:", err);
+        showError("素材删除失败，请重试。");
       }
     },
-    [getToken, handleAuthError, loadKitDetail, refreshList],
+    [getToken, handleAuthError, loadKitDetail, refreshList, success, showError],
   );
 
   const handleUploadAsset = useCallback(
@@ -280,14 +337,16 @@ export function BrandKitPage() {
       if (!kit) return;
       try {
         await uploadBrandKitAsset(getToken(), kit.id, type, file);
+        success("素材已上传。");
         await loadKitDetail(kit.id);
         await refreshList();
       } catch (err) {
         if (await handleAuthError(err)) return;
         console.error("Failed to upload asset:", err);
+        showError("素材上传失败，请重试。");
       }
     },
-    [getToken, handleAuthError, loadKitDetail, refreshList],
+    [getToken, handleAuthError, loadKitDetail, refreshList, success, showError],
   );
 
   // --- Render ---
