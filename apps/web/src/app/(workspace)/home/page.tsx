@@ -230,7 +230,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex h-full flex-col items-center overflow-auto px-4 py-8 sm:px-6 md:py-12 lg:py-16">
+    <div className="flex min-h-full flex-col items-center px-4 py-8 sm:px-6 md:py-12 lg:py-16">
       {/* Hero */}
       <motion.div
         initial={false}

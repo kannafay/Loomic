@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { OverlayScrollbarsComponent } from "overlayscrollbars-react";
 import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
@@ -61,12 +62,22 @@ export default function WorkspaceLayout({
           跳到主内容
         </a>
         <AppSidebar />
-        <main
+        <OverlayScrollbarsComponent
+          element="main"
           id="main"
-          className="relative h-full min-w-0 flex-1 overflow-auto [scrollbar-gutter:stable] pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+          className="relative h-full min-w-0 flex-1 pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+          options={{
+            scrollbars: {
+              theme: "os-theme-loomic",
+              autoHide: "leave",
+              autoHideDelay: 600,
+              clickScroll: "instant",
+            },
+          }}
+          defer
         >
           <PageTransition>{children}</PageTransition>
-        </main>
+        </OverlayScrollbarsComponent>
       </SidebarProvider>
     </TooltipProvider>
   );
