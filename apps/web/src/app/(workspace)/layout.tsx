@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import type { ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useState } from "react";
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { LoadingScreen } from "@/components/loading-screen";
 import { PageTransition } from "@/components/page-transition";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/lib/auth-context";
 
 export default function WorkspaceLayout({
@@ -16,6 +17,15 @@ export default function WorkspaceLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  useEffect(() => {
+    const savedState = document.cookie
+      .split("; ")
+      .find((cookie) => cookie.startsWith("sidebar_state="))
+      ?.split("=")[1];
+    if (savedState === "false") setSidebarOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,19 +42,33 @@ export default function WorkspaceLayout({
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col md:flex-row">
-      {/* Skip navigation link -- visible only on keyboard focus for a11y */}
-      <a
-        href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:rounded-md focus:shadow-lg"
+    <TooltipProvider delay={150}>
+      <SidebarProvider
+        open={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        className="h-dvh min-h-0 overflow-hidden"
+        style={
+          {
+            "--sidebar-width": "220px",
+            "--sidebar-width-icon": "64px",
+          } as CSSProperties
+        }
       >
-        跳到主内容
-      </a>
-      <AppSidebar />
-      {/* pb-14 on mobile for the fixed bottom navigation bar, reset on md+ */}
-      <main id="main" className="relative flex-1 overflow-auto pb-14 md:pb-0">
-        <PageTransition>{children}</PageTransition>
-      </main>
-    </div>
+        {/* Skip navigation link -- visible only on keyboard focus for a11y */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:rounded-md focus:shadow-lg"
+        >
+          跳到主内容
+        </a>
+        <AppSidebar />
+        <main
+          id="main"
+          className="relative h-full min-w-0 flex-1 overflow-auto pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+        >
+          <PageTransition>{children}</PageTransition>
+        </main>
+      </SidebarProvider>
+    </TooltipProvider>
   );
 }
