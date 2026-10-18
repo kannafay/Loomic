@@ -70,7 +70,10 @@ const ADMIN_ITEM: NavItem = {
 };
 
 const MENU_BUTTON_CLASS =
-  "h-10 gap-3 rounded-lg px-3 text-muted-foreground data-active:text-sidebar-foreground has-[[data-navigation-pending]]:bg-sidebar-accent [&_svg]:size-5";
+  "h-10 gap-3 rounded-lg px-3 text-muted-foreground data-active:text-sidebar-foreground not-data-active:has-[[data-navigation-pending]]:bg-sidebar-accent [&_svg]:size-5";
+
+const ACTIVE_MENU_CLASS =
+  "relative before:pointer-events-none before:absolute before:top-1/2 before:left-1 before:h-3.5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-sidebar-primary-foreground/50 before:opacity-0 data-active:bg-sidebar-primary data-active:font-semibold data-active:text-sidebar-primary-foreground data-active:before:opacity-100 data-active:hover:bg-sidebar-primary data-active:hover:text-sidebar-primary-foreground";
 
 function SidebarLabel({ children }: { children: ReactNode }) {
   return (
@@ -125,7 +128,7 @@ function NavigationItem({ item }: { item: NavItem }) {
         aria-label={item.label}
         aria-current={active ? "page" : undefined}
         tooltip={item.label}
-        className={MENU_BUTTON_CLASS}
+        className={cn(MENU_BUTTON_CLASS, ACTIVE_MENU_CLASS)}
       >
         <NavigationContent item={item} />
       </SidebarMenuButton>
@@ -153,9 +156,9 @@ function MobileBottomBar({ items }: { items: NavItem[] }) {
             aria-label={item.label}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring",
+              "relative flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sidebar-ring before:pointer-events-none before:absolute before:top-0 before:left-1/2 before:h-0.5 before:w-5 before:-translate-x-1/2 before:rounded-b-full before:bg-sidebar-primary-foreground/50 before:opacity-0",
               active
-                ? "bg-sidebar-accent text-sidebar-foreground"
+                ? "bg-sidebar-primary text-sidebar-primary-foreground before:opacity-100"
                 : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground",
             )}
           >
