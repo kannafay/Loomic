@@ -155,7 +155,9 @@ it("groups by saved provider identity, including separate accounts for the same 
   saveImagePreference("manual", ["configured/agnes-image-2.5"]);
   fetchImageModels.mockResolvedValue({
     models: [
-      ...imageModels,
+      imageModels[1],
+      imageModels[2],
+      imageModels[0],
       {
         ...imageModels[1],
         id: "configured/backup",
@@ -168,6 +170,17 @@ it("groups by saved provider identity, including separate accounts for the same 
   renderSelector();
   const team = await screen.findByRole("group", { name: /团队 Agnes/ });
   expect(within(team).getAllByRole("checkbox")).toHaveLength(2);
+  expect(
+    screen.getAllByRole("group").map((group) =>
+      within(group)
+        .getAllByRole("checkbox")
+        .map((model) => model.getAttribute("aria-label")),
+    ),
+  ).toEqual([
+    ["Agnes Image 2.5 Flash", "Agnes Image 2.1 Flash"],
+    ["Nano Banana"],
+    ["备用图片模型"],
+  ]);
   expect(
     within(screen.getByRole("group", { name: /备用 Agnes/ })).getByRole(
       "checkbox",

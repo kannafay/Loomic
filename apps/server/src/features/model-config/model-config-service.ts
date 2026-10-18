@@ -233,12 +233,15 @@ export function createModelConfigService(options: {
           ? decryptApiKey(row.api_key_ciphertext, options.secret)
           : "",
       }));
-      const providerIds = new Set(privateProviders.map((p) => p.id));
+      // Provider order is the administrator's display order. Keep each
+      // provider's models in the same order as the administration list.
       cachedCatalog = {
         providers: privateProviders,
-        models: models.data
-          .filter((m) => providerIds.has(m.provider_id))
-          .map(publicModel),
+        models: privateProviders.flatMap((provider) =>
+          models.data
+            .filter((model) => model.provider_id === provider.id)
+            .map(publicModel),
+        ),
       };
       cachedAt = Date.now();
       return cachedCatalog;

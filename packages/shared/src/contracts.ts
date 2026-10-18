@@ -154,6 +154,7 @@ export const modelInfoSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   provider: z.string().min(1),
+  providerId: z.string().min(1).optional(),
 });
 
 export const chatSessionIdSchema = identifierSchema;

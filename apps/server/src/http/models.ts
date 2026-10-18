@@ -76,6 +76,7 @@ export async function registerModelRoutes(
             .map((m) => ({
               id: m.key,
               name: m.name,
+              providerId: m.providerId,
               provider:
                 catalog.providers.find((p) => p.id === m.providerId)?.name ??
                 "未知提供商",

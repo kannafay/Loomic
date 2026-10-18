@@ -1,6 +1,12 @@
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
 import "@testing-library/jest-dom/vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { VideoGeneratorPanel } from "../src/components/canvas/video-generator-panel";
@@ -118,6 +124,63 @@ const agnes = {
     maxInputImages: 8,
   },
 };
+
+it("groups video models by configured account in catalog order and preserves the current model", async () => {
+  const orderedModels: VideoModelInfo[] = [
+    {
+      ...agnes,
+      id: "agnes-z",
+      displayName: "Agnes Z",
+      providerId: "team",
+      providerName: "Agnes AI",
+    },
+    {
+      ...agnes,
+      id: "agnes-a",
+      displayName: "Agnes A",
+      providerId: "team",
+      providerName: "Agnes AI",
+    },
+    { ...model, providerId: "google", providerName: "Google" },
+    {
+      ...agnes,
+      id: "backup",
+      displayName: "备用模型",
+      providerId: "backup",
+      providerName: "Agnes AI",
+    },
+  ];
+  vi.mocked(fetchVideoModels).mockResolvedValue({ models: orderedModels });
+  panel();
+  const user = userEvent.setup();
+  const selector = screen.getByRole("combobox", { name: "视频模型" });
+  await waitFor(() => expect(selector).toBeEnabled());
+  await user.click(selector);
+  expect(
+    screen.getAllByRole("group").map((group) =>
+      within(group)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ),
+  ).toEqual([["Agnes Z", "Agnes A"], ["Veo 3.1"], ["备用模型"]]);
+  expect(screen.getAllByRole("group", { name: "Agnes AI" })).toHaveLength(2);
+  await user.keyboard("{Escape}");
+  vi.mocked(fetchVideoModels).mockResolvedValue({
+    models: orderedModels.slice(2).concat(orderedModels.slice(0, 2)),
+  });
+  await user.click(selector);
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole("group").map((group) =>
+        within(group)
+          .getAllByRole("option")
+          .map((option) => option.textContent),
+      ),
+    ).toEqual([["Veo 3.1"], ["备用模型"], ["Agnes Z", "Agnes A"]]),
+  );
+  expect(selector).toHaveTextContent("Veo 3.1");
+  expect(generateVideoDirect).not.toHaveBeenCalled();
+});
 
 describe("Agnes video modes", () => {
   it("sends eight image URLs plus audio/video references at 6s and 1080p without Veo restrictions", async () => {

@@ -7,6 +7,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -29,6 +30,7 @@ import {
   resizeImageGeneratorElement,
   updateImageGeneratorElement,
 } from "../../lib/canvas-image-generator";
+import { groupModelsByProvider } from "../../lib/model-groups";
 import type { ImageModelInfo } from "../../lib/server-api";
 import { fetchImageModels } from "../../lib/server-api";
 
@@ -73,6 +75,7 @@ export function ImageGeneratorPanel({
   const [models, setModels] = useState<ImageModelInfo[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
   const [modelsLoadError, setModelsLoadError] = useState(false);
+  const [catalogRevision, setCatalogRevision] = useState(0);
   const modelRef = useRef(model);
   modelRef.current = model;
   const [refImages, setRefImages] = useState<
@@ -85,7 +88,7 @@ export function ImageGeneratorPanel({
   accessTokenRef.current = accessToken;
   const { handleGenerationError } = useGenerationErrorHandler();
 
-  // Fetch available models with error logging
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Refresh when the model menu opens to reflect administrator ordering.
   useEffect(() => {
     let cancelled = false;
     setModelsLoading(true);
@@ -119,7 +122,7 @@ export function ImageGeneratorPanel({
     return () => {
       cancelled = true;
     };
-  }, [excalidrawApi, elementId]);
+  }, [excalidrawApi, elementId, catalogRevision]);
 
   useEffect(() => {
     setLoading(data.status === "generating");
@@ -266,10 +269,13 @@ export function ImageGeneratorPanel({
         <div className="flex items-center">
           <Select
             value={model}
+            onOpenChange={(open) => {
+              if (open) setCatalogRevision((revision) => revision + 1);
+            }}
             onValueChange={(value) => {
               if (value) handleModelChange(value);
             }}
-            disabled={loading || modelsLoading || !models.length}
+            disabled={loading || !models.length}
             items={models.map((candidate) => ({
               value: candidate.id,
               label: candidate.displayName,
@@ -294,20 +300,23 @@ export function ImageGeneratorPanel({
               alignItemWithTrigger={false}
               className="w-64"
             >
-              <SelectGroup>
-                {models.map((candidate) => (
-                  <SelectItem key={candidate.id} value={candidate.id}>
-                    {candidate.iconUrl && (
-                      <img
-                        src={candidate.iconUrl}
-                        alt=""
-                        className="size-3.5 rounded-full"
-                      />
-                    )}
-                    {candidate.displayName}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
+              {groupModelsByProvider(models).map((group) => (
+                <SelectGroup key={group.key}>
+                  <SelectLabel>{group.name}</SelectLabel>
+                  {group.models.map((candidate) => (
+                    <SelectItem key={candidate.id} value={candidate.id}>
+                      {candidate.iconUrl && (
+                        <img
+                          src={candidate.iconUrl}
+                          alt=""
+                          className="size-3.5 rounded-full"
+                        />
+                      )}
+                      {candidate.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
             </SelectContent>
           </Select>
 

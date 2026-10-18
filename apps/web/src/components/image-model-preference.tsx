@@ -34,6 +34,10 @@ import {
 } from "react";
 import { useImageModelPreference } from "../hooks/use-image-model-preference";
 import { useVideoModelPreference } from "../hooks/use-video-model-preference";
+import {
+  getModelProviderName,
+  groupModelsByProvider,
+} from "../lib/model-groups";
 import type { ImageModelInfo, VideoModelInfo } from "../lib/server-api";
 import { fetchImageModels, fetchVideoModels } from "../lib/server-api";
 
@@ -43,18 +47,6 @@ type ModelCatalog = {
   status: "loading" | "ready" | "error";
   models: GenerationModel[];
 };
-type ModelGroup = { key: string; name: string; models: GenerationModel[] };
-
-const PROVIDER_NAMES: Record<string, string> = {
-  google: "Google",
-  "google-vertex": "Google Vertex AI",
-  openai: "OpenAI",
-  "openai-official": "OpenAI",
-  agnes: "Agnes AI",
-  replicate: "Replicate",
-  volces: "火山引擎",
-};
-
 function useModelCatalog(
   open: boolean,
   loadModels: () => Promise<{ models: GenerationModel[] }>,
@@ -90,24 +82,13 @@ function useModelCatalog(
 
 function groupModels(models: GenerationModel[], query: string) {
   const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const groups = new Map<string, ModelGroup>();
-  for (const model of models) {
-    const name =
-      model.providerName ??
-      PROVIDER_NAMES[model.provider] ??
-      model.provider ??
-      "其他提供商";
-    const searchable =
-      `${name} ${model.provider} ${model.displayName} ${model.description}`.toLowerCase();
-    if (!terms.every((term) => searchable.includes(term))) continue;
-    const key = model.providerId
-      ? `configured:${model.providerId}`
-      : `legacy:${model.provider}`;
-    const group: ModelGroup = groups.get(key) ?? { key, name, models: [] };
-    group.models.push(model);
-    groups.set(key, group);
-  }
-  return [...groups.values()];
+  return groupModelsByProvider(
+    models.filter((model) => {
+      const searchable =
+        `${getModelProviderName(model)} ${model.provider} ${model.displayName} ${model.description}`.toLowerCase();
+      return terms.every((term) => searchable.includes(term));
+    }),
+  );
 }
 
 function ModelOption({

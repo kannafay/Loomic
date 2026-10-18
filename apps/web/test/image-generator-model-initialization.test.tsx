@@ -1,6 +1,13 @@
 import "@testing-library/jest-dom/vitest";
 import type { ExcalidrawImperativeAPI } from "@excalidraw/excalidraw/types";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ImageGeneratorPanel } from "../src/components/canvas/image-generator-panel";
@@ -23,7 +30,7 @@ vi.mock("../src/hooks/use-generation-error-handler", () => ({
   useGenerationErrorHandler: () => ({ handleGenerationError: requests.error }),
 }));
 
-const models: ImageModelInfo[] = [
+const models: [ImageModelInfo, ImageModelInfo] = [
   {
     id: "configured/google",
     displayName: "Nano Banana 2",
@@ -93,6 +100,65 @@ function generator(model?: string) {
     saved: () => elements.find((candidate) => candidate.id === id)?.customData,
   };
 }
+
+it("groups image models by saved provider identity and keeps the catalog order without changing the saved model", async () => {
+  const orderedModels: ImageModelInfo[] = [
+    {
+      ...models[1],
+      id: "agnes-z",
+      displayName: "Agnes Z",
+      providerId: "team",
+      providerName: "Agnes AI",
+    },
+    {
+      ...models[1],
+      id: "agnes-a",
+      displayName: "Agnes A",
+      providerId: "team",
+      providerName: "Agnes AI",
+    },
+    { ...models[0], providerId: "google", providerName: "Google" },
+    {
+      ...models[1],
+      id: "backup",
+      displayName: "备用模型",
+      providerId: "backup",
+      providerName: "Agnes AI",
+    },
+  ];
+  requests.catalog.mockResolvedValue({ models: orderedModels });
+  const fixture = generator("configured/google");
+  const user = userEvent.setup();
+  const selector = screen.getByRole("combobox", { name: "图片模型" });
+  await waitFor(() => expect(selector).toBeEnabled());
+  await user.click(selector);
+  expect(
+    screen.getAllByRole("group").map((group) =>
+      within(group)
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ),
+  ).toEqual([["Agnes Z", "Agnes A"], ["Nano Banana 2"], ["备用模型"]]);
+  expect(screen.getAllByRole("group", { name: "Agnes AI" })).toHaveLength(2);
+  expect(fixture.saved()?.model).toBe("configured/google");
+  await user.click(screen.getByRole("option", { name: "备用模型" }));
+  expect(fixture.saved()?.model).toBe("backup");
+  requests.catalog.mockResolvedValue({
+    models: orderedModels.slice(2).concat(orderedModels.slice(0, 2)),
+  });
+  await user.click(selector);
+  await waitFor(() =>
+    expect(
+      screen.getAllByRole("group").map((group) =>
+        within(group)
+          .getAllByRole("option")
+          .map((option) => option.textContent),
+      ),
+    ).toEqual([["Nano Banana 2"], ["备用模型"], ["Agnes Z", "Agnes A"]]),
+  );
+  expect(fixture.saved()?.model).toBe("backup");
+  expect(requests.generate).not.toHaveBeenCalled();
+});
 
 it.each([undefined, "google/nano-banana-2"])(
   "initializes a new or legacy default (%s) with the administrator's model and icon before generation",

@@ -13,6 +13,7 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -43,6 +44,7 @@ import {
   resizeVideoGeneratorElement,
   updateVideoGeneratorElement,
 } from "../../lib/canvas-video-generator";
+import { groupModelsByProvider } from "../../lib/model-groups";
 import type {
   VideoExtensionSource,
   VideoModelInfo,
@@ -97,6 +99,7 @@ export function VideoGeneratorPanel({
   const [models, setModels] = useState<VideoModelInfo[]>([]);
   const [modelsLoading, setModelsLoading] = useState(true);
   const [modelsLoadError, setModelsLoadError] = useState(false);
+  const [catalogRevision, setCatalogRevision] = useState(0);
   const modelRef = useRef(model);
   modelRef.current = model;
   const [showParamsPopover, setShowParamsPopover] = useState(false);
@@ -153,7 +156,7 @@ export function VideoGeneratorPanel({
     updateVideoGeneratorElement(excalidrawApi, elementId, inputSettings);
   }, [inputSettings, excalidrawApi, elementId]);
 
-  // Fetch available models with error logging
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Refresh when the model menu opens to reflect administrator ordering.
   useEffect(() => {
     let cancelled = false;
     setModelsLoading(true);
@@ -184,7 +187,7 @@ export function VideoGeneratorPanel({
     return () => {
       cancelled = true;
     };
-  }, [excalidrawApi, elementId]);
+  }, [excalidrawApi, elementId, catalogRevision]);
 
   useEffect(() => {
     setLoading(data.status === "generating");
@@ -695,11 +698,14 @@ export function VideoGeneratorPanel({
         <div className="flex items-center gap-1">
           <Select
             value={model}
+            onOpenChange={(open) => {
+              if (open) setCatalogRevision((revision) => revision + 1);
+            }}
             items={models.map((candidate) => ({
               value: candidate.id,
               label: candidate.displayName,
             }))}
-            disabled={loading || modelsLoading || !models.length}
+            disabled={loading || !models.length}
             onValueChange={(value) => {
               if (value) handleModelChange(value);
             }}
@@ -732,20 +738,23 @@ export function VideoGeneratorPanel({
               alignItemWithTrigger={false}
               className="w-64"
             >
-              <SelectGroup>
-                {models.map((candidate) => (
-                  <SelectItem key={candidate.id} value={candidate.id}>
-                    {candidate.iconUrl && (
-                      <img
-                        src={candidate.iconUrl}
-                        alt=""
-                        className="size-3.5 rounded-full"
-                      />
-                    )}
-                    {candidate.displayName}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
+              {groupModelsByProvider(models).map((group) => (
+                <SelectGroup key={group.key}>
+                  <SelectLabel>{group.name}</SelectLabel>
+                  {group.models.map((candidate) => (
+                    <SelectItem key={candidate.id} value={candidate.id}>
+                      {candidate.iconUrl && (
+                        <img
+                          src={candidate.iconUrl}
+                          alt=""
+                          className="size-3.5 rounded-full"
+                        />
+                      )}
+                      {candidate.displayName}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
             </SelectContent>
           </Select>
 

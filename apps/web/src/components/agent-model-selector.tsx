@@ -10,10 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAgentModel } from "@/hooks/use-agent-model";
+import { groupModelsByProvider } from "@/lib/model-groups";
 import { fetchModels } from "@/lib/server-api";
+import type { ModelInfo } from "@loomic/shared";
 import { useEffect, useState } from "react";
-
-type ModelOption = { id: string; name: string; provider: string };
 
 // Sparkle icon SVG path from design spec
 const SPARKLE_ICON_PATH =
@@ -55,7 +55,7 @@ function ProviderLogo({ provider }: { provider: string }) {
 export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
   const { model, setModel } = useAgentModel();
   const [open, setOpen] = useState(false);
-  const [models, setModels] = useState<ModelOption[]>([]);
+  const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Refresh the available models when this selector opens.
@@ -81,7 +81,7 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
     : model && modelsLoaded
       ? "所选模型不可用"
       : "智能助手";
-  const providers = [...new Set(models.map((candidate) => candidate.provider))];
+  const groups = groupModelsByProvider(models);
   const automatic = "workspace-default";
 
   return (
@@ -125,25 +125,17 @@ export function AgentModelSelector({ compact }: { compact?: boolean } = {}) {
           <SelectLabel>对话模型</SelectLabel>
           <SelectItem value={automatic}>自动（工作空间默认）</SelectItem>
         </SelectGroup>
-        {providers.map((provider) => (
-          <SelectGroup key={provider}>
+        {groups.map((group) => (
+          <SelectGroup key={group.key}>
             <SelectLabel className="flex items-center gap-1.5">
-              <ProviderLogo provider={provider} />
-              {provider === "openai"
-                ? "OpenAI"
-                : provider === "google"
-                  ? "Google"
-                  : provider === "agnes"
-                    ? "Agnes AI"
-                    : provider}
+              <ProviderLogo provider={group.models[0]?.provider ?? ""} />
+              {group.name}
             </SelectLabel>
-            {models
-              .filter((candidate) => candidate.provider === provider)
-              .map((candidate) => (
-                <SelectItem key={candidate.id} value={candidate.id}>
-                  {candidate.name}
-                </SelectItem>
-              ))}
+            {group.models.map((candidate) => (
+              <SelectItem key={candidate.id} value={candidate.id}>
+                {candidate.name}
+              </SelectItem>
+            ))}
           </SelectGroup>
         ))}
       </SelectContent>
